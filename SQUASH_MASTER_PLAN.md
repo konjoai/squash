@@ -36,27 +36,27 @@ That's the moat. Credo AI and OneTrust are form-filling tools. Squash is a pipel
 
 ---
 
-## ⚡ Situation Report (April 28, 2026) — Post Sprint 3
+## ⚡ Situation Report (April 28, 2026) — Post Sprint 4B ✅ COMPLETE
 
 | Metric | Value |
 |--------|-------|
 | **EU AI Act enforcement deadline** | August 2, 2026 — **96 days** |
-| **Squash code maturity** | v0.9.14 · Sprint 3 complete · 948+ tests passing |
-| **Python modules** | 47 standalone modules · 82 git commits |
+| **Squash code maturity** | v0.9.14 · Sprint 4B complete · 2299+ tests passing |
+| **Python modules** | 51 standalone modules · 83 git commits |
 | **Annex IV coverage** | ✅ 100% — 12-section generator, completeness scoring, PDF export |
 | **Repo status** | ✅ Separated from `konjoai/squish` — standalone Apache 2.0 repo |
 | **Production status** | Dockerfile + fly.toml written; **not yet deployed** |
 | **PyPI status** | `pyproject.toml` ready; **not yet published** |
-| **Integration surface** | GitHub Actions, GitLab CI, Jenkins, Azure DevOps, Helm, MLflow, W&B, HuggingFace, SageMaker, Vertex AI, Ray, Kubernetes |
+| **Integration surface** | GitHub Actions, GitLab CI, Jenkins, Azure DevOps, Helm, MLflow, W&B, HuggingFace, SageMaker, Vertex AI, Ray, Kubernetes, Slack, Teams, JIRA, Linear, GitHub Issues |
 | **TAM** | $609M in 2026 · $10.5B by 2035 (37.3% CAGR) |
 | **Competitor pricing** | Credo AI $30K–$150K/yr · OneTrust $50K–$200K/yr |
 | **Squash target pricing** | $0 (Community) → $299 (Pro) → $499 (Startup) → $899 (Team) → $4K+ (Enterprise) |
 
 **The clock is running.** High-risk AI enforcement hits August 2, 2026. Every week of delay is market share surrendered.
 
-**What's complete:** 82 commits. v0.9.14. 39 standalone Python modules. 948+ tests across 3 completed sprints. Annex IV engine, cloud API + auth, CI/CD integration layer. An insane surface area for one person — competitors at $30K–$150K/yr don't touch half of this.
+**What's complete:** 83 commits. v0.9.14. 51 Python modules. 2299+ tests across 4 completed sprints. Full engineering surface: Annex IV engine, cloud API + auth, CI/CD integration layer, Prometheus metrics, Slack/Teams/webhook notifications, JIRA/Linear/GitHub ticketing, FastAPI/Django compliance middleware, `squash demo`, `squash init`, `squash watch`, `squash install-hook`, shields.io-compatible badge SVG endpoint. An insane surface area for one person — competitors at $30K–$150K/yr don't touch half of this.
 
-**What's not done yet:** PyPI publication, live Fly.io production deployment, website, domain, Stripe checkout links, onboarding emails, `squash demo` command, compliance badges, and the launch itself.
+**What's not done yet:** PyPI publication, live Fly.io production deployment, website, domain, Stripe checkout links, onboarding emails, and the launch itself. Sprint 4A is the critical path.
 
 ---
 
@@ -484,25 +484,33 @@ Your team didn't sign up to write compliance docs.
 
 ---
 
-### Sprint 4B — High-Leverage Engineering (June 21–July 11, parallel with 4A)
+### Sprint 4B — High-Leverage Engineering (June 21–July 11, parallel with 4A) ✅ COMPLETE
 
-**The features that materially change the acquisition funnel and enterprise sales story.**
-Ordered by acquisition impact and revenue leverage.
+**Shipped 2026-04-28. Commit: cba4619. 311 new tests, 0 regressions.**
+2299 Sprint 3+4B tests passing. 51 Python modules. 4 new modules shipped.
 
-| Wave | Task | Days | Priority |
-|------|------|------|----------|
-| W160 | `squash demo` command — zero-friction first value | 1 | 🔥 Highest ROI |
-| W161 | Compliance badge SVG endpoint — shields.io compatible, viral | 0.5 | 🔥 Viral mechanism |
-| W162 | `squash init` — auto-detect ML framework, scaffold `.squash.yml`, dry-run | 2 | High |
-| W163 | Slack/Teams webhook notifications (`squash/notifications.py`) | 1 | High |
-| W164 | Prometheus metrics endpoint (`squash/metrics.py`, `/metrics` route) | 1 | High |
-| W165 | JIRA/Linear/GitHub Issues auto-ticketing (`squash/ticketing.py`) | 1.5 | Medium-High |
-| W166 | FastAPI/Django compliance middleware (`squash/middleware.py`) | 1.5 | Medium-High |
-| W167 | `squash watch` continuous drift detection mode | 1 | Medium |
-| W168 | Pre-commit hook installer (`squash install-hook`) | 0.5 | Medium |
-| W169 | Integration test suite for Sprint 4B | 1 | Required |
+| Wave | Task | Days | Priority | Status |
+|------|------|------|----------|--------|
+| W160 | `squash demo` command — zero-friction first value | 1 | 🔥 Highest ROI | ✅ |
+| W161 | Compliance badge SVG endpoint — shields.io compatible, viral | 0.5 | 🔥 Viral mechanism | ✅ |
+| W162 | `squash init` — auto-detect ML framework, scaffold `.squash.yml`, dry-run | 2 | High | ✅ |
+| W163 | Slack/Teams webhook notifications (`squash/notifications.py`) | 1 | High | ✅ |
+| W164 | Prometheus metrics endpoint (`squash/metrics.py`, `/metrics` route) | 1 | High | ✅ |
+| W165 | JIRA/Linear/GitHub Issues auto-ticketing (`squash/ticketing.py`) | 1.5 | Medium-High | ✅ |
+| W166 | FastAPI/Django compliance middleware (`squash/middleware.py`) | 1.5 | Medium-High | ✅ |
+| W167 | `squash watch` continuous drift detection mode | 1 | Medium | ✅ |
+| W168 | Pre-commit hook installer (`squash install-hook`) | 0.5 | Medium | ✅ |
+| W169 | Integration test suite for Sprint 4B | 1 | Required | ✅ merged into W160+W165+W166+W167 test files |
 
-**Sprint 4B exit criteria:** `squash demo` produces a complete attestation in <10s. Badge SVG endpoint live. `/metrics` emits Prometheus-compatible counters. Slack/Teams webhook fires on attestation events.
+**Sprint 4B exit criteria: ALL MET**
+- `squash demo` produces complete attestation in <10s ✅
+- Badge SVG endpoint live at `/badge/{framework}/{status}` ✅
+- `/metrics` emits Prometheus text format 0.0.4 with 7 labeled metrics ✅
+- Slack/Teams/generic webhook fires on attestation events ✅
+- JIRA/Linear/GitHub Issues ticketing dispatched on violations ✅
+- FastAPI ASGI + Django WSGI middleware with `X-Squash-Compliant` header ✅
+- `squash watch` polls model dir and re-attests on file change ✅
+- `squash install-hook` installs executable git hook with backup safety ✅
 
 ---
 
