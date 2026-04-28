@@ -464,6 +464,98 @@ def _coerce_mlflow_param(value: str) -> Any:
         return value
 
 
+def _build_wandb_path(run_id: str, entity: str, project: str) -> str:
+    """Build a canonical W&B run path from its components.
+
+    W&B ``Api.run()`` expects ``"entity/project/run_id"``.  If *run_id*
+    already contains slashes it is used verbatim; otherwise the entity and
+    project kwargs are prepended when provided.
+    """
+    if "/" in run_id:
+        return run_id
+    if entity and project:
+        return f"{entity}/{project}/{run_id}"
+    if project:
+        return f"{project}/{run_id}"
+    return run_id  # let W&B resolve via default entity
+
+
+def _extract_wandb_metrics(run: Any, *, include_system_metrics: bool = False) -> TrainingMetrics:
+    """Single-pass streaming extraction of all scalar series from a W&B run.
+
+    Iterates ``run.scan_history()`` once, accumulating steps/values/wall_times
+    for every metric key encountered. None values (step where metric was not
+    logged) are skipped. Non-numeric values are skipped.
+
+    W&B ``_timestamp`` is already Unix seconds — written directly to
+    wall_times without conversion (contrast: MLflow uses milliseconds).
+    """
+    # Pre-declare as lists to avoid repeated dict-get in the hot loop
+    steps_map: dict[str, list[int]] = {}
+    values_map: dict[str, list[float]] = {}
+    times_map: dict[str, list[float]] = {}
+
+    for row in run.scan_history():
+        step = int(row.get("_step", 0))
+        wall_time = float(row.get("_timestamp", 0.0))
+
+        for key, value in row.items():
+            if key.startswith("_"):
+                continue
+            if not include_system_metrics and key.startswith("system/"):
+                continue
+            if value is None:
+                continue
+            if not isinstance(value, (int, float)):
+                continue
+
+            if key not in steps_map:
+                steps_map[key] = []
+                values_map[key] = []
+                times_map[key] = []
+
+            steps_map[key].append(step)
+            values_map[key].append(float(value))
+            times_map[key].append(wall_time)
+
+    series = {
+        key: MetricSeries(
+            tag=key,
+            steps=steps_map[key],
+            values=values_map[key],
+            wall_times=times_map[key],
+        )
+        for key in steps_map
+    }
+
+    return TrainingMetrics(
+        source="wandb",
+        run_id=getattr(run, "id", None),
+        series=series,
+        metadata={
+            "entity": getattr(run, "entity", None),
+            "project": getattr(run, "project", None),
+            "run_name": getattr(run, "name", None),
+            "state": getattr(run, "state", None),
+            "url": getattr(run, "url", None),
+            "tags": list(getattr(run, "tags", []) or []),
+        },
+    )
+
+
+def _extract_wandb_config(run: Any, path: str) -> TrainingConfig:
+    """Extract and sanitise W&B run config → TrainingConfig.
+
+    W&B injects internal keys prefixed ``_wandb`` into the run config
+    (e.g. ``_wandb.version``, ``_wandb.run_id``). These are stripped before
+    passing to the standard config extractor so they do not pollute the
+    Annex IV §1(c) hyperparameter record.
+    """
+    raw_config = dict(getattr(run, "config", {}) or {})
+    filtered = {k: v for k, v in raw_config.items() if not k.startswith("_wandb")}
+    return _parse_config_dict(filtered, source_path=f"wandb://{path}")
+
+
 def _parse_config_dict(raw: dict, source_path: str | None = None) -> TrainingConfig:
     return TrainingConfig(
         source_path=source_path,
@@ -755,13 +847,135 @@ class ArtifactExtractor:
         return ArtifactExtractionResult(metrics=metrics, config=config)
 
     # ------------------------------------------------------------------
-    # W130 stub: W&B API integration
+    # W130: W&B API integration
     # ------------------------------------------------------------------
 
     @staticmethod
-    def from_wandb_run(run_id: str, entity: str = "", project: str = "") -> TrainingMetrics:
-        """Pull config + metrics from Weights & Biases API. (Wave 130)"""
-        raise NotImplementedError("Wave 130: W&B API integration — not yet implemented")
+    def from_wandb_run(
+        run_id: str,
+        *,
+        entity: str = "",
+        project: str = "",
+        include_system_metrics: bool = False,
+    ) -> TrainingMetrics:
+        """Pull full metric history from a W&B run → TrainingMetrics.
+
+        Uses a single streaming pass through ``run.scan_history()`` to build
+        all MetricSeries simultaneously — O(1) memory overhead regardless of
+        run size, never one API call per metric key.
+
+        W&B timestamps are already in seconds (unlike MLflow's milliseconds),
+        so they are written directly to ``MetricSeries.wall_times``.
+
+        ``None`` values — logged when a metric was not recorded at a given
+        step — are silently skipped to keep series contiguous.
+
+        Args:
+            run_id:     W&B run ID, or full ``"entity/project/run_id"`` path.
+            entity:     W&B entity (user or team). Combined with *project* and
+                        *run_id* when *run_id* is not a full path.
+            project:    W&B project name.
+            include_system_metrics:
+                        If True, include ``system/`` hardware metrics (GPU
+                        utilisation, memory, etc.) in the returned series.
+                        Defaults to False — system metrics are not required
+                        for Annex IV but useful for hardware context.
+
+        Returns:
+            TrainingMetrics with one MetricSeries per logged scalar metric.
+            Addresses Annex IV §3(b): training and validation methodology.
+
+        Raises:
+            ImportError: if wandb is not installed.
+            wandb.errors.CommError: if the run is not found or API unreachable.
+        """
+        try:
+            import wandb  # type: ignore
+        except ImportError as exc:
+            raise ImportError(
+                "wandb is required for from_wandb_run(). "
+                "Install with: pip install wandb"
+            ) from exc
+
+        path = _build_wandb_path(run_id, entity, project)
+        api = wandb.Api()
+        run = api.run(path)
+
+        metrics = _extract_wandb_metrics(run, include_system_metrics=include_system_metrics)
+        metrics.run_id = run.id
+        return metrics
+
+    @staticmethod
+    def from_wandb_config(
+        run_id: str,
+        *,
+        entity: str = "",
+        project: str = "",
+    ) -> TrainingConfig:
+        """Pull run config from a W&B run → TrainingConfig.
+
+        Filters out W&B-internal config keys (prefixed ``_wandb``) before
+        passing through the standard config extractor so optimizer, LR,
+        scheduler, and training loop settings are cleanly resolved.
+
+        Args:
+            run_id:   W&B run ID or full ``"entity/project/run_id"`` path.
+            entity:   W&B entity (user or team).
+            project:  W&B project name.
+
+        Returns:
+            TrainingConfig with Annex IV §1(c) evidence.
+
+        Raises:
+            ImportError: if wandb is not installed.
+        """
+        try:
+            import wandb  # type: ignore
+        except ImportError as exc:
+            raise ImportError(
+                "wandb is required for from_wandb_config(). "
+                "Install with: pip install wandb"
+            ) from exc
+
+        path = _build_wandb_path(run_id, entity, project)
+        api = wandb.Api()
+        run = api.run(path)
+        return _extract_wandb_config(run, path)
+
+    @staticmethod
+    def from_wandb_run_full(
+        run_id: str,
+        *,
+        entity: str = "",
+        project: str = "",
+        include_system_metrics: bool = False,
+    ) -> "ArtifactExtractionResult":
+        """Extract both metrics and config from one W&B run.
+
+        Makes a single ``api.run()`` call and derives both
+        ``TrainingMetrics`` (§3(b)) and ``TrainingConfig`` (§1(c)) from the
+        same run object — no redundant API round-trips.
+
+        Returns:
+            ArtifactExtractionResult with ``.metrics`` and ``.config`` both
+            populated. Suitable for direct ``to_annex_iv_dict()`` output.
+        """
+        try:
+            import wandb  # type: ignore
+        except ImportError as exc:
+            raise ImportError(
+                "wandb is required for from_wandb_run_full(). "
+                "Install with: pip install wandb"
+            ) from exc
+
+        path = _build_wandb_path(run_id, entity, project)
+        api = wandb.Api()
+        run = api.run(path)
+
+        metrics = _extract_wandb_metrics(run, include_system_metrics=include_system_metrics)
+        metrics.run_id = run.id
+        config = _extract_wandb_config(run, path)
+        return ArtifactExtractionResult(metrics=metrics, config=config)
 
     # ------------------------------------------------------------------
     # W131 stub: HuggingFace Datasets provenance

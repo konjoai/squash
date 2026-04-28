@@ -512,10 +512,6 @@ class TestArtifactExtractionResult:
 # ---------------------------------------------------------------------------
 
 class TestStubMethods:
-    def test_from_wandb_run_not_implemented(self):
-        with pytest.raises(NotImplementedError, match="Wave 130"):
-            ArtifactExtractor.from_wandb_run("abc123")
-
     def test_from_huggingface_dataset_not_implemented(self):
         with pytest.raises(NotImplementedError, match="Wave 131"):
             ArtifactExtractor.from_huggingface_dataset("squad")
