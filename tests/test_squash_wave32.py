@@ -33,6 +33,8 @@ from unittest.mock import MagicMock, call, patch
 import numpy as np
 import pytest
 
+pytest.importorskip("squish.quant.compressed_loader", reason="squish not installed — W32 tests require squish.quant + squish.cli")
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

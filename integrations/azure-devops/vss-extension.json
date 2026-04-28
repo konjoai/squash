@@ -1,0 +1,27 @@
+{
+  "manifestVersion": 1,
+  "id": "squash-attest",
+  "name": "Squash — EU AI Act Compliance",
+  "version": "0.9.14",
+  "publisher": "squishai",
+  "description": "Automates EU AI Act Annex IV compliance — attestation, SBOM generation, policy checks, and signed audit records inside Azure Pipelines.",
+  "categories": ["Azure Pipelines"],
+  "icons": {
+    "default": "images/squash-icon.png"
+  },
+  "files": [
+    {
+      "path": "SquashAttestTask"
+    }
+  ],
+  "contributions": [
+    {
+      "id": "squash-attest-task",
+      "type": "ms.vss-distributed-task.task",
+      "targets": ["ms.vss-distributed-task.tasks"],
+      "properties": {
+        "name": "SquashAttestTask"
+      }
+    }
+  ]
+}

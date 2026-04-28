@@ -26,7 +26,7 @@ def _load_yaml(rel_path: str) -> dict:
 # ---------------------------------------------------------------------------
 
 class TestCircleCIOrbYaml:
-    ORB_PATH = "squish/squash/integrations/circleci/orb.yml"
+    ORB_PATH = "squash/integrations/circleci/orb.yml"
 
     def test_orb_parseable(self):
         doc = _load_yaml(self.ORB_PATH)

@@ -254,7 +254,7 @@ class TestAzureDevOpsSquashAttest:
     def test_attest_sets_output_variables(self, tmp_path, capsys):
         model_dir = _make_model_dir(tmp_path)
         result    = _make_attest_result(passed=True)
-        with patch("squish.squash.integrations.azure_devops.AttestPipeline") as mock_pipeline:
+        with patch("squash.integrations.azure_devops.AttestPipeline") as mock_pipeline:
             mock_pipeline.run.return_value = result
             returned = AzureDevOpsSquash.attest(
                 model_path=model_dir,
@@ -270,7 +270,7 @@ class TestAzureDevOpsSquashAttest:
     def test_passed_true_emits_succeeded(self, tmp_path, capsys):
         model_dir = _make_model_dir(tmp_path)
         result    = _make_attest_result(passed=True)
-        with patch("squish.squash.integrations.azure_devops.AttestPipeline") as mock_pipeline:
+        with patch("squash.integrations.azure_devops.AttestPipeline") as mock_pipeline:
             mock_pipeline.run.return_value = result
             AzureDevOpsSquash.attest(model_path=model_dir, fail_on_violation=False)
         out = capsys.readouterr().out
@@ -279,7 +279,7 @@ class TestAzureDevOpsSquashAttest:
     def test_passed_false_emits_failed(self, tmp_path, capsys):
         model_dir = _make_model_dir(tmp_path)
         result    = _make_attest_result(passed=False)
-        with patch("squish.squash.integrations.azure_devops.AttestPipeline") as mock_pipeline:
+        with patch("squash.integrations.azure_devops.AttestPipeline") as mock_pipeline:
             mock_pipeline.run.return_value = result
             AzureDevOpsSquash.attest(model_path=model_dir, fail_on_violation=False)
         out = capsys.readouterr().out
@@ -288,7 +288,7 @@ class TestAzureDevOpsSquashAttest:
     def test_fail_on_violation_true_exits(self, tmp_path, capsys):
         model_dir = _make_model_dir(tmp_path)
         result    = _make_attest_result(passed=False)
-        with patch("squish.squash.integrations.azure_devops.AttestPipeline") as mock_pipeline:
+        with patch("squash.integrations.azure_devops.AttestPipeline") as mock_pipeline:
             mock_pipeline.run.return_value = result
             with pytest.raises(SystemExit) as exc_info:
                 AzureDevOpsSquash.attest(
@@ -300,7 +300,7 @@ class TestAzureDevOpsSquashAttest:
     def test_fail_on_violation_false_no_exit(self, tmp_path, capsys):
         model_dir = _make_model_dir(tmp_path)
         result    = _make_attest_result(passed=False)
-        with patch("squish.squash.integrations.azure_devops.AttestPipeline") as mock_pipeline:
+        with patch("squash.integrations.azure_devops.AttestPipeline") as mock_pipeline:
             mock_pipeline.run.return_value = result
             # Should not raise
             AzureDevOpsSquash.attest(model_path=model_dir, fail_on_violation=False)
@@ -308,7 +308,7 @@ class TestAzureDevOpsSquashAttest:
     def test_scan_status_in_output(self, tmp_path, capsys):
         model_dir = _make_model_dir(tmp_path)
         result    = _make_attest_result(passed=True)
-        with patch("squish.squash.integrations.azure_devops.AttestPipeline") as mock_pipeline:
+        with patch("squash.integrations.azure_devops.AttestPipeline") as mock_pipeline:
             mock_pipeline.run.return_value = result
             AzureDevOpsSquash.attest(model_path=model_dir, fail_on_violation=False)
         out = capsys.readouterr().out
@@ -317,7 +317,7 @@ class TestAzureDevOpsSquashAttest:
     def test_artifact_paths_set_when_present(self, tmp_path, capsys):
         model_dir = _make_model_dir(tmp_path)
         result    = _make_attest_result(passed=True)
-        with patch("squish.squash.integrations.azure_devops.AttestPipeline") as mock_pipeline:
+        with patch("squash.integrations.azure_devops.AttestPipeline") as mock_pipeline:
             mock_pipeline.run.return_value = result
             AzureDevOpsSquash.attest(
                 model_path=model_dir,
@@ -333,7 +333,7 @@ class TestAzureDevOpsSquashAttest:
         model_dir = _make_model_dir(tmp_path)
         result    = _make_attest_result(passed=True)
         result.scan_result = None  # Edge case: scan skipped
-        with patch("squish.squash.integrations.azure_devops.AttestPipeline") as mock_pipeline:
+        with patch("squash.integrations.azure_devops.AttestPipeline") as mock_pipeline:
             mock_pipeline.run.return_value = result
             AzureDevOpsSquash.attest(model_path=model_dir, fail_on_violation=False)
         out = capsys.readouterr().out
@@ -523,7 +523,7 @@ class TestRunSquashPs1:
         assert "SQUASH_PASSED" in content
 
     def test_install_squish(self, content):
-        assert "squish" in content.lower() and "pip" in content.lower()
+        assert ("squash" in content.lower() or "squish" in content.lower()) and "pip" in content.lower()
 
     def test_result_json_parsed(self, content):
         # The script must parse the JSON result file
@@ -567,7 +567,7 @@ class TestRunSquashSh:
         assert "SQUASH_PASSED" in content
 
     def test_install_squish(self, content):
-        assert "squish" in content.lower() and "pip" in content.lower()
+        assert ("squash" in content.lower() or "squish" in content.lower()) and "pip" in content.lower()
 
     def test_errexit_set(self, content):
         assert "set -e" in content

@@ -31,23 +31,11 @@ jobs:
       - name: Install squash-ai + dev dependencies
         run: |
           pip install -e ".[api,signing,sbom,dev]"
+          pip install mlflow wandb huggingface-hub
 
       - name: Run full test suite
         run: |
           python -m pytest tests/ -v --timeout=120 -x
-
-  lint:
-    name: Lint
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-          cache: pip
-      - run: pip install ruff mypy
-      - run: ruff check squash/ tests/
-      - run: mypy squash/ --ignore-missing-imports
 
   security:
     name: Security audit

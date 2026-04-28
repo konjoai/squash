@@ -24,6 +24,8 @@ import math
 import numpy as np
 import pytest
 
+pytest.importorskip("squish.quant.hqq", reason="squish not installed — W82 HQQ tests require squish package")
+
 from squish.quant.hqq import (
     HQQConfig,
     HQQQuantizer,

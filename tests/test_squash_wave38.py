@@ -37,6 +37,8 @@ import struct
 import numpy as np
 import pytest
 
+pytest.importorskip("squish.quant.aqlm", reason="squish not installed — W38 AQLM tests require squish package")
+
 from squish.quant.aqlm import (
     AQLMCodebook,
     AQLMConfig,

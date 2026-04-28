@@ -1,0 +1,84 @@
+{
+  "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "name": "SquashAttest",
+  "friendlyName": "Squash — Attest AI Model",
+  "description": "Run EU AI Act compliance attestation on an AI model artifact. Generates CycloneDX ML-BOM, SPDX SBOM, runs policy checks, and produces a signed audit record.",
+  "category": "Utility",
+  "author": "Konjo AI",
+  "version": {
+    "Major": 1,
+    "Minor": 0,
+    "Patch": 0
+  },
+  "instanceNameFormat": "Squash attest $(modelPath)",
+  "inputs": [
+    {
+      "name": "modelPath",
+      "type": "string",
+      "label": "Model path",
+      "defaultValue": "",
+      "required": true,
+      "helpMarkDown": "Path to the model directory or artifact to attest."
+    },
+    {
+      "name": "policies",
+      "type": "string",
+      "label": "Compliance policies",
+      "defaultValue": "eu-ai-act",
+      "required": false,
+      "helpMarkDown": "Comma-separated list of policy templates to evaluate (e.g. eu-ai-act,nist-ai-rmf)."
+    },
+    {
+      "name": "sign",
+      "type": "boolean",
+      "label": "Sign via Sigstore",
+      "defaultValue": "false",
+      "required": false,
+      "helpMarkDown": "Sign the CycloneDX BOM using Sigstore keyless signing."
+    },
+    {
+      "name": "failOnViolation",
+      "type": "boolean",
+      "label": "Fail on policy violation",
+      "defaultValue": "true",
+      "required": false,
+      "helpMarkDown": "Fail the pipeline step if any policy error-severity finding is raised."
+    },
+    {
+      "name": "outputDir",
+      "type": "string",
+      "label": "Output directory",
+      "defaultValue": "",
+      "required": false,
+      "helpMarkDown": "Directory to write attestation artifacts. Defaults to the model directory."
+    }
+  ],
+  "outputVariables": [
+    {
+      "name": "SQUASH_PASSED",
+      "description": "true if all policies passed, false otherwise."
+    },
+    {
+      "name": "SQUASH_SCAN_STATUS",
+      "description": "ModelScan security scan status: clean, warning, or error."
+    },
+    {
+      "name": "SQUASH_CYCLONEDX_PATH",
+      "description": "Path to the generated CycloneDX 1.7 ML-BOM JSON file."
+    },
+    {
+      "name": "SQUASH_SPDX_JSON_PATH",
+      "description": "Path to the generated SPDX 2.3 SBOM JSON file."
+    },
+    {
+      "name": "SQUASH_MASTER_RECORD_PATH",
+      "description": "Path to the master attestation record JSON file."
+    }
+  ],
+  "execution": {
+    "PowerShell3": {
+      "target": "run_squash.ps1",
+      "platforms": ["windows", "linux", "osx"]
+    }
+  }
+}

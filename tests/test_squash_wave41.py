@@ -23,7 +23,8 @@ import pytest
 _BENCH_SCRIPT = (
     Path(__file__).parent.parent / "dev" / "benchmarks" / "squish_lm_eval.py"
 )
-assert _BENCH_SCRIPT.exists(), f"squish_lm_eval.py not found at {_BENCH_SCRIPT}"
+if not _BENCH_SCRIPT.exists():
+    pytest.skip("squish_lm_eval.py not found — W41 requires squish dev benchmarks", allow_module_level=True)
 
 _SPEC   = importlib.util.spec_from_file_location("squish_lm_eval", _BENCH_SCRIPT)
 _MODULE = importlib.util.module_from_spec(_SPEC)
