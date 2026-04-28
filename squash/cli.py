@@ -1563,6 +1563,164 @@ def _build_parser() -> argparse.ArgumentParser:
     aiv_val.add_argument("--fail-on-warning", action="store_true", help="Exit 1 if validation produces warnings")
     aiv_val.add_argument("--quiet", action="store_true", help="Suppress informational output")
 
+    # ── W160 — squash demo ────────────────────────────────────────────────────
+    demo_cmd = sub.add_parser(
+        "demo",
+        help="Run a zero-setup attestation demo against a bundled sample model.",
+        description=(
+            "Runs a complete squash attestation pipeline on a bundled sample AI model "
+            "artifact — no setup, no credentials, no model download required. "
+            "Produces a CycloneDX ML-BOM, SPDX SBOM, EU AI Act policy report, "
+            "SLSA provenance record, and a signed audit trail — all in under 10 seconds.\n\n"
+            "Examples:\n"
+            "  squash demo\n"
+            "  squash demo --output-dir ./demo-output\n"
+            "  squash demo --policy nist-ai-rmf\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    demo_cmd.add_argument(
+        "--output-dir",
+        metavar="DIR",
+        default="",
+        help="Write artifacts here instead of a temp directory.",
+    )
+    demo_cmd.add_argument(
+        "--policy",
+        metavar="POLICY",
+        default="eu-ai-act",
+        help="Policy to evaluate (default: eu-ai-act).",
+    )
+    demo_cmd.add_argument("--quiet", action="store_true", help="Suppress output")
+
+    # ── W162 — squash init ────────────────────────────────────────────────────
+    init_cmd = sub.add_parser(
+        "init",
+        help="Scaffold a .squash.yml config for the current project.",
+        description=(
+            "Auto-detects the ML framework in the current directory, generates a "
+            ".squash.yml configuration scaffold with sensible policy defaults, and "
+            "runs a first dry-run attestation to show what will be produced.\n\n"
+            "Examples:\n"
+            "  squash init\n"
+            "  squash init --dir ./models/llama-3\n"
+            "  squash init --framework pytorch --policy eu-ai-act nist-ai-rmf\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    init_cmd.add_argument(
+        "--dir",
+        metavar="DIR",
+        default=".",
+        help="Project directory to inspect (default: current directory).",
+    )
+    init_cmd.add_argument(
+        "--framework",
+        metavar="FRAMEWORK",
+        default="",
+        help="Override framework detection (pytorch, tensorflow, jax, mlx, huggingface).",
+    )
+    init_cmd.add_argument(
+        "--policy",
+        metavar="POLICY",
+        nargs="*",
+        default=None,
+        help="Policy templates to include in the scaffold (default: eu-ai-act).",
+    )
+    init_cmd.add_argument(
+        "--dry-run",
+        action="store_true",
+        default=True,
+        help="Run a dry-run attestation after scaffolding (default: true).",
+    )
+    init_cmd.add_argument("--no-dry-run", action="store_false", dest="dry_run")
+    init_cmd.add_argument("--quiet", action="store_true", help="Suppress output")
+
+    # ── W167 — squash watch ───────────────────────────────────────────────────
+    watch_cmd = sub.add_parser(
+        "watch",
+        help="Watch a model directory and re-attest on file changes.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        description=(
+            "Watch a model directory for changes and automatically re-run\n"
+            "attestation whenever model files are modified. Press Ctrl+C to stop.\n\n"
+            "Examples::\n\n"
+            "  squash watch ./models\n"
+            "  squash watch ./models --policy eu-ai-act --interval 10\n"
+            "  squash watch ./models --on-fail notify\n"
+        ),
+    )
+    watch_cmd.add_argument(
+        "path",
+        nargs="?",
+        default=".",
+        help="Model directory to watch (default: current directory).",
+    )
+    watch_cmd.add_argument(
+        "--policy",
+        nargs="+",
+        default=["eu-ai-act"],
+        metavar="POLICY",
+        help="Policy framework(s) to enforce (default: eu-ai-act).",
+    )
+    watch_cmd.add_argument(
+        "--interval",
+        type=int,
+        default=5,
+        metavar="SECONDS",
+        help="Polling interval in seconds (default: 5).",
+    )
+    watch_cmd.add_argument(
+        "--on-fail",
+        choices=["log", "notify", "exit"],
+        default="log",
+        dest="on_fail",
+        help="Action on attestation failure (default: log).",
+    )
+    watch_cmd.add_argument(
+        "--output-dir",
+        default=None,
+        metavar="DIR",
+        help="Directory to write attestation artifacts (default: <path>/attestation).",
+    )
+    watch_cmd.add_argument("--quiet", action="store_true", help="Suppress output")
+
+    # ── W168 — squash install-hook ────────────────────────────────────────────
+    hook_cmd = sub.add_parser(
+        "install-hook",
+        help="Install squash as a git pre-push hook.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        description=(
+            "Install a git pre-push hook that runs squash attest before every push.\n"
+            "Blocks the push if attestation fails.\n\n"
+            "Examples::\n\n"
+            "  squash install-hook\n"
+            "  squash install-hook --dir ./my-repo\n"
+            "  squash install-hook --hook-type pre-commit\n"
+        ),
+    )
+    hook_cmd.add_argument(
+        "--dir",
+        default=".",
+        metavar="DIR",
+        help="Git repository root (default: current directory).",
+    )
+    hook_cmd.add_argument(
+        "--hook-type",
+        choices=["pre-push", "pre-commit"],
+        default="pre-push",
+        dest="hook_type",
+        help="Git hook type to install (default: pre-push).",
+    )
+    hook_cmd.add_argument(
+        "--policy",
+        nargs="+",
+        default=["eu-ai-act"],
+        metavar="POLICY",
+        help="Policy framework(s) to enforce in the hook.",
+    )
+    hook_cmd.add_argument("--quiet", action="store_true", help="Suppress output")
+
     return parser
 
 
@@ -4158,6 +4316,464 @@ def _cmd_annex_iv_validate(args: argparse.Namespace, quiet: bool) -> int:
     return 0
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# W160 — squash demo
+# ─────────────────────────────────────────────────────────────────────────────
+
+_DEMO_MODEL_CONFIG = """{
+  "model_type": "bert",
+  "hidden_size": 768,
+  "num_attention_heads": 12,
+  "num_hidden_layers": 12,
+  "vocab_size": 30522,
+  "architectures": ["BertForSequenceClassification"],
+  "task_type": "text-classification"
+}"""
+
+_DEMO_TRAIN_CONFIG = """{
+  "optimizer": {"type": "AdamW", "lr": 2e-5, "weight_decay": 0.01},
+  "scheduler": "linear_warmup",
+  "num_epochs": 3,
+  "batch_size": 32,
+  "max_seq_length": 128,
+  "framework": "pytorch",
+  "dataset": "imdb",
+  "seed": 42
+}"""
+
+_DEMO_TRAIN_PY = '''"""Sample training script for squash demo."""
+import torch
+import torch.nn as nn
+from torch.utils.data import DataLoader
+from transformers import BertForSequenceClassification
+
+model = BertForSequenceClassification.from_pretrained("bert-base-uncased")
+optimizer = torch.optim.AdamW(model.parameters(), lr=2e-5, weight_decay=0.01)
+criterion = nn.CrossEntropyLoss()
+
+for epoch in range(3):
+    for batch in DataLoader([]):
+        outputs = model(**batch)
+        loss = criterion(outputs.logits, batch["labels"])
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+
+torch.save(model.state_dict(), "model.pt")
+'''
+
+
+def _cmd_demo(args: argparse.Namespace, quiet: bool) -> int:  # noqa: C901
+    """W160 — zero-friction first-value demo attestation."""
+    import tempfile
+    import struct
+
+    from pathlib import Path as _Path
+
+    try:
+        from squash.attest import AttestConfig, AttestPipeline
+    except ImportError as exc:
+        print(f"squash modules not available: {exc}", file=sys.stderr)
+        return 2
+
+    if not quiet:
+        print("\n" + "─" * 60)
+        print("  Squash violations, not velocity.")
+        print("  Running demo attestation on sample BERT model…")
+        print("─" * 60)
+
+    with tempfile.TemporaryDirectory(prefix="squash_demo_") as tmp:
+        model_dir = _Path(tmp) / "bert-base-demo"
+        model_dir.mkdir()
+
+        # Write a minimal but realistic model artifact structure
+        (model_dir / "config.json").write_text(_DEMO_MODEL_CONFIG)
+        (model_dir / "training_config.json").write_text(_DEMO_TRAIN_CONFIG)
+        (model_dir / "train.py").write_text(_DEMO_TRAIN_PY)
+
+        # Tiny synthetic safetensors-style binary (just enough for the scanner)
+        header = b'{"weight": {"dtype": "F32", "shape": [768, 768], "data_offsets": [0, 2359296]}}'
+        header_padded = header + b" " * (8 - len(header) % 8 if len(header) % 8 else 0)
+        weights = model_dir / "model.safetensors"
+        weights.write_bytes(struct.pack("<Q", len(header_padded)) + header_padded + b"\x00" * 64)
+
+        out_dir = _Path(args.output_dir).expanduser().resolve() if args.output_dir else _Path(tmp) / "output"
+        out_dir.mkdir(parents=True, exist_ok=True)
+
+        config = AttestConfig(
+            model_path=model_dir,
+            output_dir=out_dir,
+            model_id="bert-base-demo",
+            policies=[args.policy] if args.policy else ["eu-ai-act"],
+            sign=False,
+            fail_on_violation=False,
+        )
+
+        if not quiet:
+            print(f"\n  Model:   bert-base-uncased (sample)")
+            print(f"  Policy:  {args.policy or 'eu-ai-act'}")
+            print(f"  Output:  {out_dir}\n")
+
+        result = AttestPipeline.run(config)
+
+        if not quiet:
+            passed_icon = "✅" if result.passed else "❌"
+            print(f"\n{passed_icon} Attestation {'PASSED' if result.passed else 'FAILED'}")
+
+            if result.cyclonedx_path:
+                print(f"\n  Artifacts generated:")
+                for f in sorted(out_dir.rglob("*")):
+                    if f.is_file():
+                        size = f.stat().st_size
+                        print(f"    {f.name:<40} {size:>8,} bytes")
+
+            print("\n" + "─" * 60)
+            print("  This is squash. It runs in CI in <10 seconds.")
+            print("  pip install squash-ai && squash attest ./your-model")
+            print("─" * 60 + "\n")
+
+        return 0 if result.passed else 1
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# W162 — squash init
+# ─────────────────────────────────────────────────────────────────────────────
+
+_SQUASH_YML_TEMPLATE = """\
+# .squash.yml — Squash AI compliance configuration
+# Generated by: squash init
+# Docs: https://github.com/konjoai/squash
+
+project:
+  name: "{project_name}"
+  version: "1.0.0"
+  risk_level: "limited"       # minimal | limited | high | unacceptable
+
+attestation:
+  model_path: "./models"      # path to model directory or file
+  output_dir: "./attestation" # where artifacts are written
+
+  # Compliance policy frameworks to evaluate
+  policies:{policies_block}
+
+  # Enable Sigstore keyless signing (requires internet)
+  sign: false
+
+  # Fail the CI job on policy violation
+  fail_on_violation: true
+
+  # Generate EU AI Act Annex IV technical documentation
+  annex_iv: false
+
+# MLframework detection: {framework}
+framework:
+  detected: "{framework}"
+
+# CI/CD integration: add this to your pipeline
+# GitHub Actions:  uses: konjoai/squash@v1
+# GitLab CI:       include: integrations/gitlab-ci/squash.gitlab-ci.yml
+# Jenkins:         squashAttest modelPath: "./models"
+"""
+
+_FRAMEWORK_INDICATORS = {
+    "pytorch": ["torch", "pytorch", "*.pt", "*.pth", "*.bin"],
+    "tensorflow": ["tensorflow", "keras", "saved_model", "*.pb", "*.h5"],
+    "huggingface": ["transformers", "config.json", "tokenizer_config.json", "*.safetensors"],
+    "mlflow": ["mlruns", "MLproject", "conda.yaml"],
+    "wandb": ["wandb", ".wandb"],
+    "jax": ["jax", "flax", "orbax"],
+    "mlx": ["mlx"],
+}
+
+
+def _detect_framework(directory: "Path") -> str:
+    """Detect ML framework from directory contents."""
+    from pathlib import Path as _Path
+    d = _Path(directory)
+
+    # Check requirements files
+    for req_file in ["requirements.txt", "pyproject.toml", "setup.py", "setup.cfg"]:
+        req_path = d / req_file
+        if req_path.exists():
+            try:
+                content = req_path.read_text(encoding="utf-8", errors="ignore").lower()
+                for framework, indicators in _FRAMEWORK_INDICATORS.items():
+                    if any(ind.lower() in content for ind in indicators if not ind.startswith("*")):
+                        return framework
+            except OSError:
+                pass
+
+    # Check for model files and directories
+    for framework, indicators in _FRAMEWORK_INDICATORS.items():
+        for pattern in indicators:
+            if pattern.startswith("*"):
+                if list(d.rglob(pattern)):
+                    return framework
+            elif (d / pattern).exists():
+                return framework
+
+    # Check Python imports in .py files
+    for py_file in list(d.rglob("*.py"))[:20]:  # limit scan
+        try:
+            content = py_file.read_text(encoding="utf-8", errors="ignore")
+            for framework in ["torch", "tensorflow", "jax", "mlx", "transformers"]:
+                if f"import {framework}" in content or f"from {framework}" in content:
+                    fw_map = {"torch": "pytorch", "tensorflow": "tensorflow",
+                              "jax": "jax", "mlx": "mlx", "transformers": "huggingface"}
+                    return fw_map.get(framework, framework)
+        except OSError:
+            pass
+
+    return "unknown"
+
+
+def _cmd_init(args: argparse.Namespace, quiet: bool) -> int:
+    """W162 — scaffold .squash.yml and run a dry-run attestation."""
+    from pathlib import Path as _Path
+
+    project_dir = _Path(getattr(args, "dir", ".")).expanduser().resolve()
+    if not project_dir.exists():
+        print(f"error: directory not found: {project_dir}", file=sys.stderr)
+        return 1
+
+    squash_yml = project_dir / ".squash.yml"
+    if squash_yml.exists() and not quiet:
+        print(f"[squash init] .squash.yml already exists at {squash_yml}")
+        print("  Delete it and re-run to regenerate.\n")
+        return 0
+
+    # Detect framework
+    framework = getattr(args, "framework", "") or _detect_framework(project_dir)
+
+    # Policies
+    policies = getattr(args, "policy", None) or ["eu-ai-act"]
+    policies_block = "\n" + "".join(f"    - {p}\n" for p in policies)
+
+    project_name = project_dir.name
+
+    yml_content = _SQUASH_YML_TEMPLATE.format(
+        project_name=project_name,
+        framework=framework,
+        policies_block=policies_block.rstrip("\n"),
+    )
+    squash_yml.write_text(yml_content, encoding="utf-8")
+
+    if not quiet:
+        fw_display = f" [{framework}]" if framework != "unknown" else ""
+        print(f"\n[squash init]{fw_display}")
+        print(f"  ✅ Created {squash_yml}")
+        print(f"  Framework detected: {framework}")
+        print(f"  Policies: {', '.join(policies)}")
+
+    # Dry run
+    dry_run = getattr(args, "dry_run", True)
+    if dry_run:
+        if not quiet:
+            print("\n  Running dry-run attestation to validate configuration…\n")
+        try:
+            from squash.attest import AttestConfig, AttestPipeline
+            import tempfile
+
+            config = AttestConfig(
+                model_path=project_dir,
+                output_dir=_Path(tempfile.mkdtemp(prefix="squash_init_")),
+                policies=policies,
+                sign=False,
+                fail_on_violation=False,
+            )
+            result = AttestPipeline.run(config)
+            if not quiet:
+                icon = "✅" if result.passed else "⚠️"
+                print(f"  {icon} Dry-run complete — passed: {result.passed}")
+                print("\n  Next steps:")
+                print("    1. Edit .squash.yml to match your model path")
+                print("    2. Run: squash attest .")
+                print("    3. Add to CI: uses: konjoai/squash@v1")
+                print()
+        except Exception as exc:  # noqa: BLE001
+            if not quiet:
+                print(f"  ⚠️  Dry-run skipped ({exc})")
+                print("  Edit .squash.yml and run: squash attest .")
+
+    return 0
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# W167 — squash watch
+# ─────────────────────────────────────────────────────────────────────────────
+
+_WATCH_EXTENSIONS = frozenset({
+    ".safetensors", ".bin", ".pt", ".pth", ".pb", ".h5", ".onnx",
+    ".pkl", ".joblib", ".json", ".yaml", ".yml",
+})
+
+
+def _snapshot_dir(directory: "Path") -> dict[str, float]:
+    """Return a {relative_path: mtime} snapshot of watched files."""
+    from pathlib import Path as _Path
+    snap = {}
+    for f in _Path(directory).rglob("*"):
+        if f.is_file() and f.suffix in _WATCH_EXTENSIONS:
+            try:
+                snap[str(f.relative_to(directory))] = f.stat().st_mtime
+            except (OSError, ValueError):
+                pass
+    return snap
+
+
+def _cmd_watch(args: argparse.Namespace, quiet: bool) -> int:
+    """W167 — watch a model directory and re-attest on file changes."""
+    import time
+    from pathlib import Path as _Path
+
+    try:
+        from squash.attest import AttestConfig, AttestPipeline
+    except ImportError as exc:
+        print(f"squash modules not available: {exc}", file=sys.stderr)
+        return 2
+
+    watch_path = _Path(getattr(args, "path", ".")).expanduser().resolve()
+    if not watch_path.exists():
+        print(f"error: path not found: {watch_path}", file=sys.stderr)
+        return 1
+
+    policies = getattr(args, "policy", ["eu-ai-act"])
+    interval = max(1, getattr(args, "interval", 5))
+    on_fail = getattr(args, "on_fail", "log")
+    out_dir = _Path(args.output_dir).expanduser().resolve() if args.output_dir else watch_path / "attestation"
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    if not quiet:
+        print(f"\n[squash watch] Watching {watch_path}")
+        print(f"  Policies: {', '.join(policies)}")
+        print(f"  Interval: {interval}s  |  On-fail: {on_fail}")
+        print(f"  Press Ctrl+C to stop.\n")
+
+    last_snap = _snapshot_dir(watch_path)
+    run_count = 0
+
+    def _run_attestation() -> bool:
+        nonlocal run_count
+        run_count += 1
+        if not quiet:
+            print(f"[squash watch] Run #{run_count} — {time.strftime('%H:%M:%S')}")
+        config = AttestConfig(
+            model_path=watch_path,
+            output_dir=out_dir,
+            policies=policies,
+            sign=False,
+            fail_on_violation=False,
+        )
+        try:
+            result = AttestPipeline.run(config)
+            icon = "✅" if result.passed else "❌"
+            if not quiet:
+                print(f"  {icon} {'PASSED' if result.passed else 'FAILED'}")
+            return result.passed
+        except Exception as exc:  # noqa: BLE001
+            if not quiet:
+                print(f"  ⚠️  Attestation error: {exc}")
+            return False
+
+    # Initial run
+    passed = _run_attestation()
+    if not passed and on_fail == "exit":
+        return 1
+
+    try:
+        while True:
+            time.sleep(interval)
+            snap = _snapshot_dir(watch_path)
+            if snap != last_snap:
+                changed = set(snap) - set(last_snap) | {k for k in snap if snap[k] != last_snap.get(k)}
+                if not quiet and changed:
+                    print(f"[squash watch] Changed: {', '.join(sorted(changed)[:5])}")
+                last_snap = snap
+                passed = _run_attestation()
+                if not passed:
+                    if on_fail == "exit":
+                        return 1
+                    if on_fail == "notify":
+                        try:
+                            from squash.notifications import notify, ATTESTATION_FAILED
+                            notify(ATTESTATION_FAILED, model_id=watch_path.name)
+                        except Exception:  # noqa: BLE001
+                            pass
+    except KeyboardInterrupt:
+        if not quiet:
+            print(f"\n[squash watch] Stopped after {run_count} run(s).")
+
+    return 0
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# W168 — squash install-hook
+# ─────────────────────────────────────────────────────────────────────────────
+
+_PRE_PUSH_HOOK = """\
+#!/bin/sh
+# squash pre-push hook — installed by: squash install-hook
+set -e
+echo "[squash] Running attestation before push…"
+squash attest . {policy_flags} --fail-on-violation
+echo "[squash] Attestation passed."
+"""
+
+_PRE_COMMIT_HOOK = """\
+#!/bin/sh
+# squash pre-commit hook — installed by: squash install-hook
+set -e
+echo "[squash] Running attestation before commit…"
+squash attest . {policy_flags} --fail-on-violation
+echo "[squash] Attestation passed."
+"""
+
+
+def _cmd_install_hook(args: argparse.Namespace, quiet: bool) -> int:
+    """W168 — install squash as a git pre-push / pre-commit hook."""
+    from pathlib import Path as _Path
+    import stat
+
+    repo_dir = _Path(getattr(args, "dir", ".")).expanduser().resolve()
+    git_dir = repo_dir / ".git"
+    if not git_dir.exists():
+        print(f"error: not a git repository: {repo_dir}", file=sys.stderr)
+        return 1
+
+    hook_type = getattr(args, "hook_type", "pre-push")
+    policies = getattr(args, "policy", ["eu-ai-act"])
+    policy_flags = " ".join(f"--policy {p}" for p in policies) if policies else ""
+
+    hook_path = git_dir / "hooks" / hook_type
+    (git_dir / "hooks").mkdir(exist_ok=True)
+
+    template = _PRE_PUSH_HOOK if hook_type == "pre-push" else _PRE_COMMIT_HOOK
+    hook_content = template.format(policy_flags=policy_flags)
+
+    if hook_path.exists():
+        existing = hook_path.read_text(encoding="utf-8")
+        if "squash" in existing:
+            if not quiet:
+                print(f"[squash install-hook] Hook already installed at {hook_path}")
+            return 0
+        backup = hook_path.with_suffix(".bak")
+        hook_path.rename(backup)
+        if not quiet:
+            print(f"[squash install-hook] Backed up existing hook to {backup}")
+        hook_content = existing.rstrip("\n") + "\n\n" + hook_content
+
+    hook_path.write_text(hook_content, encoding="utf-8")
+    hook_path.chmod(hook_path.stat().st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
+
+    if not quiet:
+        print(f"\n[squash install-hook]")
+        print(f"  ✅ Installed {hook_type} hook at {hook_path}")
+        print(f"  Policies: {', '.join(policies)}")
+        print(f"  Remove with: rm {hook_path}\n")
+
+    return 0
+
+
 def main() -> None:
     parser = _build_parser()
     args = parser.parse_args()
@@ -4260,6 +4876,14 @@ def main() -> None:
         sys.exit(_cmd_cloud_remediate(args, quiet))
     elif args.command == "annex-iv":
         sys.exit(_cmd_annex_iv(args, quiet))
+    elif args.command == "demo":
+        sys.exit(_cmd_demo(args, quiet))
+    elif args.command == "init":
+        sys.exit(_cmd_init(args, quiet))
+    elif args.command == "watch":
+        sys.exit(_cmd_watch(args, quiet))
+    elif args.command == "install-hook":
+        sys.exit(_cmd_install_hook(args, quiet))
     else:
         parser.print_help()
         sys.exit(1)

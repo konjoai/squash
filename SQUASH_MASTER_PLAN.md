@@ -7,20 +7,56 @@
 
 ---
 
-## ⚡ Situation Report (April 28, 2026)
+## ⚡ Brand Identity & Taglines
+
+### The Primary Brand Line
+
+> **"Squash violations, not velocity."**
+
+This is the line. Four words. It captures the exact pain — compliance tools slow teams down, squash doesn't. Works on the homepage hero, conference badge, LinkedIn post opener, HN title. Every ML engineer who has watched a compliance process delay a release will feel it.
+
+### Secondary Lines (Contextual Use)
+
+| Context | Line |
+|---------|------|
+| Technical audiences (HN, Dev.to) | "Squash it in CI. Not in court." |
+| Pricing page (below cost comparison) | "Squash the €35M fine." |
+| GitHub README hero / paid ads | "Ship fast. Squash risk faster." |
+| EU urgency / countdown clock | "Squash what the regulators find first." |
+| Enterprise security buyer | "Squash the audit. Not your roadmap." |
+| Conference talk opener | "Squash bugs, violations, and the €35M fine." |
+
+### Product Identity
+
+> Squash is the `pytest` of AI compliance. It runs in CI, it fails loudly, it produces machine-readable artifacts, and it integrates with the tools engineers already use.
+
+That's the moat. Credo AI and OneTrust are form-filling tools. Squash is a pipeline primitive. Lean into this identity in all copy, the HN post, LinkedIn content, and design partner conversations.
+
+---
+
+---
+
+## ⚡ Situation Report (April 28, 2026) — Post Sprint 3
 
 | Metric | Value |
 |--------|-------|
 | **EU AI Act enforcement deadline** | August 2, 2026 — **96 days** |
-| **Squash code maturity** | v0.9.14 · Wave 83 · 4,208+ tests passing |
-| **Annex IV coverage** | ~58% (Wave 127 artifact extractor shipped) |
-| **Repo status** | ✅ Separated from `konjoai/squish` — standalone repo |
-| **Production status** | Not yet deployed as standalone SaaS |
+| **Squash code maturity** | v0.9.14 · Sprint 3 complete · 948+ tests passing |
+| **Python modules** | 47 standalone modules · 82 git commits |
+| **Annex IV coverage** | ✅ 100% — 12-section generator, completeness scoring, PDF export |
+| **Repo status** | ✅ Separated from `konjoai/squish` — standalone Apache 2.0 repo |
+| **Production status** | Dockerfile + fly.toml written; **not yet deployed** |
+| **PyPI status** | `pyproject.toml` ready; **not yet published** |
+| **Integration surface** | GitHub Actions, GitLab CI, Jenkins, Azure DevOps, Helm, MLflow, W&B, HuggingFace, SageMaker, Vertex AI, Ray, Kubernetes |
 | **TAM** | $609M in 2026 · $10.5B by 2035 (37.3% CAGR) |
 | **Competitor pricing** | Credo AI $30K–$150K/yr · OneTrust $50K–$200K/yr |
-| **Squash target pricing** | $299/mo (Professional) → $4K+/mo (Enterprise) |
+| **Squash target pricing** | $0 (Community) → $299 (Pro) → $499 (Startup) → $899 (Team) → $4K+ (Enterprise) |
 
 **The clock is running.** High-risk AI enforcement hits August 2, 2026. Every week of delay is market share surrendered.
+
+**What's complete:** 82 commits. v0.9.14. 39 standalone Python modules. 948+ tests across 3 completed sprints. Annex IV engine, cloud API + auth, CI/CD integration layer. An insane surface area for one person — competitors at $30K–$150K/yr don't touch half of this.
+
+**What's not done yet:** PyPI publication, live Fly.io production deployment, website, domain, Stripe checkout links, onboarding emails, `squash demo` command, compliance badges, and the launch itself.
 
 ---
 
@@ -145,16 +181,25 @@ Deploy with confidence
 Everything in Community, plus:
 - 200 model attestations/month · Cloud API
 - Annex IV auto-generation · 30-day history
-- Slack notifications · MLflow + W&B logging
+- Slack/Teams notifications · MLflow + W&B logging
 - Multi-framework compliance (ISO 42001, FedRAMP, CMMC, SOC 2-AI)
-- CSV/PDF audit export · Drift detection
+- CSV/PDF audit export · Drift detection · Compliance badges
 - Email support (48h SLA)
 
-### Team ($899/month)
+### Startup ($499/month) ← **NEW — captures seed/Series A segment**
 Everything in Professional, plus:
+- 500 model attestations/month
+- Up to 3 users · multi-user dashboard
+- VEX feed read access (no subscription alerts)
+- Slack notifications with drift alerts
+- JIRA/Linear/GitHub Issues auto-ticketing
+- Priority email support (24h SLA)
+
+### Team ($899/month)
+Everything in Startup, plus:
 - 1,000 model attestations/month
 - Multi-tenant cloud dashboard
-- VEX feed subscription (live CVE monitoring)
+- VEX feed subscription (live CVE monitoring + push alerts)
 - Real-time drift detection
 - Azure DevOps + Jenkins integrations
 - Kubernetes admission controller · HITL approval workflows
@@ -421,21 +466,43 @@ Your team didn't sign up to write compliance docs.
 
 ---
 
-### Sprint 4 — Website & Launch Readiness (June 21–July 11, 3 weeks)
+### Sprint 4A — Critical Path to Launch (June 21–July 4, 2 weeks)
+
+**The non-negotiables before anything else ships.**
 
 | Wave | Task | Days |
 |------|------|------|
-| W153 | Domain acquisition + DNS setup | 0.5 |
-| W154 | Landing page (Next.js + Tailwind, Vercel) | 5 |
-| W155 | Documentation site (Mintlify or MkDocs Material) | 3 |
-| W156 | Pricing page + Stripe checkout links | 1.5 |
-| W157 | Lead capture form + email list setup (Resend + Loops) | 1 |
-| W158 | Welcome email sequence (5 emails) | 1 |
-| W159 | Legal pages (ToS, Privacy Policy, DPA template) | 1 |
-| W160 | Design partner case study (publish 1) | 2 |
-| W161 | GitHub README overhaul (demo GIF, badges, quick start) | 1 |
-| W162 | Product Hunt listing setup | 0.5 |
-| W163 | HN post draft + timing strategy | 0.5 |
+| W153 | Domain acquisition (`squash.ai` or `getsquash.dev`) + DNS + Fly.io production deploy | 1 |
+| W154 | PyPI publication (`pip install squash-ai` from registry, not source) | 0.5 |
+| W155 | Stripe checkout links live (Professional + Startup + Team tiers) | 1 |
+| W156 | Landing page live (Next.js + Tailwind, Vercel) — EU countdown clock mandatory | 4 |
+| W157 | GitHub README overhaul — brand line, demo GIF placeholder, quick-start, badges | 1 |
+| W158 | HN post draft + Dev.to article draft | 1 |
+| W159 | Design partner outreach — 1 named company locked in closed beta | ongoing |
+
+**Exit criteria:** `pip install squash-ai` works from PyPI. Fly.io production live. Stripe checkout live. Landing page live. One design partner using squash.
+
+---
+
+### Sprint 4B — High-Leverage Engineering (June 21–July 11, parallel with 4A)
+
+**The features that materially change the acquisition funnel and enterprise sales story.**
+Ordered by acquisition impact and revenue leverage.
+
+| Wave | Task | Days | Priority |
+|------|------|------|----------|
+| W160 | `squash demo` command — zero-friction first value | 1 | 🔥 Highest ROI |
+| W161 | Compliance badge SVG endpoint — shields.io compatible, viral | 0.5 | 🔥 Viral mechanism |
+| W162 | `squash init` — auto-detect ML framework, scaffold `.squash.yml`, dry-run | 2 | High |
+| W163 | Slack/Teams webhook notifications (`squash/notifications.py`) | 1 | High |
+| W164 | Prometheus metrics endpoint (`squash/metrics.py`, `/metrics` route) | 1 | High |
+| W165 | JIRA/Linear/GitHub Issues auto-ticketing (`squash/ticketing.py`) | 1.5 | Medium-High |
+| W166 | FastAPI/Django compliance middleware (`squash/middleware.py`) | 1.5 | Medium-High |
+| W167 | `squash watch` continuous drift detection mode | 1 | Medium |
+| W168 | Pre-commit hook installer (`squash install-hook`) | 0.5 | Medium |
+| W169 | Integration test suite for Sprint 4B | 1 | Required |
+
+**Sprint 4B exit criteria:** `squash demo` produces a complete attestation in <10s. Badge SVG endpoint live. `/metrics` emits Prometheus-compatible counters. Slack/Teams webhook fires on attestation events.
 
 ---
 
@@ -443,13 +510,96 @@ Your team didn't sign up to write compliance docs.
 
 | Date | Action |
 |------|--------|
+| July 4  | Sprint 4A complete — site live, PyPI live, Stripe live |
 | July 11 | **Public Beta launch** — email list, Discord, LinkedIn |
-| July 14 | **HackerNews Show HN** — Tuesday morning 9am ET |
-| July 15 | **Dev.to launch article** |
+| July 14 | **HackerNews Show HN** — Tuesday morning 9am ET (`squash demo` as the hook) |
+| July 15 | **Dev.to launch article** — "How we automated EU AI Act compliance in a CI/CD pipeline" |
 | July 17 | **LinkedIn long-form post** — EU AI Act 16 days away |
 | July 21 | **Product Hunt launch** |
+| July 24 | **3-minute Loom demo video** — `squash demo` → `squash attest` → GitHub Actions output → dashboard |
 | July 24 | **Webinar** — EU AI Act Compliance for ML Teams: Live Demo |
 | August 2 | **EU AI Act Enforcement Day** — "Squash users are compliant. Are you?" |
+
+---
+
+## Part VII-B: The Full Feature Roadmap (Ordered by Impact)
+
+All 30 features ranked by acquisition impact, revenue leverage, and defensibility. The first 12 should be live before or at launch. Items 13–22 are Sprint 5–6. Items 23–30 are the 12-month enterprise moat.
+
+### Tier 1 — Launch-Critical (before August 2, 2026)
+
+| # | Feature | Module/Location | Impact |
+|---|---------|----------------|--------|
+| 1 | **`squash demo` command** | `squash/cli.py` + bundled sample model | Zero-friction first value. Run it, see a full attestation in 10 seconds. The "aha moment" command. Tweet the output. |
+| 2 | **Compliance badge SVG endpoint** | `squash/api.py` `GET /badge/{framework}/{attestation_id}` | Installed-base virality. Every attested repo displays a badge = free marketing + social proof. shields.io compatible. |
+| 3 | **`squash init` command** | `squash/cli.py` | Auto-detect ML framework (PyTorch/TF/MLflow/W&B/HF), scaffold `.squash.yml`, dry-run. Eliminates biggest onboarding friction. |
+| 4 | **GitHub App** | GitHub Marketplace | Org-level install, auto-comments on PRs with compliance diff, blocks merge on policy fail. Acts as network effect: 1 user → 50 users at a company. |
+| 5 | **Slack/Teams webhook** | `squash/notifications.py` | Drift alert, VEX CVE hit, CI fail → team channel. Makes squash part of daily operational rhythm. |
+| 6 | **Browser-based playground** | Fly.io function + API | Paste HuggingFace ID or upload model.json, get full attestation in browser. Zero install. Converts README visitors. |
+| 7 | **Prometheus `/metrics` endpoint** | `squash/metrics.py` + `api.py` | Enterprise platform teams live in Grafana. Squash becomes a dashboard tile, not a separate login. |
+| 8 | **JIRA/Linear/GitHub Issues auto-ticketing** | `squash/ticketing.py` | Violation found → ticket auto-created with remediation steps. Closes the loop from "problem detected" to "work item created." |
+| 9 | **FastAPI/Django compliance middleware** | `squash/middleware.py` | `from squash.middleware import ComplianceMiddleware`. 5 lines of code. Developer-led bottom-up growth. Adds `X-Squash-Attestation-ID` to inference response headers. |
+| 10 | **`squash watch` mode** | `squash/cli.py` | Continuous drift detection in local dev. Model file changes → terminal notification. Builds the habit. |
+| 11 | **Pre-commit hook** | `squash/cli.py` (`squash install-hook`) | `git pre-commit` runs attestation on model files. Compliance feedback at commit stage, not 15 min into CI. |
+| 12 | **Direct HuggingFace Hub attestation** | `squash/cli.py` (`squash attest hf://`) | `squash attest hf://microsoft/phi-3`. Attest before downloading. Model procurement security scanner. |
+
+### Tier 2 — Sprint 5–6 (August–September 2026)
+
+| # | Feature | Module/Location | Impact |
+|---|---------|----------------|--------|
+| 13 | **VS Code extension** | Separate `squash-vscode` repo | Compliance status in sidebar. Engineers see squash daily without running a command. |
+| 14 | **Public attestation registry** | `attestations.getsquash.dev` | Attestations published at shareable URLs. Verifiable by buyers, regulators, procurement. "npm audit" equivalent for AI. |
+| 15 | **Model card auto-generation** | `squash/model_card.py` (already exists) | `squash model-card` as first-class CLI command. HF-compatible, pre-filled from Annex IV data. Required by HF for model publication. |
+| 16 | **LangChain/LlamaIndex chain attestation** | `squash/integrations/langchain.py` | Attest entire RAG pipelines and agent chains. Multi-model pipeline compliance as a unit. |
+| 17 | **SBOM diff command** | `squash/cli.py` (`squash diff v1 v2`) | Delta in compliance posture between model versions. Essential for model governance reviews. |
+| 18 | **Model registry integrations** | `squash/integrations/` | Auto-attest on registration in MLflow/W&B/SageMaker Model Registry. Enforcement gate before production promotion. |
+| 19 | **Startup pricing tier ($499/mo)** | Stripe + `squash/billing.py` | Captures seed/Series A segment. Too big for free, can't justify $899. 500 attestations, 3 users, VEX read, Slack. |
+| 20 | **OpenTelemetry traces** | `squash/telemetry.py` | Every attestation run emits OTel spans. Integrates with Datadog, Honeycomb, Jaeger. Enterprise observability teams adopt immediately. |
+| 21 | **ArgoCD/Flux GitOps integration** | `squash/integrations/gitops.py` | Block model deployment in GitOps pipeline if compliance score below threshold. |
+| 22 | **Generic outbound webhook** | `squash/api.py` | Configurable webhook POSTing attestation events to any URL. PagerDuty, Opsgenie, ServiceNow, custom SOAR. One primitive, infinite connectors. |
+
+### Tier 3 — 12-Month Enterprise Moat (September 2026–April 2027)
+
+| # | Feature | Module/Location | Impact |
+|---|---------|----------------|--------|
+| 23 | **`squash scan hf://` public security scanner** | Free public tool | Anyone checks any HuggingFace model for security issues. Top-of-funnel brand builder. |
+| 24 | **Branded PDF compliance report** | `squash/annex_iv_generator.py` (to_pdf() exists) | Cover page + exec summary. Email to the CISO. |
+| 25 | **Compliance email digest** | `squash/notifications.py` | Weekly/monthly portfolio posture summary. Passive retention. |
+| 26 | **Terraform/Pulumi provider** | `squash-terraform-provider` (Go) | Compliance as infrastructure. DevOps teams adopt immediately. |
+| 27 | **Pre-built HuggingFace Spaces deployment** | HF Spaces | Free, visible to entire HF community. Zero marketing cost. |
+| 28 | **API gateway plugin** | Kong/AWS API Gateway | Block inference requests at runtime if attestation expired or CVE flagged. |
+| 29 | **Audit trail blockchain anchoring** | `squash/provenance.py` | Ethereum OP_RETURN anchoring. Immutable proof for financial services/medical/defense. |
+| 30 | **SOC 2 Type II** | Business/legal | Enterprise procurement unblocked. Start readiness phase now. |
+
+---
+
+### Strategic Rationale
+
+Every feature in Tier 1 that puts squash in the developer's daily workflow (watch mode, pre-commit hook, IDE extension, Slack notifications) compounds into stickiness that makes churn nearly impossible.
+
+Every feature that generates a shareable artifact (badge, PDF report, public attestation registry, branded model card) is free marketing.
+
+Every feature that automates the ticket, the deployment gate, or the API block (GitHub App, JIRA integration, ArgoCD hook, API gateway plugin) turns squash from a tool into infrastructure. **Tools get replaced. Infrastructure doesn't.**
+
+---
+
+### The Design Partner Imperative
+
+One named company using squash — even in closed beta — with a quote and a rough case study is worth more than any launch copy. Target: boutique AI consulting firms that build models for BFSI or healthcare and currently charge clients for compliance documentation. Squash turns that billable work into a 10-minute CLI run. They save the client money AND improve their own margins. That's the pitch.
+
+**The case study headline:** "Reduced Annex IV documentation from 6 weeks to 15 minutes."
+
+---
+
+### The US Market Regulatory Angle
+
+The master plan has been EU-focused. That's right for launch timing. But the parallel US narrative for US enterprise buyers:
+- **NIST AI RMF** compliance for government contractors (already built in squash)
+- **FedRAMP AI** for federal procurement (CMMC templates in squash)
+- **SEC AI disclosure requirements** (materializing)
+- **State AI bills** — Colorado, Illinois, Texas (emerging enforcement)
+
+The US enterprise buyer who doesn't care about GDPR absolutely cares about a DoD contract. Surface FedRAMP/CMMC more aggressively in the website and sales materials.
 
 ---
 

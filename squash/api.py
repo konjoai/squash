@@ -70,6 +70,7 @@ from squash.auth import KeyRecord, KeyStore, get_key_store, extract_bearer
 from squash.rate_limiter import get_rate_limiter
 from squash.quota import QuotaEnforcer
 from squash.monitoring import build_health_report, setup_sentry, _squash_version
+from squash.metrics import get_collector as _get_metrics
 
 log = logging.getLogger(__name__)
 
@@ -93,6 +94,9 @@ _UNAUTHED_PATHS = frozenset({
     "/docs", "/redoc", "/openapi.json", "/metrics",
     "/billing/webhook",  # Stripe verifies its own signature
 })
+
+# Badge paths are dynamic (/badge/*) — checked via prefix in middleware
+_BADGE_PATH_PREFIX = "/badge/"
 
 # ── Rate limiter ──────────────────────────────────────────────────────────────
 # W138: Per-key plan-based rate limiter (replaces per-IP env-var limiter).
@@ -704,7 +708,7 @@ async def _security_middleware(request: Request, call_next):  # noqa: C901
     path = request.url.path
 
     # ── Unauthed paths: IP-level backstop only ────────────────────────────────
-    if path in _UNAUTHED_PATHS:
+    if path in _UNAUTHED_PATHS or path.startswith(_BADGE_PATH_PREFIX):
         client_ip = request.client.host if request.client else "unknown"
         now = time.monotonic()
         window = _rate_window[client_ip]
@@ -1124,12 +1128,100 @@ async def revoke_api_key(key_id: str, request: Request) -> JSONResponse:
 
 @app.get("/metrics")
 async def metrics() -> PlainTextResponse:
-    """Prometheus-compatible counter export."""
-    lines: list[str] = []
+    """Prometheus-compatible metrics export (OpenMetrics text format 0.0.4).
+
+    Emits squash_attestations_total, squash_policy_violations_total,
+    squash_drift_events_total, squash_models_compliant_ratio,
+    squash_api_requests_total, squash_api_latency_seconds, plus
+    legacy _COUNTERS for backward compat.
+    """
+    collector_text = _get_metrics().render()
+    # Legacy counter shim for backward compatibility with existing dashboards
+    legacy_lines: list[str] = []
     for name, value in _COUNTERS.items():
-        lines.append(f"# TYPE {name} counter")
-        lines.append(f"{name} {value}")
-    return PlainTextResponse("\n".join(lines) + "\n")
+        if f"{name}" not in collector_text:
+            legacy_lines.append(f"# TYPE {name} counter")
+            legacy_lines.append(f"{name} {value}")
+    suffix = ("\n" + "\n".join(legacy_lines)) if legacy_lines else ""
+    return PlainTextResponse(
+        collector_text + suffix,
+        media_type="text/plain; version=0.0.4; charset=utf-8",
+    )
+
+
+# ── Badge SVG endpoint (W161) ─────────────────────────────────────────────────
+
+_BADGE_SVG_TEMPLATE = """\
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="{width}" height="20" role="img" aria-label="{label_left}: {label_right}">
+  <title>{label_left}: {label_right}</title>
+  <linearGradient id="s" x2="0" y2="100%">
+    <stop offset="0" stop-color="#bbb" stop-opacity=".1"/>
+    <stop offset="1" stop-opacity=".1"/>
+  </linearGradient>
+  <clipPath id="r"><rect width="{width}" height="20" rx="3" fill="#fff"/></clipPath>
+  <g clip-path="url(#r)">
+    <rect width="{left_width}" height="20" fill="#555"/>
+    <rect x="{left_width}" width="{right_width}" height="20" fill="{color}"/>
+    <rect width="{width}" height="20" fill="url(#s)"/>
+  </g>
+  <g fill="#fff" text-anchor="middle" font-family="DejaVu Sans,Verdana,Geneva,sans-serif" font-size="110">
+    <text x="{left_cx}" y="150" fill="#010101" fill-opacity=".3" transform="scale(.1)" textLength="{left_tl}" lengthAdjust="spacing">{label_left}</text>
+    <text x="{left_cx}" y="140" transform="scale(.1)" textLength="{left_tl}" lengthAdjust="spacing">{label_left}</text>
+    <text x="{right_cx}" y="150" fill="#010101" fill-opacity=".3" transform="scale(.1)" textLength="{right_tl}" lengthAdjust="spacing">{label_right}</text>
+    <text x="{right_cx}" y="140" transform="scale(.1)" textLength="{right_tl}" lengthAdjust="spacing">{label_right}</text>
+  </g>
+</svg>"""
+
+_BADGE_COLORS = {
+    "compliant": "#4c1",     # green
+    "passing": "#4c1",
+    "non-compliant": "#e05d44",  # red
+    "failing": "#e05d44",
+    "partial": "#dfb317",    # yellow
+    "unknown": "#9f9f9f",    # grey
+}
+
+
+def _make_badge_svg(framework: str, status: str) -> str:
+    left = f"squash | {framework}"
+    right = status
+    color = _BADGE_COLORS.get(status.lower(), "#9f9f9f")
+    lw = max(6 * len(left) + 20, 80)
+    rw = max(6 * len(right) + 20, 60)
+    w = lw + rw
+    return _BADGE_SVG_TEMPLATE.format(
+        width=w, left_width=lw, right_width=rw,
+        left_cx=lw * 5, right_cx=lw * 10 + rw * 5,
+        left_tl=(len(left)) * 60, right_tl=(len(right)) * 60,
+        label_left=left, label_right=right,
+        color=color,
+    )
+
+
+@app.get("/badge/{framework}/{status}")
+async def compliance_badge(framework: str, status: str = "unknown") -> Response:
+    """Shields.io-compatible SVG compliance badge.
+
+    Usage in GitHub README::
+
+        ![Squash Compliant](https://api.getsquash.dev/badge/eu-ai-act/compliant)
+
+    Parameters
+    ----------
+    framework:
+        Policy framework name (eu-ai-act, nist-ai-rmf, iso-42001, …).
+    status:
+        Attestation status: compliant | non-compliant | partial | unknown.
+    """
+    svg = _make_badge_svg(framework.replace("-", " ").upper(), status)
+    return Response(
+        content=svg,
+        media_type="image/svg+xml",
+        headers={
+            "Cache-Control": "no-cache, max-age=0",
+            "ETag": f'"{hash(svg)}"',
+        },
+    )
 
 
 @app.get("/policies")

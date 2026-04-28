@@ -641,10 +641,12 @@ class TestModuleCountGate(unittest.TestCase):
         count = len(py_files)
         # Exact gate: Sprint 2 (W137–W144) added auth, billing, quota, rate_limiter,
         # postgres_db, monitoring + integrations subpackage — 47 total.
+        # Sprint 4B (W163–W168) added notifications.py, metrics.py, ticketing.py,
+        # middleware.py — 51 total.
         self.assertEqual(
             count,
-            47,
-            msg=f"squash/ has {count} Python files (expected 47 after Sprint 2). "
+            51,
+            msg=f"squash/ has {count} Python files (expected 51 after Sprint 4B). "
                 "If you added a file, update this gate.",
         )
 
