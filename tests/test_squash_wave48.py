@@ -32,7 +32,7 @@ sys.path.insert(0, str(_SQUISH_ROOT))
 
 class TestTransformationEvent(unittest.TestCase):
     def _make(self) -> "TransformationEvent":
-        from squish.squash.lineage import TransformationEvent
+        from squash.lineage import TransformationEvent
 
         return TransformationEvent(
             event_id="e1",
@@ -88,7 +88,7 @@ class TestTransformationEvent(unittest.TestCase):
 
 class TestLineageVerifyResult(unittest.TestCase):
     def test_fields_intact(self) -> None:
-        from squish.squash.lineage import LineageVerifyResult
+        from squash.lineage import LineageVerifyResult
 
         r = LineageVerifyResult(
             ok=True,
@@ -104,7 +104,7 @@ class TestLineageVerifyResult(unittest.TestCase):
         self.assertIsNone(r.broken_at)
 
     def test_fields_broken(self) -> None:
-        from squish.squash.lineage import LineageVerifyResult
+        from squash.lineage import LineageVerifyResult
 
         r = LineageVerifyResult(
             ok=False,
@@ -118,7 +118,7 @@ class TestLineageVerifyResult(unittest.TestCase):
         self.assertEqual(r.broken_at, 1)
 
     def test_to_dict_has_all_keys(self) -> None:
-        from squish.squash.lineage import LineageVerifyResult
+        from squash.lineage import LineageVerifyResult
 
         r = LineageVerifyResult(
             ok=True, model_dir="/m", verified_at="...", event_count=0,
@@ -129,7 +129,7 @@ class TestLineageVerifyResult(unittest.TestCase):
             self.assertIn(key, d)
 
     def test_to_dict_broken_at_none_serialised(self) -> None:
-        from squish.squash.lineage import LineageVerifyResult
+        from squash.lineage import LineageVerifyResult
 
         r = LineageVerifyResult(
             ok=True, model_dir="/m", verified_at="...", event_count=1,
@@ -146,14 +146,14 @@ class TestLineageVerifyResult(unittest.TestCase):
 
 class TestUtcNow(unittest.TestCase):
     def test_returns_utc_iso_string(self) -> None:
-        from squish.squash.lineage import _utc_now
+        from squash.lineage import _utc_now
 
         ts = _utc_now()
         self.assertIsInstance(ts, str)
         self.assertTrue(ts.endswith("Z"), f"Expected Z suffix, got {ts!r}")
 
     def test_two_calls_are_monotonic(self) -> None:
-        from squish.squash.lineage import _utc_now
+        from squash.lineage import _utc_now
         import time
 
         t1 = _utc_now()
@@ -169,13 +169,13 @@ class TestUtcNow(unittest.TestCase):
 
 class TestLoadChainJson(unittest.TestCase):
     def test_missing_file_returns_empty_list(self) -> None:
-        from squish.squash.lineage import _load_chain_json
+        from squash.lineage import _load_chain_json
 
         result = _load_chain_json(Path("/no/such/file/lineage.json"))
         self.assertEqual(result, [])
 
     def test_valid_json_array_returned(self) -> None:
-        from squish.squash.lineage import _load_chain_json
+        from squash.lineage import _load_chain_json
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json.dump([{"event_id": "x"}], f)
@@ -188,7 +188,7 @@ class TestLoadChainJson(unittest.TestCase):
             Path(fname).unlink(missing_ok=True)
 
     def test_malformed_json_returns_empty_list(self) -> None:
-        from squish.squash.lineage import _load_chain_json
+        from squash.lineage import _load_chain_json
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             f.write("{not valid json")
@@ -200,7 +200,7 @@ class TestLoadChainJson(unittest.TestCase):
             Path(fname).unlink(missing_ok=True)
 
     def test_non_array_json_returns_empty_list(self) -> None:
-        from squish.squash.lineage import _load_chain_json
+        from squash.lineage import _load_chain_json
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json.dump({"key": "value"}, f)
@@ -212,7 +212,7 @@ class TestLoadChainJson(unittest.TestCase):
             Path(fname).unlink(missing_ok=True)
 
     def test_empty_array_returns_empty_list(self) -> None:
-        from squish.squash.lineage import _load_chain_json
+        from squash.lineage import _load_chain_json
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json.dump([], f)
@@ -231,7 +231,7 @@ class TestLoadChainJson(unittest.TestCase):
 
 class TestLineageChainHashEvent(unittest.TestCase):
     def _base_event(self) -> "TransformationEvent":
-        from squish.squash.lineage import TransformationEvent
+        from squash.lineage import TransformationEvent
 
         return TransformationEvent(
             event_id="e1", model_id="m", operation="compress",
@@ -241,7 +241,7 @@ class TestLineageChainHashEvent(unittest.TestCase):
         )
 
     def test_deterministic(self) -> None:
-        from squish.squash.lineage import LineageChain
+        from squash.lineage import LineageChain
 
         evt = self._base_event()
         h1 = LineageChain._hash_event(evt)
@@ -249,7 +249,7 @@ class TestLineageChainHashEvent(unittest.TestCase):
         self.assertEqual(h1, h2)
 
     def test_returns_64_char_hex(self) -> None:
-        from squish.squash.lineage import LineageChain
+        from squash.lineage import LineageChain
 
         h = LineageChain._hash_event(self._base_event())
         self.assertEqual(len(h), 64)
@@ -257,7 +257,7 @@ class TestLineageChainHashEvent(unittest.TestCase):
 
     def test_event_hash_field_excluded_from_input(self) -> None:
         """Two events identical except event_hash → identical computed hash."""
-        from squish.squash.lineage import LineageChain, TransformationEvent
+        from squash.lineage import LineageChain, TransformationEvent
 
         base = self._base_event()
         base.event_hash = ""
@@ -267,7 +267,7 @@ class TestLineageChainHashEvent(unittest.TestCase):
         self.assertEqual(h1, h2)
 
     def test_sensitive_to_operation_change(self) -> None:
-        from squish.squash.lineage import LineageChain
+        from squash.lineage import LineageChain
 
         e1 = self._base_event()
         e2 = self._base_event()
@@ -278,7 +278,7 @@ class TestLineageChainHashEvent(unittest.TestCase):
         )
 
     def test_sensitive_to_params_change(self) -> None:
-        from squish.squash.lineage import LineageChain
+        from squash.lineage import LineageChain
 
         e1 = self._base_event()
         e2 = self._base_event()
@@ -289,7 +289,7 @@ class TestLineageChainHashEvent(unittest.TestCase):
         )
 
     def test_sensitive_to_prev_hash_change(self) -> None:
-        from squish.squash.lineage import LineageChain
+        from squash.lineage import LineageChain
 
         e1 = self._base_event()
         e2 = self._base_event()
@@ -307,7 +307,7 @@ class TestLineageChainHashEvent(unittest.TestCase):
 
 class TestLineageChainCreateEvent(unittest.TestCase):
     def test_returns_transformation_event(self) -> None:
-        from squish.squash.lineage import LineageChain, TransformationEvent
+        from squash.lineage import LineageChain, TransformationEvent
 
         evt = LineageChain.create_event(
             operation="compress",
@@ -318,46 +318,46 @@ class TestLineageChainCreateEvent(unittest.TestCase):
         self.assertIsInstance(evt, TransformationEvent)
 
     def test_prev_hash_and_event_hash_empty(self) -> None:
-        from squish.squash.lineage import LineageChain
+        from squash.lineage import LineageChain
 
         evt = LineageChain.create_event("compress", "m", "/s", "/d")
         self.assertEqual(evt.prev_hash, "")
         self.assertEqual(evt.event_hash, "")
 
     def test_operator_contains_at_sign(self) -> None:
-        from squish.squash.lineage import LineageChain
+        from squash.lineage import LineageChain
 
         evt = LineageChain.create_event("compress", "m", "/s", "/d")
         self.assertIn("@", evt.operator)
 
     def test_timestamp_is_utc_iso(self) -> None:
-        from squish.squash.lineage import LineageChain
+        from squash.lineage import LineageChain
 
         evt = LineageChain.create_event("compress", "m", "/s", "/d")
         self.assertTrue(evt.timestamp.endswith("Z"))
 
     def test_event_id_is_nonempty_string(self) -> None:
-        from squish.squash.lineage import LineageChain
+        from squash.lineage import LineageChain
 
         evt = LineageChain.create_event("sign", "m", "/s", "/d")
         self.assertIsInstance(evt.event_id, str)
         self.assertTrue(len(evt.event_id) > 0)
 
     def test_params_defaults_to_empty_dict(self) -> None:
-        from squish.squash.lineage import LineageChain
+        from squash.lineage import LineageChain
 
         evt = LineageChain.create_event("compress", "m", "/s", "/d")
         self.assertEqual(evt.params, {})
 
     def test_params_copied(self) -> None:
-        from squish.squash.lineage import LineageChain
+        from squash.lineage import LineageChain
 
         params = {"format": "INT4", "group_size": 32}
         evt = LineageChain.create_event("compress", "m", "/s", "/d", params=params)
         self.assertEqual(evt.params, {"format": "INT4", "group_size": 32})
 
     def test_operation_and_model_id_stored(self) -> None:
-        from squish.squash.lineage import LineageChain
+        from squash.lineage import LineageChain
 
         evt = LineageChain.create_event("export", "qwen3:8b", "/in", "/out")
         self.assertEqual(evt.operation, "export")
@@ -379,7 +379,7 @@ class TestLineageChainRecord(unittest.TestCase):
         shutil.rmtree(self._tmp, ignore_errors=True)
 
     def _compress_event(self, model_id: str = "m") -> "TransformationEvent":
-        from squish.squash.lineage import LineageChain
+        from squash.lineage import LineageChain
 
         return LineageChain.create_event(
             operation="compress", model_id=model_id,
@@ -387,7 +387,7 @@ class TestLineageChainRecord(unittest.TestCase):
         )
 
     def test_returns_nonempty_event_hash(self) -> None:
-        from squish.squash.lineage import LineageChain
+        from squash.lineage import LineageChain
 
         evt = self._compress_event()
         event_hash = LineageChain.record(self.model_dir, evt)
@@ -395,7 +395,7 @@ class TestLineageChainRecord(unittest.TestCase):
         self.assertEqual(len(event_hash), 64)
 
     def test_chain_file_created(self) -> None:
-        from squish.squash.lineage import LineageChain
+        from squash.lineage import LineageChain
 
         evt = self._compress_event()
         LineageChain.record(self.model_dir, evt)
@@ -403,7 +403,7 @@ class TestLineageChainRecord(unittest.TestCase):
         self.assertTrue(chain_file.exists())
 
     def test_chain_file_is_json_array(self) -> None:
-        from squish.squash.lineage import LineageChain
+        from squash.lineage import LineageChain
 
         evt = self._compress_event()
         LineageChain.record(self.model_dir, evt)
@@ -413,14 +413,14 @@ class TestLineageChainRecord(unittest.TestCase):
         self.assertEqual(len(data), 1)
 
     def test_genesis_event_prev_hash_empty(self) -> None:
-        from squish.squash.lineage import LineageChain
+        from squash.lineage import LineageChain
 
         evt = self._compress_event()
         LineageChain.record(self.model_dir, evt)
         self.assertEqual(evt.prev_hash, "")
 
     def test_event_hash_assigned_after_record(self) -> None:
-        from squish.squash.lineage import LineageChain
+        from squash.lineage import LineageChain
 
         evt = self._compress_event()
         returned_hash = LineageChain.record(self.model_dir, evt)
@@ -428,7 +428,7 @@ class TestLineageChainRecord(unittest.TestCase):
         self.assertNotEqual(evt.event_hash, "")
 
     def test_second_event_prev_hash_links_to_first(self) -> None:
-        from squish.squash.lineage import LineageChain
+        from squash.lineage import LineageChain
 
         evt1 = self._compress_event()
         hash1 = LineageChain.record(self.model_dir, evt1)
@@ -438,7 +438,7 @@ class TestLineageChainRecord(unittest.TestCase):
         self.assertEqual(evt2.prev_hash, hash1)
 
     def test_three_events_are_chained(self) -> None:
-        from squish.squash.lineage import LineageChain
+        from squash.lineage import LineageChain
 
         hashes = []
         for op in ("compress", "sign", "export"):
@@ -453,7 +453,7 @@ class TestLineageChainRecord(unittest.TestCase):
         self.assertEqual(data[2]["prev_hash"], hashes[1])
 
     def test_record_creates_dir_if_needed(self) -> None:
-        from squish.squash.lineage import LineageChain
+        from squash.lineage import LineageChain
 
         new_dir = self.model_dir / "nested" / "deep"
         evt = LineageChain.create_event("compress", "m", str(new_dir), str(new_dir))
@@ -476,7 +476,7 @@ class TestLineageChainLoad(unittest.TestCase):
         shutil.rmtree(self._tmp, ignore_errors=True)
 
     def test_round_trip(self) -> None:
-        from squish.squash.lineage import LineageChain, TransformationEvent
+        from squash.lineage import LineageChain, TransformationEvent
 
         evt = LineageChain.create_event(
             "compress", "my-model",
@@ -493,13 +493,13 @@ class TestLineageChainLoad(unittest.TestCase):
         self.assertEqual(loaded[0].params, {"format": "INT4"})
 
     def test_missing_chain_file_returns_empty_list(self) -> None:
-        from squish.squash.lineage import LineageChain
+        from squash.lineage import LineageChain
 
         result = LineageChain.load(self.model_dir)
         self.assertEqual(result, [])
 
     def test_load_preserves_event_hash_and_prev_hash(self) -> None:
-        from squish.squash.lineage import LineageChain
+        from squash.lineage import LineageChain
 
         e1 = LineageChain.create_event("compress", "m", "/s", "/d")
         h1 = LineageChain.record(self.model_dir, e1)
@@ -511,7 +511,7 @@ class TestLineageChainLoad(unittest.TestCase):
         self.assertEqual(loaded[1].prev_hash, h1)
 
     def test_multiple_round_trip(self) -> None:
-        from squish.squash.lineage import LineageChain
+        from squash.lineage import LineageChain
 
         ops = ["compress", "sign", "export", "verify"]
         for op in ops:
@@ -538,7 +538,7 @@ class TestLineageChainVerify(unittest.TestCase):
         shutil.rmtree(self._tmp, ignore_errors=True)
 
     def _build_intact_chain(self, n: int = 3) -> None:
-        from squish.squash.lineage import LineageChain
+        from squash.lineage import LineageChain
 
         ops = ["compress", "sign", "export", "verify", "transfer"]
         for i in range(n):
@@ -546,7 +546,7 @@ class TestLineageChainVerify(unittest.TestCase):
             LineageChain.record(self.model_dir, e)
 
     def test_intact_chain_returns_ok_true(self) -> None:
-        from squish.squash.lineage import LineageChain
+        from squash.lineage import LineageChain
 
         self._build_intact_chain(3)
         result = LineageChain.verify(self.model_dir)
@@ -555,7 +555,7 @@ class TestLineageChainVerify(unittest.TestCase):
         self.assertIsNone(result.broken_at)
 
     def test_missing_chain_returns_ok_false(self) -> None:
-        from squish.squash.lineage import LineageChain
+        from squash.lineage import LineageChain
 
         result = LineageChain.verify(self.model_dir)
         self.assertFalse(result.ok)
@@ -563,7 +563,7 @@ class TestLineageChainVerify(unittest.TestCase):
 
     def test_empty_chain_returns_ok_true(self) -> None:
         """Empty array in chain file is considered valid (no events to verify)."""
-        from squish.squash.lineage import LineageChain
+        from squash.lineage import LineageChain
 
         chain_path = self.model_dir / LineageChain.CHAIN_FILENAME
         chain_path.write_text("[]", encoding="utf-8")
@@ -572,7 +572,7 @@ class TestLineageChainVerify(unittest.TestCase):
         self.assertEqual(result.event_count, 0)
 
     def test_tampered_event_hash_detected(self) -> None:
-        from squish.squash.lineage import LineageChain
+        from squash.lineage import LineageChain
 
         self._build_intact_chain(2)
         chain_path = self.model_dir / LineageChain.CHAIN_FILENAME
@@ -585,7 +585,7 @@ class TestLineageChainVerify(unittest.TestCase):
         self.assertEqual(result.broken_at, 0)
 
     def test_tampered_prev_hash_detected(self) -> None:
-        from squish.squash.lineage import LineageChain
+        from squash.lineage import LineageChain
 
         self._build_intact_chain(2)
         chain_path = self.model_dir / LineageChain.CHAIN_FILENAME
@@ -599,7 +599,7 @@ class TestLineageChainVerify(unittest.TestCase):
 
     def test_tampered_operation_field_detected(self) -> None:
         """Changing a payload field invalidates the stored event_hash."""
-        from squish.squash.lineage import LineageChain
+        from squash.lineage import LineageChain
 
         self._build_intact_chain(1)
         chain_path = self.model_dir / LineageChain.CHAIN_FILENAME
@@ -611,7 +611,7 @@ class TestLineageChainVerify(unittest.TestCase):
         self.assertFalse(result.ok)
 
     def test_verify_returns_verified_at_field(self) -> None:
-        from squish.squash.lineage import LineageChain
+        from squash.lineage import LineageChain
 
         self._build_intact_chain(1)
         result = LineageChain.verify(self.model_dir)
@@ -619,7 +619,7 @@ class TestLineageChainVerify(unittest.TestCase):
 
     def test_verify_never_raises(self) -> None:
         """verify() must not raise even on a completely corrupt file."""
-        from squish.squash.lineage import LineageChain
+        from squash.lineage import LineageChain
 
         chain_path = self.model_dir / LineageChain.CHAIN_FILENAME
         chain_path.write_text("this is not json at all", encoding="utf-8")
@@ -630,7 +630,7 @@ class TestLineageChainVerify(unittest.TestCase):
             self.fail(f"verify() raised unexpectedly: {exc}")
 
     def test_model_dir_in_result(self) -> None:
-        from squish.squash.lineage import LineageChain
+        from squash.lineage import LineageChain
 
         self._build_intact_chain(1)
         result = LineageChain.verify(self.model_dir)
@@ -660,7 +660,7 @@ class TestLineageCli(unittest.TestCase):
 
         buf = io.StringIO()
         try:
-            from squish.squash.cli import main as cli_main
+            from squash.cli import main as cli_main
 
             with patch("sys.stdout", buf), patch("sys.argv", ["squash"] + argv):
                 try:
@@ -693,7 +693,7 @@ class TestLineageCli(unittest.TestCase):
             "lineage", "record", str(self.model_dir),
             "--operation", "compress",
         ])
-        from squish.squash.lineage import LineageChain
+        from squash.lineage import LineageChain
         chain_file = self.model_dir / LineageChain.CHAIN_FILENAME
         self.assertTrue(chain_file.exists(), "Chain file should be created after record")
 
@@ -721,7 +721,7 @@ class TestLineageCli(unittest.TestCase):
         self.assertEqual(code, 0)
 
     def test_verify_tampered_chain_exits_two(self) -> None:
-        from squish.squash.lineage import LineageChain
+        from squash.lineage import LineageChain
 
         self._run(["lineage", "record", str(self.model_dir), "--operation", "compress"])
         chain_path = self.model_dir / LineageChain.CHAIN_FILENAME
@@ -742,7 +742,7 @@ class TestLineageCli(unittest.TestCase):
             "--params", "format=INT4", "group_size=32",
         ])
         self.assertEqual(code, 0)
-        from squish.squash.lineage import LineageChain
+        from squash.lineage import LineageChain
         events = LineageChain.load(self.model_dir)
         self.assertEqual(len(events), 1)
         self.assertIn("format", events[0].params)
@@ -763,7 +763,7 @@ class TestLineageApi(unittest.TestCase):
     def setUpClass(cls) -> None:
         try:
             from starlette.testclient import TestClient
-            from squish.squash.api import app
+            from squash.api import app
             cls.client = TestClient(app, raise_server_exceptions=True)
         except Exception:
             cls.client = None
@@ -835,7 +835,7 @@ class TestLineageApi(unittest.TestCase):
 
     def test_lineage_verify_false_on_tampered_chain(self) -> None:
         self._skip_if_no_client()
-        from squish.squash.lineage import LineageChain
+        from squash.lineage import LineageChain
 
         with tempfile.TemporaryDirectory() as tmp:
             self.client.post("/lineage/record", json={

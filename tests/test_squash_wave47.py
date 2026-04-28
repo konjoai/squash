@@ -40,7 +40,7 @@ def _make_corpus(root: Path, files: dict[str, str]) -> None:
 
 class TestRagFileEntry(unittest.TestCase):
     def test_fields(self) -> None:
-        from squish.squash.rag import RagFileEntry
+        from squash.rag import RagFileEntry
 
         entry = RagFileEntry(path="docs/a.txt", sha256="abc123", size_bytes=42)
         self.assertEqual(entry.path, "docs/a.txt")
@@ -48,7 +48,7 @@ class TestRagFileEntry(unittest.TestCase):
         self.assertEqual(entry.size_bytes, 42)
 
     def test_asdict(self) -> None:
-        from squish.squash.rag import RagFileEntry
+        from squash.rag import RagFileEntry
 
         entry = RagFileEntry(path="x.txt", sha256="dead", size_bytes=1)
         d = asdict(entry)
@@ -64,7 +64,7 @@ class TestRagFileEntry(unittest.TestCase):
 
 class TestRagManifest(unittest.TestCase):
     def _sample(self) -> "RagManifest":
-        from squish.squash.rag import RagManifest
+        from squash.rag import RagManifest
 
         return RagManifest(
             version=1,
@@ -90,7 +90,7 @@ class TestRagManifest(unittest.TestCase):
             self.assertIn(key, d)
 
     def test_write_and_load_roundtrip(self) -> None:
-        from squish.squash.rag import RagManifest
+        from squash.rag import RagManifest
 
         m = self._sample()
         with tempfile.TemporaryDirectory() as tmp:
@@ -104,7 +104,7 @@ class TestRagManifest(unittest.TestCase):
             self.assertEqual(len(loaded.files), 2)
 
     def test_load_missing_key_raises(self) -> None:
-        from squish.squash.rag import RagManifest
+        from squash.rag import RagManifest
 
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "bad.json"
@@ -113,7 +113,7 @@ class TestRagManifest(unittest.TestCase):
                 RagManifest.load(path)
 
     def test_load_unsupported_version_raises(self) -> None:
-        from squish.squash.rag import RagManifest
+        from squash.rag import RagManifest
 
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "bad.json"
@@ -134,7 +134,7 @@ class TestRagManifest(unittest.TestCase):
                 RagManifest.load(path)
 
     def test_load_file_not_found(self) -> None:
-        from squish.squash.rag import RagManifest
+        from squash.rag import RagManifest
 
         with self.assertRaises(FileNotFoundError):
             RagManifest.load(Path("/does/not/exist/.rag_manifest.json"))
@@ -147,7 +147,7 @@ class TestRagManifest(unittest.TestCase):
 
 class TestRagDriftItem(unittest.TestCase):
     def test_fields(self) -> None:
-        from squish.squash.rag import RagDriftItem
+        from squash.rag import RagDriftItem
 
         item = RagDriftItem(path="docs/x.txt", status="added", old_hash="", new_hash="abc")
         self.assertEqual(item.path, "docs/x.txt")
@@ -156,7 +156,7 @@ class TestRagDriftItem(unittest.TestCase):
         self.assertEqual(item.new_hash, "abc")
 
     def test_asdict(self) -> None:
-        from squish.squash.rag import RagDriftItem
+        from squash.rag import RagDriftItem
 
         d = asdict(RagDriftItem(path="y.txt", status="removed", old_hash="xyz", new_hash=""))
         self.assertIn("status", d)
@@ -169,7 +169,7 @@ class TestRagDriftItem(unittest.TestCase):
 
 class TestRagVerifyResult(unittest.TestCase):
     def test_to_dict_keys(self) -> None:
-        from squish.squash.rag import RagDriftItem, RagVerifyResult
+        from squash.rag import RagDriftItem, RagVerifyResult
 
         r = RagVerifyResult(
             ok=True,
@@ -184,7 +184,7 @@ class TestRagVerifyResult(unittest.TestCase):
             self.assertIn(key, d)
 
     def test_drift_serialised(self) -> None:
-        from squish.squash.rag import RagDriftItem, RagVerifyResult
+        from squash.rag import RagDriftItem, RagVerifyResult
 
         r = RagVerifyResult(
             ok=False,
@@ -206,7 +206,7 @@ class TestRagVerifyResult(unittest.TestCase):
 
 class TestRagScannerHashFile(unittest.TestCase):
     def test_deterministic(self) -> None:
-        from squish.squash.rag import RagScanner
+        from squash.rag import RagScanner
 
         with tempfile.NamedTemporaryFile(delete=False, suffix=".txt") as fh:
             fh.write(b"hello rag")
@@ -219,7 +219,7 @@ class TestRagScannerHashFile(unittest.TestCase):
             fpath.unlink()
 
     def test_hex_length(self) -> None:
-        from squish.squash.rag import RagScanner
+        from squash.rag import RagScanner
 
         with tempfile.NamedTemporaryFile(delete=False) as fh:
             fh.write(b"data")
@@ -231,7 +231,7 @@ class TestRagScannerHashFile(unittest.TestCase):
             fpath.unlink()
 
     def test_empty_file(self) -> None:
-        from squish.squash.rag import RagScanner
+        from squash.rag import RagScanner
 
         with tempfile.NamedTemporaryFile(delete=False) as fh:
             fpath = Path(fh.name)
@@ -244,7 +244,7 @@ class TestRagScannerHashFile(unittest.TestCase):
             fpath.unlink()
 
     def test_different_content_different_hash(self) -> None:
-        from squish.squash.rag import RagScanner
+        from squash.rag import RagScanner
 
         with tempfile.NamedTemporaryFile(delete=False) as f1, tempfile.NamedTemporaryFile(delete=False) as f2:
             f1.write(b"aaa")
@@ -264,7 +264,7 @@ class TestRagScannerHashFile(unittest.TestCase):
 
 class TestRagScannerManifestHash(unittest.TestCase):
     def test_deterministic(self) -> None:
-        from squish.squash.rag import RagScanner
+        from squash.rag import RagScanner
 
         files = [{"path": "a.txt", "sha256": "abc", "size_bytes": 1}]
         self.assertEqual(
@@ -273,13 +273,13 @@ class TestRagScannerManifestHash(unittest.TestCase):
         )
 
     def test_empty_list(self) -> None:
-        from squish.squash.rag import RagScanner
+        from squash.rag import RagScanner
 
         h = RagScanner._manifest_hash([])
         self.assertEqual(len(h), 64)
 
     def test_different_files_different_hash(self) -> None:
-        from squish.squash.rag import RagScanner
+        from squash.rag import RagScanner
 
         fs1 = [{"path": "a.txt", "sha256": "aaa", "size_bytes": 1}]
         fs2 = [{"path": "a.txt", "sha256": "bbb", "size_bytes": 1}]
@@ -287,7 +287,7 @@ class TestRagScannerManifestHash(unittest.TestCase):
 
     def test_order_independent(self) -> None:
         """Manifest hash must NOT depend on list order — sorted by caller."""
-        from squish.squash.rag import RagScanner
+        from squash.rag import RagScanner
 
         # We intentionally pass the same two entries in different orders.
         # The caller (index()) sorts before calling, so we verify the hash
@@ -310,7 +310,7 @@ class TestRagScannerManifestHash(unittest.TestCase):
 
 class TestRagScannerIndex(unittest.TestCase):
     def test_creates_manifest_file(self) -> None:
-        from squish.squash.rag import RagScanner
+        from squash.rag import RagScanner
 
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -320,7 +320,7 @@ class TestRagScannerIndex(unittest.TestCase):
             self.assertTrue(manifest_path.exists())
 
     def test_file_count(self) -> None:
-        from squish.squash.rag import RagScanner
+        from squash.rag import RagScanner
 
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -330,7 +330,7 @@ class TestRagScannerIndex(unittest.TestCase):
 
     def test_manifest_not_counted(self) -> None:
         """The .rag_manifest.json itself must not be counted in file_count."""
-        from squish.squash.rag import RagScanner
+        from squash.rag import RagScanner
 
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -339,7 +339,7 @@ class TestRagScannerIndex(unittest.TestCase):
             self.assertEqual(manifest.file_count, 1)
 
     def test_manifest_hash_is_valid_hex(self) -> None:
-        from squish.squash.rag import RagScanner
+        from squash.rag import RagScanner
 
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -350,7 +350,7 @@ class TestRagScannerIndex(unittest.TestCase):
 
     def test_manifest_hash_stable_across_calls(self) -> None:
         """Same corpus → same manifest_hash on repeated indexing."""
-        from squish.squash.rag import RagScanner
+        from squash.rag import RagScanner
 
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -360,7 +360,7 @@ class TestRagScannerIndex(unittest.TestCase):
             self.assertEqual(m1.manifest_hash, m2.manifest_hash)
 
     def test_empty_corpus(self) -> None:
-        from squish.squash.rag import RagScanner
+        from squash.rag import RagScanner
 
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -368,14 +368,14 @@ class TestRagScannerIndex(unittest.TestCase):
             self.assertEqual(manifest.file_count, 0)
 
     def test_not_a_directory_raises(self) -> None:
-        from squish.squash.rag import RagScanner
+        from squash.rag import RagScanner
 
         with self.assertRaises(NotADirectoryError):
             RagScanner.index("/definitely/not/a/real/path/xyz")
 
     def test_glob_filter(self) -> None:
         """Custom glob pattern restricts which files are indexed."""
-        from squish.squash.rag import RagScanner
+        from squash.rag import RagScanner
 
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -385,7 +385,7 @@ class TestRagScannerIndex(unittest.TestCase):
             self.assertEqual(manifest.files[0]["path"], "a.txt")
 
     def test_version_is_one(self) -> None:
-        from squish.squash.rag import RagScanner
+        from squash.rag import RagScanner
 
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -393,7 +393,7 @@ class TestRagScannerIndex(unittest.TestCase):
             self.assertEqual(manifest.version, 1)
 
     def test_files_sorted_by_path(self) -> None:
-        from squish.squash.rag import RagScanner
+        from squash.rag import RagScanner
 
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -410,7 +410,7 @@ class TestRagScannerIndex(unittest.TestCase):
 
 class TestRagScannerVerify(unittest.TestCase):
     def test_pristine_ok(self) -> None:
-        from squish.squash.rag import RagScanner
+        from squash.rag import RagScanner
 
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -422,7 +422,7 @@ class TestRagScannerVerify(unittest.TestCase):
             self.assertEqual(len(result.drift), 0)
 
     def test_pristine_total_files(self) -> None:
-        from squish.squash.rag import RagScanner
+        from squash.rag import RagScanner
 
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -432,7 +432,7 @@ class TestRagScannerVerify(unittest.TestCase):
             self.assertEqual(result.total_files, 2)
 
     def test_modified_detected(self) -> None:
-        from squish.squash.rag import RagScanner
+        from squash.rag import RagScanner
 
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -446,7 +446,7 @@ class TestRagScannerVerify(unittest.TestCase):
             self.assertEqual(result.drift[0].path, "a.txt")
 
     def test_added_detected(self) -> None:
-        from squish.squash.rag import RagScanner
+        from squash.rag import RagScanner
 
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -460,7 +460,7 @@ class TestRagScannerVerify(unittest.TestCase):
             self.assertEqual(added[0].path, "new_doc.txt")
 
     def test_removed_detected(self) -> None:
-        from squish.squash.rag import RagScanner
+        from squash.rag import RagScanner
 
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -474,7 +474,7 @@ class TestRagScannerVerify(unittest.TestCase):
             self.assertEqual(removed[0].path, "b.txt")
 
     def test_multiple_drift_types(self) -> None:
-        from squish.squash.rag import RagScanner
+        from squash.rag import RagScanner
 
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -490,7 +490,7 @@ class TestRagScannerVerify(unittest.TestCase):
             self.assertEqual(statuses, {"added", "removed", "modified"})
 
     def test_missing_manifest(self) -> None:
-        from squish.squash.rag import RagScanner
+        from squash.rag import RagScanner
 
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -501,7 +501,7 @@ class TestRagScannerVerify(unittest.TestCase):
             self.assertEqual(result.drift[0].status, "missing_manifest")
 
     def test_modified_old_and_new_hash(self) -> None:
-        from squish.squash.rag import RagScanner
+        from squash.rag import RagScanner
 
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -516,7 +516,7 @@ class TestRagScannerVerify(unittest.TestCase):
             self.assertNotEqual(item.new_hash, old_hash)
 
     def test_removed_new_hash_empty(self) -> None:
-        from squish.squash.rag import RagScanner
+        from squash.rag import RagScanner
 
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -527,7 +527,7 @@ class TestRagScannerVerify(unittest.TestCase):
             self.assertEqual(result.drift[0].new_hash, "")
 
     def test_added_old_hash_empty(self) -> None:
-        from squish.squash.rag import RagScanner
+        from squash.rag import RagScanner
 
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -546,7 +546,7 @@ class TestRagScannerVerify(unittest.TestCase):
 
 class TestRagScanRagCli(unittest.TestCase):
     def _get_parser(self):
-        from squish.squash.cli import _build_parser
+        from squash.cli import _build_parser
         return _build_parser()
 
     def test_scan_rag_subcommand_registered(self) -> None:
@@ -583,14 +583,14 @@ class TestRagScanRagCli(unittest.TestCase):
 
     def test_exit_0_on_intact_corpus(self) -> None:
         """scan-rag verify exits 0 on pristine corpus."""
-        from squish.squash.rag import RagScanner
+        from squash.rag import RagScanner
 
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             _make_corpus(root, {"doc.txt": "data"})
             RagScanner.index(root)
 
-            from squish.squash.cli import _cmd_scan_rag
+            from squash.cli import _cmd_scan_rag
             import argparse
 
             args = argparse.Namespace(
@@ -605,7 +605,7 @@ class TestRagScanRagCli(unittest.TestCase):
 
     def test_exit_2_on_drifted_corpus(self) -> None:
         """scan-rag verify exits 2 when drift is detected."""
-        from squish.squash.rag import RagScanner
+        from squash.rag import RagScanner
 
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -613,7 +613,7 @@ class TestRagScanRagCli(unittest.TestCase):
             RagScanner.index(root)
             (root / "doc.txt").write_text("TAMPERED", encoding="utf-8")
 
-            from squish.squash.cli import _cmd_scan_rag
+            from squash.cli import _cmd_scan_rag
             import argparse
 
             args = argparse.Namespace(
@@ -632,7 +632,7 @@ class TestRagScanRagCli(unittest.TestCase):
             root = Path(tmp)
             _make_corpus(root, {"a.txt": "hello"})
 
-            from squish.squash.cli import _cmd_scan_rag
+            from squash.cli import _cmd_scan_rag
             import argparse
 
             args = argparse.Namespace(
@@ -647,7 +647,7 @@ class TestRagScanRagCli(unittest.TestCase):
 
     def test_exit_1_on_invalid_dir(self) -> None:
         """scan-rag index exits 1 when corpus_dir does not exist."""
-        from squish.squash.cli import _cmd_scan_rag
+        from squash.cli import _cmd_scan_rag
         import argparse
 
         args = argparse.Namespace(
@@ -664,14 +664,14 @@ class TestRagScanRagCli(unittest.TestCase):
         """scan-rag verify --json prints valid JSON to stdout."""
         import io
         import contextlib
-        from squish.squash.rag import RagScanner
+        from squash.rag import RagScanner
 
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             _make_corpus(root, {"doc.txt": "content"})
             RagScanner.index(root)
 
-            from squish.squash.cli import _cmd_scan_rag
+            from squash.cli import _cmd_scan_rag
             import argparse
 
             args = argparse.Namespace(
@@ -705,7 +705,7 @@ class TestRagApi(unittest.TestCase):
     def setUpClass(cls) -> None:
         try:
             from starlette.testclient import TestClient
-            from squish.squash.api import app
+            from squash.api import app
             cls.client = TestClient(app, raise_server_exceptions=True)
         except Exception:
             cls.client = None
@@ -744,7 +744,7 @@ class TestRagApi(unittest.TestCase):
 
     def test_rag_verify_ok_on_pristine(self) -> None:
         self._skip_if_no_client()
-        from squish.squash.rag import RagScanner
+        from squash.rag import RagScanner
 
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -758,7 +758,7 @@ class TestRagApi(unittest.TestCase):
 
     def test_rag_verify_drift_flagged(self) -> None:
         self._skip_if_no_client()
-        from squish.squash.rag import RagScanner
+        from squash.rag import RagScanner
 
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

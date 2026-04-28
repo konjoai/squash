@@ -26,7 +26,7 @@ import pytest
 
 try:
     from fastapi.testclient import TestClient
-    from squish.squash.api import app, AttestRequest
+    from squash.api import app, AttestRequest
 except ImportError:
     pytest.skip("fastapi / httpx not installed", allow_module_level=True)
 

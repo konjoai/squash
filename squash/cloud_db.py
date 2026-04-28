@@ -5,7 +5,7 @@ the previous in-memory deque approach: all data lives in the server process and
 is lost on restart.  Set the env var to an absolute path for a production
 deployment where data must survive server restarts::
 
-    SQUASH_CLOUD_DB=/var/lib/squash/cloud.db uvicorn squish.squash.api:app ...
+    SQUASH_CLOUD_DB=/var/lib/squash/cloud.db uvicorn squash.api:app ...
 
 Thread safety
 -------------

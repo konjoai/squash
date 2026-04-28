@@ -50,7 +50,7 @@ REPO_ROOT = Path(__file__).parent.parent
 
 class TestAuditEntry(unittest.TestCase):
     def setUp(self):
-        from squish.squash.governor import AuditEntry
+        from squash.governor import AuditEntry
         self.AuditEntry = AuditEntry
 
     def _make(self, **override):
@@ -102,7 +102,7 @@ class TestAuditEntry(unittest.TestCase):
 
 class TestHashText(unittest.TestCase):
     def setUp(self):
-        from squish.squash.governor import _hash_text
+        from squash.governor import _hash_text
         self._hash_text = _hash_text
 
     def test_returns_64_hex(self):
@@ -129,7 +129,7 @@ class TestHashText(unittest.TestCase):
 
 class TestAgentAuditLoggerBasic(unittest.TestCase):
     def setUp(self):
-        from squish.squash.governor import AgentAuditLogger
+        from squash.governor import AgentAuditLogger
         self._td = tempfile.TemporaryDirectory()
         self.log_path = Path(self._td.name) / "audit.jsonl"
         self.logger = AgentAuditLogger(log_path=self.log_path)
@@ -142,7 +142,7 @@ class TestAgentAuditLoggerBasic(unittest.TestCase):
         self.assertTrue(self.log_path.exists())
 
     def test_append_returns_audit_entry(self):
-        from squish.squash.governor import AuditEntry
+        from squash.governor import AuditEntry
         e = self.logger.append(event_type="llm_start", model_id="m")
         self.assertIsInstance(e, AuditEntry)
 
@@ -167,7 +167,7 @@ class TestAgentAuditLoggerBasic(unittest.TestCase):
         self.assertEqual(len(entries), 3)
 
     def test_read_tail_on_missing_file_returns_empty(self):
-        from squish.squash.governor import AgentAuditLogger
+        from squash.governor import AgentAuditLogger
         non_existent = Path(self._td.name) / "nope.jsonl"
         l2 = AgentAuditLogger(log_path=non_existent)
         self.assertEqual(l2.read_tail(10), [])
@@ -185,7 +185,7 @@ class TestAgentAuditLoggerBasic(unittest.TestCase):
 
 class TestAgentAuditLoggerChain(unittest.TestCase):
     def setUp(self):
-        from squish.squash.governor import AgentAuditLogger
+        from squash.governor import AgentAuditLogger
         self._td = tempfile.TemporaryDirectory()
         self.log_path = Path(self._td.name) / "audit.jsonl"
         self.logger = AgentAuditLogger(log_path=self.log_path)
@@ -209,7 +209,7 @@ class TestAgentAuditLoggerChain(unittest.TestCase):
         self.assertEqual(e1.prev_hash, e0.entry_hash)
 
     def test_entry_hash_matches_compute_hash(self):
-        from squish.squash.governor import AuditEntry
+        from squash.governor import AuditEntry
         e = self.logger.append(event_type="llm_start", model_id="m", input_hash="aa")
         expected = AuditEntry._compute_hash(
             e.prev_hash, e.seq, e.event_type, e.ts, e.input_hash, e.output_hash
@@ -244,7 +244,7 @@ class TestAgentAuditLoggerChain(unittest.TestCase):
 
 class TestAgentAuditLoggerVerify(unittest.TestCase):
     def setUp(self):
-        from squish.squash.governor import AgentAuditLogger
+        from squash.governor import AgentAuditLogger
         self._td = tempfile.TemporaryDirectory()
         self.log_path = Path(self._td.name) / "audit.jsonl"
         self.logger = AgentAuditLogger(log_path=self.log_path)
@@ -260,7 +260,7 @@ class TestAgentAuditLoggerVerify(unittest.TestCase):
         self.assertEqual(msg, "")
 
     def test_empty_log_verifies(self):
-        from squish.squash.governor import AgentAuditLogger
+        from squash.governor import AgentAuditLogger
         empty = Path(self._td.name) / "empty.jsonl"
         l2 = AgentAuditLogger(log_path=empty)
         ok, msg = l2.verify_chain()
@@ -313,14 +313,14 @@ class TestAgentAuditLoggerEnv(unittest.TestCase):
         self._td.cleanup()
 
     def test_env_var_sets_log_path(self):
-        from squish.squash.governor import AgentAuditLogger
+        from squash.governor import AgentAuditLogger
         custom = str(Path(self._td.name) / "custom.jsonl")
         with patch.dict(os.environ, {"SQUASH_AUDIT_LOG": custom}):
             logger = AgentAuditLogger()
         self.assertEqual(str(logger.path), custom)
 
     def test_default_path_is_squash_audit(self):
-        from squish.squash.governor import AgentAuditLogger
+        from squash.governor import AgentAuditLogger
         with patch.dict(os.environ, {}, clear=False):
             env_backup = os.environ.pop("SQUASH_AUDIT_LOG", None)
             try:
@@ -336,7 +336,7 @@ class TestAgentAuditLoggerEnv(unittest.TestCase):
 
 class TestAgentAuditLoggerPersist(unittest.TestCase):
     def setUp(self):
-        from squish.squash.governor import AgentAuditLogger
+        from squash.governor import AgentAuditLogger
         self._td = tempfile.TemporaryDirectory()
         self.log_path = Path(self._td.name) / "audit.jsonl"
         l1 = AgentAuditLogger(log_path=self.log_path)
@@ -370,8 +370,8 @@ class TestAgentAuditLoggerPersist(unittest.TestCase):
 
 class TestGetAuditLoggerSingleton(unittest.TestCase):
     def test_returns_agent_audit_logger(self):
-        import squish.squash.governor as gov
-        from squish.squash.governor import AgentAuditLogger, get_audit_logger
+        import squash.governor as gov
+        from squash.governor import AgentAuditLogger, get_audit_logger
         old = gov._AUDIT_LOGGER
         gov._AUDIT_LOGGER = None
         try:
@@ -381,8 +381,8 @@ class TestGetAuditLoggerSingleton(unittest.TestCase):
             gov._AUDIT_LOGGER = old
 
     def test_singleton_same_instance(self):
-        import squish.squash.governor as gov
-        from squish.squash.governor import get_audit_logger
+        import squash.governor as gov
+        from squash.governor import get_audit_logger
         old = gov._AUDIT_LOGGER
         gov._AUDIT_LOGGER = None
         try:
@@ -397,8 +397,8 @@ class TestGetAuditLoggerSingleton(unittest.TestCase):
 
 class TestSquashAuditCallbackInit(unittest.TestCase):
     def _cb(self, **kwargs):
-        from squish.squash.governor import AgentAuditLogger
-        from squish.squash.integrations.langchain import SquashAuditCallback
+        from squash.governor import AgentAuditLogger
+        from squash.integrations.langchain import SquashAuditCallback
         td = tempfile.mkdtemp()
         logger = AgentAuditLogger(log_path=Path(td) / "t.jsonl")
         return SquashAuditCallback(
@@ -413,12 +413,12 @@ class TestSquashAuditCallbackInit(unittest.TestCase):
         self.assertEqual(cb._session_id, "test-session")
 
     def test_custom_logger_stored(self):
-        from squish.squash.governor import AgentAuditLogger
+        from squash.governor import AgentAuditLogger
         cb, logger, td = self._cb()
         self.assertIs(cb._audit_logger, logger)
 
     def test_inherits_squash_callback(self):
-        from squish.squash.integrations.langchain import SquashCallback, SquashAuditCallback
+        from squash.integrations.langchain import SquashCallback, SquashAuditCallback
         cb, _, td = self._cb()
         self.assertIsInstance(cb, SquashCallback)
 
@@ -427,8 +427,8 @@ class TestSquashAuditCallbackInit(unittest.TestCase):
 
 class TestSquashAuditCallbackLlm(unittest.TestCase):
     def setUp(self):
-        from squish.squash.governor import AgentAuditLogger, _hash_text
-        from squish.squash.integrations.langchain import SquashAuditCallback
+        from squash.governor import AgentAuditLogger, _hash_text
+        from squash.integrations.langchain import SquashAuditCallback
         self._td = tempfile.TemporaryDirectory()
         self.log_path = Path(self._td.name) / "audit.jsonl"
         self.logger = AgentAuditLogger(log_path=self.log_path)
@@ -476,8 +476,8 @@ class TestSquashAuditCallbackLlm(unittest.TestCase):
 
 class TestSquashAuditCallbackEnd(unittest.TestCase):
     def setUp(self):
-        from squish.squash.governor import AgentAuditLogger
-        from squish.squash.integrations.langchain import SquashAuditCallback
+        from squash.governor import AgentAuditLogger
+        from squash.integrations.langchain import SquashAuditCallback
         self._td = tempfile.TemporaryDirectory()
         self.log_path = Path(self._td.name) / "audit.jsonl"
         self.logger = AgentAuditLogger(log_path=self.log_path)
@@ -524,7 +524,7 @@ class TestSquashAuditCallbackEnd(unittest.TestCase):
 
 class TestSquashAuditCallbackSafe(unittest.TestCase):
     def setUp(self):
-        from squish.squash.integrations.langchain import SquashAuditCallback
+        from squash.integrations.langchain import SquashAuditCallback
         self._td = tempfile.TemporaryDirectory()
         self.cb = SquashAuditCallback(Path("/tmp/model"), session_id="s")
 
@@ -558,7 +558,7 @@ class TestSquashAuditCallbackSafe(unittest.TestCase):
 
 class TestAuditCli(unittest.TestCase):
     def _parser(self):
-        from squish.squash.cli import _build_parser
+        from squash.cli import _build_parser
         return _build_parser()
 
     def test_audit_subcommand_registered(self):
@@ -601,7 +601,7 @@ class TestAuditCli(unittest.TestCase):
 
     def test_audit_cmd_show_exit_0_empty(self):
         """squash audit show on an empty log should exit 0."""
-        from squish.squash.cli import _build_parser, _cmd_audit
+        from squash.cli import _build_parser, _cmd_audit
         import argparse
         p = self._parser()
         with tempfile.TemporaryDirectory() as td:
@@ -612,7 +612,7 @@ class TestAuditCli(unittest.TestCase):
 
     def test_audit_cmd_verify_exit_0_missing(self):
         """squash audit verify on missing file should exit 0 (empty chain is valid)."""
-        from squish.squash.cli import _build_parser, _cmd_audit
+        from squash.cli import _build_parser, _cmd_audit
         with tempfile.TemporaryDirectory() as td:
             log_path = str(Path(td) / "nonexistent.jsonl")
             p = self._parser()
@@ -622,8 +622,8 @@ class TestAuditCli(unittest.TestCase):
 
     def test_audit_cmd_verify_exit_2_tampered(self):
         """squash audit verify on tampered log should exit 2."""
-        from squish.squash.governor import AgentAuditLogger
-        from squish.squash.cli import _build_parser, _cmd_audit
+        from squash.governor import AgentAuditLogger
+        from squash.cli import _build_parser, _cmd_audit
         with tempfile.TemporaryDirectory() as td:
             log_path = Path(td) / "audit.jsonl"
             logger = AgentAuditLogger(log_path=log_path)
@@ -643,7 +643,7 @@ class TestAuditCli(unittest.TestCase):
 class TestAuditApi(unittest.TestCase):
     def _client(self):
         from starlette.testclient import TestClient
-        from squish.squash.api import app
+        from squash.api import app
         return TestClient(app)
 
     def test_get_audit_trail_route_registered(self):
@@ -674,7 +674,7 @@ class TestAuditApi(unittest.TestCase):
         self.assertNotEqual(resp.status_code, 422)
 
     def test_get_audit_trail_entries_len_bounded_by_limit(self):
-        from squish.squash.governor import AgentAuditLogger
+        from squash.governor import AgentAuditLogger
         client = self._client()
         with tempfile.TemporaryDirectory() as td:
             log_path = Path(td) / "audit.jsonl"

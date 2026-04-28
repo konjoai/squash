@@ -1453,7 +1453,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
 def _cmd_policies(args: argparse.Namespace, quiet: bool) -> int:
     try:
-        from squish.squash.policy import AVAILABLE_POLICIES, PolicyRegistry
+        from squash.policy import AVAILABLE_POLICIES, PolicyRegistry
     except ImportError as e:
         print(f"squash is not installed: {e}", file=sys.stderr)
         return 2
@@ -1495,7 +1495,7 @@ def _cmd_policies(args: argparse.Namespace, quiet: bool) -> int:
 
 def _cmd_scan(args: argparse.Namespace, quiet: bool) -> int:
     try:
-        from squish.squash.scanner import ModelScanner
+        from squash.scanner import ModelScanner
     except ImportError as e:
         print(f"squash is not installed: {e}", file=sys.stderr)
         return 2
@@ -1529,7 +1529,7 @@ def _cmd_scan(args: argparse.Namespace, quiet: bool) -> int:
 
     if args.sarif:
         try:
-            from squish.squash.sarif import SarifBuilder
+            from squash.sarif import SarifBuilder
         except ImportError as e:  # pragma: no cover
             print(f"sarif export unavailable: {e}", file=sys.stderr)
             return 2
@@ -1549,7 +1549,7 @@ def _cmd_scan(args: argparse.Namespace, quiet: bool) -> int:
 
 def _cmd_diff(args: argparse.Namespace, quiet: bool) -> int:
     try:
-        from squish.squash.sbom_builder import SbomDiff
+        from squash.sbom_builder import SbomDiff
     except ImportError as e:
         print(f"squash is not installed: {e}", file=sys.stderr)
         return 2
@@ -1594,7 +1594,7 @@ def _cmd_diff(args: argparse.Namespace, quiet: bool) -> int:
 
 def _cmd_verify(args: argparse.Namespace, quiet: bool) -> int:
     try:
-        from squish.squash.oms_signer import OmsVerifier
+        from squash.oms_signer import OmsVerifier
     except ImportError as e:
         print(f"squash is not installed: {e}", file=sys.stderr)
         return 2
@@ -1637,7 +1637,7 @@ def _cmd_verify(args: argparse.Namespace, quiet: bool) -> int:
 def _cmd_keygen(args: argparse.Namespace, quiet: bool) -> int:
     """Generate an Ed25519 keypair for offline BOM signing."""
     try:
-        from squish.squash.oms_signer import OmsSigner
+        from squash.oms_signer import OmsSigner
     except ImportError as e:
         print(f"squash is not installed: {e}", file=sys.stderr)
         return 2
@@ -1665,7 +1665,7 @@ def _cmd_keygen(args: argparse.Namespace, quiet: bool) -> int:
 def _cmd_verify_local(args: argparse.Namespace, quiet: bool) -> int:
     """Verify a BOM's Ed25519 offline signature against a local public key."""
     try:
-        from squish.squash.oms_signer import OmsVerifier
+        from squash.oms_signer import OmsVerifier
     except ImportError as e:
         print(f"squash is not installed: {e}", file=sys.stderr)
         return 2
@@ -1703,7 +1703,7 @@ def _cmd_verify_local(args: argparse.Namespace, quiet: bool) -> int:
 def _cmd_pack_offline(args: argparse.Namespace, quiet: bool) -> int:
     """Bundle a model directory into a portable .squash-bundle.tar.gz archive."""
     try:
-        from squish.squash.oms_signer import OmsSigner
+        from squash.oms_signer import OmsSigner
     except ImportError as e:
         print(f"squash is not installed: {e}", file=sys.stderr)
         return 2
@@ -1732,7 +1732,7 @@ def _cmd_pack_offline(args: argparse.Namespace, quiet: bool) -> int:
 
 def _cmd_attest(args: argparse.Namespace, quiet: bool) -> int:
     try:
-        from squish.squash.attest import (
+        from squash.attest import (
             AttestConfig,
             AttestPipeline,
             AttestationViolationError,
@@ -1757,7 +1757,7 @@ def _cmd_attest(args: argparse.Namespace, quiet: bool) -> int:
         args.spdx_training_info,
         args.spdx_sensitive_data,
     ]):
-        from squish.squash.spdx_builder import SpdxOptions
+        from squash.spdx_builder import SpdxOptions
         spdx_options = SpdxOptions(
             type_of_model=args.spdx_type or "text-generation",
             safety_risk_assessment=args.spdx_safety_risk or "unspecified",
@@ -1820,7 +1820,7 @@ def _cmd_attest(args: argparse.Namespace, quiet: bool) -> int:
 
 def _cmd_report(args: argparse.Namespace, quiet: bool) -> int:
     try:
-        from squish.squash.report import ComplianceReporter
+        from squash.report import ComplianceReporter
     except ImportError as e:
         print(f"squash is not installed: {e}", file=sys.stderr)
         return 2
@@ -1836,7 +1836,7 @@ def _cmd_report(args: argparse.Namespace, quiet: bool) -> int:
     if fmt == "json":
         # Emit a raw JSON summary of all artifacts (no HTML rendering)
         import json as _json
-        from squish.squash.report import _load_artifacts  # type: ignore[attr-defined]
+        from squash.report import _load_artifacts  # type: ignore[attr-defined]
         ctx = _load_artifacts(model_path)
         payload = {
             "model_dir": str(ctx["model_dir"]),
@@ -1870,7 +1870,7 @@ def _cmd_report(args: argparse.Namespace, quiet: bool) -> int:
 
 def _cmd_vex(args: argparse.Namespace, quiet: bool) -> int:
     try:
-        from squish.squash.vex import VexCache
+        from squash.vex import VexCache
     except ImportError as e:
         print(f"squash is not installed: {e}", file=sys.stderr)
         return 2
@@ -1908,7 +1908,7 @@ def _cmd_vex(args: argparse.Namespace, quiet: bool) -> int:
 
     # ── Wave 52: subscribe  ───────────────────────────────────────────────────
     if vex_cmd == "subscribe":
-        from squish.squash.vex import VexSubscription, VexSubscriptionStore
+        from squash.vex import VexSubscription, VexSubscriptionStore
         import os
         url = args.url
         if not url.startswith("http"):
@@ -1932,7 +1932,7 @@ def _cmd_vex(args: argparse.Namespace, quiet: bool) -> int:
         return 0
 
     if vex_cmd == "unsubscribe":
-        from squish.squash.vex import VexSubscriptionStore
+        from squash.vex import VexSubscriptionStore
         import os as _os
         _store_dir = _os.environ.get("SQUISH_SQUASH_STORE_DIR")
         store = VexSubscriptionStore(Path(_store_dir) if _store_dir else None)
@@ -1946,7 +1946,7 @@ def _cmd_vex(args: argparse.Namespace, quiet: bool) -> int:
         return 0
 
     if vex_cmd == "list-subscriptions":
-        from squish.squash.vex import VexSubscriptionStore
+        from squash.vex import VexSubscriptionStore
         import os as _os
         _store_dir = _os.environ.get("SQUISH_SQUASH_STORE_DIR")
         store = VexSubscriptionStore(Path(_store_dir) if _store_dir else None)
@@ -1974,7 +1974,7 @@ def _cmd_vex(args: argparse.Namespace, quiet: bool) -> int:
 
 def _cmd_attest_composed(args: argparse.Namespace, quiet: bool) -> int:
     try:
-        from squish.squash.attest import CompositeAttestConfig, CompositeAttestPipeline
+        from squash.attest import CompositeAttestConfig, CompositeAttestPipeline
     except ImportError as e:
         print(f"squash is not installed: {e}", file=sys.stderr)
         return 2
@@ -2022,7 +2022,7 @@ def _cmd_push(args: argparse.Namespace, quiet: bool) -> int:
     import os
 
     try:
-        from squish.squash.sbom_builder import SbomRegistry
+        from squash.sbom_builder import SbomRegistry
     except ImportError as e:
         print(f"squash is not installed: {e}", file=sys.stderr)
         return 2
@@ -2060,7 +2060,7 @@ def _cmd_push(args: argparse.Namespace, quiet: bool) -> int:
 # ── Wave 20 — NTIA check handler ───────────────────────────────────────────────
 
 def _cmd_ntia_check(args: argparse.Namespace, quiet: bool) -> int:
-    from squish.squash.policy import NtiaValidator
+    from squash.policy import NtiaValidator
 
     bom_path = Path(args.bom_path)
     if not bom_path.exists():
@@ -2084,7 +2084,7 @@ def _cmd_ntia_check(args: argparse.Namespace, quiet: bool) -> int:
 # ── Wave 21 — SLSA attest handler ─────────────────────────────────────────────
 
 def _cmd_slsa_attest(args: argparse.Namespace, quiet: bool) -> int:
-    from squish.squash.slsa import SlsaLevel, SlsaProvenanceBuilder
+    from squash.slsa import SlsaLevel, SlsaProvenanceBuilder
 
     model_dir = Path(args.model_dir)
     if not model_dir.exists():
@@ -2112,7 +2112,7 @@ def _cmd_slsa_attest(args: argparse.Namespace, quiet: bool) -> int:
 # ── Wave 22 — BOM merge handler ───────────────────────────────────────────────
 
 def _cmd_merge(args: argparse.Namespace, quiet: bool) -> int:
-    from squish.squash.sbom_builder import BomMerger
+    from squash.sbom_builder import BomMerger
 
     bom_paths = [Path(p) for p in args.bom_paths]
     output_path = Path(args.output)
@@ -2134,7 +2134,7 @@ def _cmd_merge(args: argparse.Namespace, quiet: bool) -> int:
 # ── Wave 23 — Risk assess handler ─────────────────────────────────────────────
 
 def _cmd_risk_assess(args: argparse.Namespace, quiet: bool) -> int:
-    from squish.squash.risk import AiRiskAssessor
+    from squash.risk import AiRiskAssessor
 
     model_dir = Path(args.model_dir)
     bom_path = model_dir / "cyclonedx-mlbom.json"
@@ -2171,7 +2171,7 @@ def _cmd_risk_assess(args: argparse.Namespace, quiet: bool) -> int:
 # ── Wave 24 — Drift monitor handler ───────────────────────────────────────────
 
 def _cmd_monitor(args: argparse.Namespace, quiet: bool) -> int:
-    from squish.squash.governor import DriftMonitor
+    from squash.governor import DriftMonitor
 
     model_dir = Path(args.model_dir)
     if not model_dir.exists():
@@ -2204,7 +2204,7 @@ def _cmd_monitor(args: argparse.Namespace, quiet: bool) -> int:
 # ── Wave 25 — CI run handler ───────────────────────────────────────────────────
 
 def _cmd_ci_run(args: argparse.Namespace, quiet: bool) -> int:
-    from squish.squash.cicd import CicdAdapter
+    from squash.cicd import CicdAdapter
 
     model_dir = Path(args.model_dir)
     if not model_dir.exists():
@@ -2224,7 +2224,7 @@ def _cmd_ci_run(args: argparse.Namespace, quiet: bool) -> int:
 # ── Wave 27 — Kubernetes admission webhook handler ─────────────────────────────
 
 def _cmd_webhook(args: argparse.Namespace, quiet: bool) -> int:
-    from squish.squash.integrations.kubernetes import (
+    from squash.integrations.kubernetes import (
         KubernetesWebhookHandler,
         WebhookConfig,
         serve_webhook,
@@ -2260,7 +2260,7 @@ def _cmd_shadow_ai(args: argparse.Namespace, quiet: bool) -> int:  # noqa: C901
     """Run the shadow-ai scan subcommand."""
     import json as _json
 
-    from squish.squash.integrations.kubernetes import (
+    from squash.integrations.kubernetes import (
         ShadowAiConfig,
         ShadowAiScanner,
         SHADOW_AI_MODEL_EXTENSIONS,
@@ -2340,7 +2340,7 @@ def _cmd_drift_check(args: argparse.Namespace, quiet: bool) -> int:
     """Run the drift-check subcommand (W51)."""
     import json as _json
     import dataclasses
-    from squish.squash.drift import DriftConfig, check_drift
+    from squash.drift import DriftConfig, check_drift
 
     bom_path = Path(getattr(args, "bom", "") or "")
     model_dir = Path(args.model_dir)
@@ -2402,7 +2402,7 @@ def _cmd_vex_publish(args: argparse.Namespace, quiet: bool) -> int:
     import json as _json
     import sys as _sys
 
-    from squish.squash.vex import VexFeedManifest
+    from squash.vex import VexFeedManifest
 
     # Resolve entries: inline JSON string, '-' for stdin, or file path
     entries_raw: str = args.entries
@@ -2454,7 +2454,7 @@ def _cmd_attest_mlflow(args: argparse.Namespace, quiet: bool) -> int:
     """Run the attestation pipeline and emit result JSON (MLflow-compatible offline shim)."""
     import json as _json
 
-    from squish.squash.attest import AttestConfig, AttestPipeline
+    from squash.attest import AttestConfig, AttestPipeline
 
     model_path = Path(args.model_path)
     if not model_path.exists():
@@ -2495,7 +2495,7 @@ def _cmd_attest_wandb(args: argparse.Namespace, quiet: bool) -> int:
     """Run the attestation pipeline and emit result JSON (W&B-compatible offline shim)."""
     import json as _json
 
-    from squish.squash.attest import AttestConfig, AttestPipeline
+    from squash.attest import AttestConfig, AttestPipeline
 
     model_path = Path(args.model_path)
     if not model_path.exists():
@@ -2550,7 +2550,7 @@ def _cmd_attest_huggingface(args: argparse.Namespace, quiet: bool) -> int:
     if repo_id:
         # Full push via HFSquash
         try:
-            from squish.squash.integrations.huggingface import HFSquash
+            from squash.integrations.huggingface import HFSquash
         except ImportError as e:
             print(f"error: HFSquash not available: {e}", file=sys.stderr)
             return 2
@@ -2568,7 +2568,7 @@ def _cmd_attest_huggingface(args: argparse.Namespace, quiet: bool) -> int:
             return 2
     else:
         # Offline attestation only (no push)
-        from squish.squash.attest import AttestConfig, AttestPipeline
+        from squash.attest import AttestConfig, AttestPipeline
 
         config = AttestConfig(
             model_path=model_path,
@@ -2596,7 +2596,7 @@ def _cmd_attest_langchain(args: argparse.Namespace, quiet: bool) -> int:
     """Run a one-shot attestation pass on a model (matches SquashCallback first-run behaviour)."""
     import json as _json
 
-    from squish.squash.attest import AttestConfig, AttestPipeline
+    from squash.attest import AttestConfig, AttestPipeline
 
     model_path = Path(args.model_path)
     if not model_path.exists():
@@ -2636,7 +2636,7 @@ def _cmd_attest_mcp(args: argparse.Namespace, quiet: bool) -> int:
     """Scan an MCP tool manifest catalog for supply-chain threats."""
     import json as _json
 
-    from squish.squash.mcp import McpScanner, McpSigner
+    from squash.mcp import McpScanner, McpSigner
 
     catalog_path = Path(args.catalog_path)
     if not catalog_path.exists():
@@ -2695,7 +2695,7 @@ def _cmd_audit(args: argparse.Namespace, quiet: bool) -> int:
         return 1
 
     try:
-        from squish.squash.governor import AgentAuditLogger
+        from squash.governor import AgentAuditLogger
     except ImportError as e:
         print(f"squash is not installed: {e}", file=sys.stderr)
         return 2
@@ -2749,7 +2749,7 @@ def _cmd_lineage(args: argparse.Namespace, quiet: bool) -> int:
         return 1
 
     try:
-        from squish.squash.lineage import LineageChain  # lazy — keeps cli.py import-fast
+        from squash.lineage import LineageChain  # lazy — keeps cli.py import-fast
     except ImportError as e:
         print(f"squash is not installed: {e}", file=sys.stderr)
         return 2
@@ -2842,7 +2842,7 @@ def _cmd_lineage(args: argparse.Namespace, quiet: bool) -> int:
 
 def _cmd_scan_rag(args: argparse.Namespace, quiet: bool) -> int:
     """Handler for ``squash scan-rag index`` and ``squash scan-rag verify``."""
-    from squish.squash.rag import RagScanner  # lazy — keeps cli.py import-fast
+    from squash.rag import RagScanner  # lazy — keeps cli.py import-fast
 
     sub = getattr(args, "scan_rag_command", None)
     if sub is None:
@@ -2899,7 +2899,7 @@ def _cmd_scan_rag(args: argparse.Namespace, quiet: bool) -> int:
 
 def _cmd_remediate(args: argparse.Namespace, quiet: bool) -> int:
     try:
-        from squish.squash.remediate import Remediator
+        from squash.remediate import Remediator
     except ImportError as exc:
         print(f"squash remediate requires torch and safetensors: {exc}", file=sys.stderr)
         return 2
@@ -2937,7 +2937,7 @@ def _cmd_remediate(args: argparse.Namespace, quiet: bool) -> int:
 
 def _cmd_evaluate(args: argparse.Namespace, quiet: bool) -> int:
     try:
-        from squish.squash.evaluator import EvalEngine
+        from squash.evaluator import EvalEngine
     except ImportError as exc:
         print(f"squash evaluate unavailable: {exc}", file=sys.stderr)
         return 2
@@ -2980,7 +2980,7 @@ def _cmd_evaluate(args: argparse.Namespace, quiet: bool) -> int:
 
 def _cmd_edge_scan(args: argparse.Namespace, quiet: bool) -> int:
     try:
-        from squish.squash.edge_formats import (
+        from squash.edge_formats import (
             TFLiteParser,
             CoreMLParser,
             EdgeSecurityScanner,
@@ -3083,7 +3083,7 @@ def _cmd_edge_scan(args: argparse.Namespace, quiet: bool) -> int:
 
 def _cmd_chat(args: argparse.Namespace, quiet: bool) -> int:
     try:
-        from squish.squash.chat import ChatSession
+        from squash.chat import ChatSession
     except ImportError as exc:
         print(f"squash chat unavailable: {exc}", file=sys.stderr)
         return 2
@@ -3119,7 +3119,7 @@ def _cmd_chat(args: argparse.Namespace, quiet: bool) -> int:
 def _cmd_model_card(args: argparse.Namespace, quiet: bool) -> int:
     """Generate regulation-compliant model cards from squash attestation artifacts."""
     try:
-        from squish.squash.model_card import ModelCardConfig, ModelCardGenerator
+        from squash.model_card import ModelCardConfig, ModelCardGenerator
     except ImportError as exc:
         print(f"squash model-card unavailable: {exc}", file=sys.stderr)
         return 2
@@ -3157,7 +3157,7 @@ def _cmd_model_card(args: argparse.Namespace, quiet: bool) -> int:
 def _cmd_cloud_status(args: argparse.Namespace, quiet: bool) -> int:
     """Show EU AI Act conformance status for a single tenant. Exit 0=conformant, 2=non-conformant."""
     try:
-        from squish.squash import api as _api
+        from squash import api as _api
     except ImportError as exc:
         print(f"squash is not installed: {exc}", file=sys.stderr)
         return 2
@@ -3195,7 +3195,7 @@ def _cmd_cloud_status(args: argparse.Namespace, quiet: bool) -> int:
 def _cmd_cloud_report(args: argparse.Namespace, quiet: bool) -> int:
     """Print platform-wide EU AI Act conformance report. Exit 0=all conformant, 2=any non-conformant."""
     try:
-        from squish.squash import api as _api
+        from squash import api as _api
     except ImportError as exc:
         print(f"squash is not installed: {exc}", file=sys.stderr)
         return 2
@@ -3237,7 +3237,7 @@ def _cmd_cloud_report(args: argparse.Namespace, quiet: bool) -> int:
 def _cmd_cloud_export(args: argparse.Namespace, quiet: bool) -> int:
     """Export a complete compliance audit bundle for a tenant. Always exits 0 on success."""
     try:
-        from squish.squash import api as _api
+        from squash import api as _api
     except ImportError as exc:
         print(f"squash is not installed: {exc}", file=sys.stderr)
         return 2
@@ -3270,8 +3270,8 @@ def _cmd_cloud_attest(args: argparse.Namespace, quiet: bool) -> int:
     Exit codes: 0=attested+passed+registered, 1=bad-args/tenant-not-found, 2=attest-failed.
     """
     try:
-        from squish.squash import api as _api
-        from squish.squash.attest import AttestConfig, AttestPipeline
+        from squash import api as _api
+        from squash.attest import AttestConfig, AttestPipeline
     except ImportError as exc:
         print(f"squash is not installed: {exc}", file=sys.stderr)
         return 2
@@ -3359,7 +3359,7 @@ def _cmd_cloud_attest(args: argparse.Namespace, quiet: bool) -> int:
 def _cmd_cloud_vex(args: argparse.Namespace, quiet: bool) -> int:
     """List VEX/CVE alerts for a tenant. Exit 0=success, 1=tenant-not-found, 2=server-error."""
     try:
-        from squish.squash import api as _api
+        from squash import api as _api
     except ImportError as exc:
         print(f"squash is not installed: {exc}", file=sys.stderr)
         return 2
@@ -3420,7 +3420,7 @@ def _cmd_cloud_risk(args: argparse.Namespace, quiet: bool) -> int:
         2 = overall tier is HIGH or UNACCEPTABLE (non-conformant)
     """
     try:
-        from squish.squash import api as _api
+        from squash import api as _api
     except ImportError as exc:
         print(f"squash is not installed: {exc}", file=sys.stderr)
         return 2
@@ -3582,7 +3582,7 @@ def _cmd_cloud_risk(args: argparse.Namespace, quiet: bool) -> int:
         2 = overall tier is HIGH or UNACCEPTABLE (non-conformant)
     """
     try:
-        from squish.squash import api as _api
+        from squash import api as _api
     except ImportError as exc:
         print(f"squash is not installed: {exc}", file=sys.stderr)
         return 2
@@ -3744,7 +3744,7 @@ def _cmd_cloud_remediate(args: argparse.Namespace, quiet: bool) -> int:
         2 = plan contains one or more priority-1 (critical) steps
     """
     try:
-        from squish.squash import api as _api
+        from squash import api as _api
         from squash.risk import generate_remediation_plan
     except ImportError as exc:
         print(f"squash is not installed: {exc}", file=sys.stderr)

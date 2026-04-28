@@ -135,40 +135,40 @@ def _pod_list(*pods) -> dict:
 
 class TestShadowAiModelExtensions:
     def test_gguf_present(self):
-        from squish.squash.integrations.kubernetes import SHADOW_AI_MODEL_EXTENSIONS
+        from squash.integrations.kubernetes import SHADOW_AI_MODEL_EXTENSIONS
         assert ".gguf" in SHADOW_AI_MODEL_EXTENSIONS
 
     def test_safetensors_present(self):
-        from squish.squash.integrations.kubernetes import SHADOW_AI_MODEL_EXTENSIONS
+        from squash.integrations.kubernetes import SHADOW_AI_MODEL_EXTENSIONS
         assert ".safetensors" in SHADOW_AI_MODEL_EXTENSIONS
 
     def test_pt_present(self):
-        from squish.squash.integrations.kubernetes import SHADOW_AI_MODEL_EXTENSIONS
+        from squash.integrations.kubernetes import SHADOW_AI_MODEL_EXTENSIONS
         assert ".pt" in SHADOW_AI_MODEL_EXTENSIONS
 
     def test_onnx_present(self):
-        from squish.squash.integrations.kubernetes import SHADOW_AI_MODEL_EXTENSIONS
+        from squash.integrations.kubernetes import SHADOW_AI_MODEL_EXTENSIONS
         assert ".onnx" in SHADOW_AI_MODEL_EXTENSIONS
 
     def test_tflite_present(self):
-        from squish.squash.integrations.kubernetes import SHADOW_AI_MODEL_EXTENSIONS
+        from squash.integrations.kubernetes import SHADOW_AI_MODEL_EXTENSIONS
         assert ".tflite" in SHADOW_AI_MODEL_EXTENSIONS
 
     def test_mlmodel_present(self):
-        from squish.squash.integrations.kubernetes import SHADOW_AI_MODEL_EXTENSIONS
+        from squash.integrations.kubernetes import SHADOW_AI_MODEL_EXTENSIONS
         assert ".mlmodel" in SHADOW_AI_MODEL_EXTENSIONS
 
     def test_bin_and_pkl_present(self):
-        from squish.squash.integrations.kubernetes import SHADOW_AI_MODEL_EXTENSIONS
+        from squash.integrations.kubernetes import SHADOW_AI_MODEL_EXTENSIONS
         assert ".bin" in SHADOW_AI_MODEL_EXTENSIONS
         assert ".pkl" in SHADOW_AI_MODEL_EXTENSIONS
 
     def test_is_frozenset(self):
-        from squish.squash.integrations.kubernetes import SHADOW_AI_MODEL_EXTENSIONS
+        from squash.integrations.kubernetes import SHADOW_AI_MODEL_EXTENSIONS
         assert isinstance(SHADOW_AI_MODEL_EXTENSIONS, frozenset)
 
     def test_all_lowercase_with_dot(self):
-        from squish.squash.integrations.kubernetes import SHADOW_AI_MODEL_EXTENSIONS
+        from squash.integrations.kubernetes import SHADOW_AI_MODEL_EXTENSIONS
         for ext in SHADOW_AI_MODEL_EXTENSIONS:
             assert ext.startswith("."), f"extension {ext!r} missing leading dot"
             assert ext == ext.lower(), f"extension {ext!r} is not lowercase"
@@ -181,7 +181,7 @@ class TestShadowAiModelExtensions:
 
 class TestShadowAiConfig:
     def test_defaults(self):
-        from squish.squash.integrations.kubernetes import (
+        from squash.integrations.kubernetes import (
             ShadowAiConfig,
             SHADOW_AI_MODEL_EXTENSIONS,
         )
@@ -193,18 +193,18 @@ class TestShadowAiConfig:
         assert cfg.namespaces_include == []
 
     def test_custom_extensions(self):
-        from squish.squash.integrations.kubernetes import ShadowAiConfig
+        from squash.integrations.kubernetes import ShadowAiConfig
         custom = frozenset({".gguf"})
         cfg = ShadowAiConfig(scan_extensions=custom)
         assert cfg.scan_extensions == custom
 
     def test_namespaces_include(self):
-        from squish.squash.integrations.kubernetes import ShadowAiConfig
+        from squash.integrations.kubernetes import ShadowAiConfig
         cfg = ShadowAiConfig(namespaces_include=["prod", "staging"])
         assert "prod" in cfg.namespaces_include
 
     def test_disable_env_scan(self):
-        from squish.squash.integrations.kubernetes import ShadowAiConfig
+        from squash.integrations.kubernetes import ShadowAiConfig
         cfg = ShadowAiConfig(scan_env_vars=False)
         assert cfg.scan_env_vars is False
 
@@ -216,7 +216,7 @@ class TestShadowAiConfig:
 
 class TestScanPodForModelFiles:
     def _scan(self, pod, **kwargs):
-        from squish.squash.integrations.kubernetes import (
+        from squash.integrations.kubernetes import (
             ShadowAiConfig,
             scan_pod_for_model_files,
         )
@@ -345,7 +345,7 @@ class TestScanPodForModelFiles:
         assert names == {"a", "b"}
 
     def test_custom_extension_set(self):
-        from squish.squash.integrations.kubernetes import ShadowAiConfig, scan_pod_for_model_files
+        from squash.integrations.kubernetes import ShadowAiConfig, scan_pod_for_model_files
         pod = _pod_with_env("/vol/model.xyz")
         hits = scan_pod_for_model_files(pod, ShadowAiConfig(scan_extensions=frozenset({".xyz"})))
         assert len(hits) == 1
@@ -365,7 +365,7 @@ class TestScanPodForModelFiles:
 
 class TestShadowAiScanResult:
     def _result(self, hits, pods_scanned=1):
-        from squish.squash.integrations.kubernetes import ShadowAiScanResult
+        from squash.integrations.kubernetes import ShadowAiScanResult
         ok = len(hits) == 0
         summary = "clean" if ok else f"{len(hits)} hit(s)"
         return ShadowAiScanResult(hits=hits, pods_scanned=pods_scanned, ok=ok, summary=summary)
@@ -375,7 +375,7 @@ class TestShadowAiScanResult:
         assert r.ok is True
 
     def test_ok_false_when_hits_present(self):
-        from squish.squash.integrations.kubernetes import ShadowAiHit
+        from squash.integrations.kubernetes import ShadowAiHit
         hit = ShadowAiHit("p", "ns", "c", "arg", "/m.gguf", ".gguf")
         r = self._result([hit])
         assert r.ok is False
@@ -397,7 +397,7 @@ class TestShadowAiScanResult:
 
 class TestShadowAiScanner:
     def _scanner(self, **kwargs):
-        from squish.squash.integrations.kubernetes import ShadowAiConfig, ShadowAiScanner
+        from squash.integrations.kubernetes import ShadowAiConfig, ShadowAiScanner
         return ShadowAiScanner(ShadowAiConfig(**kwargs))
 
     def test_scan_empty_pod_list(self):
@@ -474,7 +474,7 @@ class TestShadowAiScanner:
         assert result.pods_scanned == 2
 
     def test_default_config_used_when_none_passed(self):
-        from squish.squash.integrations.kubernetes import ShadowAiScanner
+        from squash.integrations.kubernetes import ShadowAiScanner
         scanner = ShadowAiScanner()
         assert scanner.config is not None
 
@@ -486,12 +486,12 @@ class TestShadowAiScanner:
 
 class TestWebhookConfigShadowAiField:
     def test_default_shadow_ai_scan_mode_is_false(self):
-        from squish.squash.integrations.kubernetes import WebhookConfig
+        from squash.integrations.kubernetes import WebhookConfig
         cfg = WebhookConfig()
         assert cfg.shadow_ai_scan_mode is False
 
     def test_shadow_ai_scan_mode_can_be_enabled(self):
-        from squish.squash.integrations.kubernetes import WebhookConfig
+        from squash.integrations.kubernetes import WebhookConfig
         cfg = WebhookConfig(shadow_ai_scan_mode=True)
         assert cfg.shadow_ai_scan_mode is True
 
@@ -503,7 +503,7 @@ class TestWebhookConfigShadowAiField:
 
 class TestAnnotationShadowAI:
     def test_constant_value(self):
-        from squish.squash.integrations.kubernetes import ANNOTATION_SHADOW_AI
+        from squash.integrations.kubernetes import ANNOTATION_SHADOW_AI
         assert ANNOTATION_SHADOW_AI == "squash.ai/shadow-ai-detected"
 
 
@@ -517,7 +517,7 @@ class TestCliShadowAiScan:
 
     def _parser(self):
         sys.path.insert(0, str(_REPO_ROOT))
-        from squish.squash.cli import _build_parser
+        from squash.cli import _build_parser
         return _build_parser()
 
     def _make_pod_list_file(self, tmp_path, pods: list | None = None) -> Path:

@@ -20,7 +20,7 @@ class TestCloudDB:
     """Validate CloudDB with an in-memory SQLite database."""
 
     def _make_db(self):
-        from squish.squash.cloud_db import CloudDB
+        from squash.cloud_db import CloudDB
         return CloudDB(path=":memory:")
 
     def test_upsert_and_get_tenant(self):
@@ -86,7 +86,7 @@ class TestCloudDB:
         assert result[2]["i"] == 9
 
     def test_per_tenant_limit_prunes_oldest(self):
-        from squish.squash.cloud_db import CloudDB
+        from squash.cloud_db import CloudDB
         db = CloudDB(path=":memory:", per_tenant_limit=5)
         for i in range(8):
             db.append_record("inventory", "t1", {"i": i})
@@ -121,7 +121,7 @@ class TestCloudDB:
 
     def test_on_disk_persistence(self):
         """Data written to an on-disk db survives reconnection."""
-        from squish.squash.cloud_db import CloudDB
+        from squash.cloud_db import CloudDB
         with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
             path = f.name
         try:
@@ -140,7 +140,7 @@ class TestCloudDB:
 
     def test_make_db_returns_none_for_memory(self):
         """_make_db() returns None when env var is absent or :memory:."""
-        from squish.squash.cloud_db import _make_db
+        from squash.cloud_db import _make_db
         original = os.environ.pop("SQUASH_CLOUD_DB", None)
         try:
             assert _make_db() is None
@@ -154,7 +154,7 @@ class TestCloudDB:
 
     def test_make_db_returns_clouddb_for_path(self):
         """_make_db() returns a CloudDB instance when env var is a file path."""
-        from squish.squash.cloud_db import _make_db, CloudDB
+        from squash.cloud_db import _make_db, CloudDB
         with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
             path = f.name
         try:
@@ -180,7 +180,7 @@ import json, sys
 sys.path.insert(0, {repr(str(pathlib.Path(__file__).parent.parent))})
 payload = json.loads({repr(payload_json)})
 from fastapi.testclient import TestClient
-from squish.squash.api import app
+from squash.api import app
 client = TestClient(app, raise_server_exceptions=False)
 resp = client.post("/drift-check", json=payload)
 print(json.dumps({{"status": resp.status_code, "body": resp.json()}}))

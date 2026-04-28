@@ -36,7 +36,7 @@ pytest.importorskip("fastapi")
 
 from fastapi.testclient import TestClient
 
-from squish.squash.api import (
+from squash.api import (
     _inventory,
     _policy_stats,
     _tenants,
@@ -624,12 +624,12 @@ class TestCloudJwtAuth:
 
 class TestAttestRequestTenantId:
     def test_tenant_id_field_exists_and_defaults_empty(self):
-        from squish.squash.api import AttestRequest
+        from squash.api import AttestRequest
         req = AttestRequest(model_path="/x")
         assert req.tenant_id == ""
 
     def test_tenant_id_field_accepts_value(self):
-        from squish.squash.api import AttestRequest
+        from squash.api import AttestRequest
         req = AttestRequest(model_path="/x", tenant_id="my-tenant")
         assert req.tenant_id == "my-tenant"
 
@@ -640,13 +640,13 @@ class TestAttestRequestTenantId:
 
 class TestCloudModelShapeContracts:
     def test_tenant_create_request_fields(self):
-        from squish.squash.api import TenantCreateRequest
+        from squash.api import TenantCreateRequest
         m = TenantCreateRequest(tenant_id="t", name="Test")
         assert m.plan == "community"
         assert m.contact_email == ""
 
     def test_inventory_register_request_defaults(self):
-        from squish.squash.api import InventoryRegisterRequest
+        from squash.api import InventoryRegisterRequest
         m = InventoryRegisterRequest(
             tenant_id="t", model_id="m", model_path="/p", attestation_passed=True
         )
@@ -655,13 +655,13 @@ class TestCloudModelShapeContracts:
         assert m.timestamp == ""
 
     def test_vex_alert_request_defaults(self):
-        from squish.squash.api import VexAlertRequest
+        from squash.api import VexAlertRequest
         m = VexAlertRequest(tenant_id="t", cve_id="CVE-2024-001")
         assert m.severity == "unknown"
         assert m.status == "open"
 
     def test_drift_event_request_defaults(self):
-        from squish.squash.api import DriftEventRequest
+        from squash.api import DriftEventRequest
         m = DriftEventRequest(tenant_id="t", model_id="m", bom_a="a", bom_b="b")
         assert m.added == []
         assert m.severity == "info"

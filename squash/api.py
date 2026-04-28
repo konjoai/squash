@@ -22,11 +22,11 @@ standalone compliance sidecar.
 
 Start from CLI::
 
-    uvicorn squish.squash.api:app --host 0.0.0.0 --port 4444
+    uvicorn squash.api:app --host 0.0.0.0 --port 4444
 
 Or programmatically::
 
-    from squish.squash.api import app
+    from squash.api import app
     import uvicorn
     uvicorn.run(app, host="127.0.0.1", port=4444)
 
@@ -63,9 +63,9 @@ except ImportError as _e:
         "Install with: pip install 'squish[squash-api]'"
     ) from _e
 
-from squish.squash.attest import AttestConfig, AttestPipeline, AttestResult
-from squish.squash.policy import AVAILABLE_POLICIES, PolicyEngine, PolicyRegistry
-from squish.squash.scanner import ModelScanner
+from squash.attest import AttestConfig, AttestPipeline, AttestResult
+from squash.policy import AVAILABLE_POLICIES, PolicyEngine, PolicyRegistry
+from squash.scanner import ModelScanner
 
 log = logging.getLogger(__name__)
 
@@ -167,7 +167,7 @@ _ado_results: defaultdict[str, deque] = defaultdict(
 # Optional write-through to a SQLite file.  Set SQUASH_CLOUD_DB=/path/to/db to
 # enable durability.  When absent (default) all stores remain in-memory only.
 try:
-    from squish.squash.cloud_db import CloudDB as _CloudDB, _make_db as _make_cloud_db
+    from squash.cloud_db import CloudDB as _CloudDB, _make_db as _make_cloud_db
     _db: "_CloudDB | None" = _make_cloud_db()
 except Exception:  # pragma: no cover
     _db = None  # type: ignore[assignment]
@@ -994,7 +994,7 @@ async def attest(req: AttestRequest) -> JSONResponse:
     spdx_options = None
     if any([req.spdx_type, req.spdx_safety_risk, req.spdx_training_info,
             req.spdx_sensitive_data, req.spdx_datasets]):
-        from squish.squash.spdx_builder import SpdxOptions
+        from squash.spdx_builder import SpdxOptions
         spdx_options = SpdxOptions(
             type_of_model=req.spdx_type or "text-generation",
             safety_risk_assessment=req.spdx_safety_risk or "unspecified",
@@ -1141,7 +1141,7 @@ async def scan_result_sarif(job_id: str) -> JSONResponse:
     - ``404``  job_id unknown
     - ``400``  job ended with an error (no scan result to convert)
     """
-    from squish.squash.sarif import SarifBuilder  # noqa: PLC0415
+    from squash.sarif import SarifBuilder  # noqa: PLC0415
 
     job = _scan_jobs.get(job_id)
     if job is None:
@@ -1225,7 +1225,7 @@ async def evaluate_vex(req: VexEvaluateRequest) -> JSONResponse:
     and runs VexEvaluator.  Returns a VEX report with affected CVEs.
     """
     try:
-        from squish.squash.vex import (
+        from squash.vex import (
             VexFeed,
             VexEvaluator,
             ModelInventory,
@@ -1284,7 +1284,7 @@ async def vex_status() -> JSONResponse:
     callers should check the ``empty`` field before relying on other fields.
     """
     try:
-        from squish.squash.vex import VexCache  # noqa: PLC0415
+        from squash.vex import VexCache  # noqa: PLC0415
     except ImportError:
         raise HTTPException(500, "VEX engine not available (import error)")
 
@@ -1319,7 +1319,7 @@ async def vex_update(req: VexUpdateRequest) -> JSONResponse:
     Returns 200 on success, 502 on network failure.
     """
     try:
-        from squish.squash.vex import VexCache  # noqa: PLC0415
+        from squash.vex import VexCache  # noqa: PLC0415
     except ImportError:
         raise HTTPException(500, "VEX engine not available (import error)")
 
@@ -1347,7 +1347,7 @@ async def vex_update(req: VexUpdateRequest) -> JSONResponse:
 @app.post("/sbom/diff")
 async def sbom_diff(req: SbomDiffRequest) -> JSONResponse:
     """Compare two CycloneDX BOMs and return a diff summary."""
-    from squish.squash.sbom_builder import SbomDiff
+    from squash.sbom_builder import SbomDiff
 
     _require_path(req.sbom_a_path)
     _require_path(req.sbom_b_path)
@@ -1380,7 +1380,7 @@ async def attest_verify(req: VerifyRequest) -> JSONResponse:
 
     Returns ``{"verified": bool, "skipped": bool, "reason": str}``.
     """
-    from squish.squash.oms_signer import OmsVerifier
+    from squash.oms_signer import OmsVerifier
 
     model_path = Path(req.model_path)
     if not model_path.exists():
@@ -1417,7 +1417,7 @@ async def get_report(model_path: str) -> Any:
     Returns ``text/html``.
     """
     from fastapi.responses import HTMLResponse
-    from squish.squash.report import ComplianceReporter
+    from squash.report import ComplianceReporter
 
     if not Path(model_path).exists():
         raise HTTPException(status_code=404, detail=f"Model path not found: {model_path}")
@@ -1433,7 +1433,7 @@ async def get_report(model_path: str) -> Any:
 @app.post("/webhooks/test")
 async def webhooks_test(req: WebhookTestRequest) -> JSONResponse:
     """Send a synthetic test event to the configured webhook URL."""
-    from squish.squash.policy import PolicyWebhook
+    from squash.policy import PolicyWebhook
 
     url = req.webhook_url or os.environ.get("SQUASH_WEBHOOK_URL", "")
     if not url:
@@ -1459,7 +1459,7 @@ async def webhooks_test(req: WebhookTestRequest) -> JSONResponse:
 @app.post("/attest/composed")
 async def attest_composed(req: ComposedAttestRequest) -> JSONResponse:
     """Run composite multi-model attestation and return the parent BOM path."""
-    from squish.squash.attest import CompositeAttestConfig, CompositeAttestPipeline
+    from squash.attest import CompositeAttestConfig, CompositeAttestPipeline
 
     for mp in req.model_paths:
         if not Path(mp).exists():
@@ -1488,7 +1488,7 @@ async def attest_composed(req: ComposedAttestRequest) -> JSONResponse:
 @app.post("/sbom/push")
 async def sbom_push(req: PushRequest) -> JSONResponse:
     """Push a CycloneDX BOM to an SBOM registry (Dependency-Track, GUAC, or squash)."""
-    from squish.squash.sbom_builder import SbomRegistry
+    from squash.sbom_builder import SbomRegistry
 
     model_path = Path(req.model_path)
     if not model_path.exists():
@@ -1533,7 +1533,7 @@ async def ntia_validate(req: NtiaRequest) -> JSONResponse:
     and ``present_fields``.
     """
     _require_path(req.bom_path)
-    from squish.squash.policy import NtiaValidator
+    from squash.policy import NtiaValidator
 
     def _run() -> dict:
         result = NtiaValidator.check(Path(req.bom_path), strict=req.strict)
@@ -1565,7 +1565,7 @@ async def slsa_attest(req: SlsaAttestRequest) -> JSONResponse:
     Returns ``output_path``, ``level``, ``subject_sha256``, and ``subject_name``.
     """
     _require_path(req.model_dir)
-    from squish.squash.slsa import SlsaLevel, SlsaProvenanceBuilder
+    from squash.slsa import SlsaLevel, SlsaProvenanceBuilder
 
     def _run() -> dict:
         level = SlsaLevel(req.level)
@@ -1603,7 +1603,7 @@ async def sbom_merge(req: BomMergeRequest) -> JSONResponse:
     """
     for p in req.bom_paths:
         _require_path(p)
-    from squish.squash.sbom_builder import BomMerger
+    from squash.sbom_builder import BomMerger
 
     def _run() -> dict:
         merged = BomMerger.merge(
@@ -1637,7 +1637,7 @@ async def risk_assess(req: RiskAssessRequest) -> JSONResponse:
     (default).
     """
     _require_path(req.model_dir)
-    from squish.squash.risk import AiRiskAssessor
+    from squash.risk import AiRiskAssessor
 
     def _run() -> dict:
         bom_path = Path(req.model_dir) / "cyclonedx-mlbom.json"
@@ -1679,7 +1679,7 @@ class MonitorCompareRequest(BaseModel):
 async def monitor_snapshot(req: MonitorSnapshotRequest) -> JSONResponse:
     """Return a SHA-256 snapshot fingerprint of *model_dir*."""
     _require_path(req.model_dir)
-    from squish.squash.governor import DriftMonitor
+    from squash.governor import DriftMonitor
 
     def _run() -> dict:
         snap = DriftMonitor.snapshot(Path(req.model_dir))
@@ -1696,7 +1696,7 @@ async def monitor_compare(req: MonitorCompareRequest) -> JSONResponse:
     Returns a list of drift events.
     """
     _require_path(req.model_dir)
-    from squish.squash.governor import DriftMonitor
+    from squash.governor import DriftMonitor
 
     def _run() -> dict:
         events = DriftMonitor.compare(Path(req.model_dir), req.baseline_snapshot)
@@ -1733,7 +1733,7 @@ async def cicd_report(req: CiRunRequest) -> JSONResponse:
     Runs NTIA validation, AI risk assessment, and drift detection.
     """
     _require_path(req.model_dir)
-    from squish.squash.cicd import CicdAdapter
+    from squash.cicd import CicdAdapter
 
     def _run() -> dict:
         report = CicdAdapter.run_pipeline(
@@ -1775,7 +1775,7 @@ async def vex_publish(req: VexPublishRequest) -> JSONResponse:
     Returns the full OpenVEX document JSON.  Validates the document before
     returning; responds with 422 if validation errors are found.
     """
-    from squish.squash.vex import VexFeedManifest
+    from squash.vex import VexFeedManifest
 
     def _run() -> dict:
         doc = VexFeedManifest.generate(
@@ -1931,7 +1931,7 @@ async def attest_huggingface(req: AttestHuggingFaceRequest) -> JSONResponse:
 
     def _run() -> dict:
         if req.repo_id:
-            from squish.squash.integrations.huggingface import HFSquash
+            from squash.integrations.huggingface import HFSquash
 
             result = HFSquash.attest_and_push(
                 req.repo_id,
@@ -2002,7 +2002,7 @@ async def attest_mcp(req: McpAttestRequest) -> JSONResponse:
     """
     _require_path(req.catalog_path)
 
-    from squish.squash.mcp import McpScanner, McpSigner  # lazy — keeps api.py import-fast
+    from squash.mcp import McpScanner, McpSigner  # lazy — keeps api.py import-fast
 
     def _run() -> dict:
         result = McpScanner.scan_file(Path(req.catalog_path), req.policy)
@@ -2047,7 +2047,7 @@ async def get_audit_trail(
         Override the audit log file path (default: ``SQUASH_AUDIT_LOG`` env or
         ``~/.squash/audit.jsonl``).
     """
-    from squish.squash.governor import AgentAuditLogger
+    from squash.governor import AgentAuditLogger
 
     limit = max(1, min(limit, 1000))
     logger = AgentAuditLogger(log_path=log)
@@ -2074,7 +2074,7 @@ async def post_rag_index(req: RagIndexRequest) -> JSONResponse:
     knowledge bases.  The returned ``manifest_hash`` is a deterministic
     content fingerprint suitable for CI/CD gating.
     """
-    from squish.squash.rag import RagScanner
+    from squash.rag import RagScanner
 
     corpus = Path(req.corpus_dir)
     if not corpus.is_dir():
@@ -2105,7 +2105,7 @@ async def post_rag_verify(req: RagVerifyRequest) -> JSONResponse:
     Returns HTTP 200 with ``"ok": false`` when drift exists — callers
     should gate deployments on the ``ok`` field, not the status code.
     """
-    from squish.squash.rag import RagScanner
+    from squash.rag import RagScanner
 
     corpus = Path(req.corpus_dir)
     if not corpus.exists():
@@ -2129,7 +2129,7 @@ async def post_lineage_record(req: LineageRecordRequest) -> JSONResponse:
 
     Equivalent to ``squash lineage record <model_dir> --operation <op>``.
     """
-    from squish.squash.lineage import LineageChain
+    from squash.lineage import LineageChain
 
     model_dir = Path(req.model_dir)
     model_dir.mkdir(parents=True, exist_ok=True)
@@ -2158,7 +2158,7 @@ async def get_lineage_show(model_dir: str) -> JSONResponse:
 
     Equivalent to ``squash lineage show <model_dir>``.
     """
-    from squish.squash.lineage import LineageChain
+    from squash.lineage import LineageChain
 
     mdir = Path(model_dir)
     if not mdir.exists():
@@ -2181,7 +2181,7 @@ async def post_lineage_verify(req: LineageVerifyRequest) -> JSONResponse:
     Returns HTTP 200 with ``"ok": true`` when the chain is intact.
     Returns HTTP 200 with ``"ok": false`` on tampering or missing chain.
     """
-    from squish.squash.lineage import LineageChain
+    from squash.lineage import LineageChain
 
     mdir = Path(req.model_dir)
     if not mdir.exists():
@@ -2206,7 +2206,7 @@ async def keygen(req: KeygenRequest) -> JSONResponse:
     Equivalent to ``squash keygen <name> --key-dir <dir>``.
     Returns the absolute paths to the generated ``.priv.pem`` and ``.pub.pem`` files.
     """
-    from squish.squash.oms_signer import OmsSigner
+    from squash.oms_signer import OmsSigner
 
     def _run() -> tuple[str, str]:
         priv, pub = OmsSigner.keygen(req.key_name, req.key_dir)
@@ -2228,7 +2228,7 @@ async def verify_local(req: VerifyLocalRequest) -> JSONResponse:
     Equivalent to ``squash verify-local <bom_path> --key <pub_key_path>``.
     Returns ``{"ok": true}`` on valid signature, ``{"ok": false}`` on failure.
     """
-    from squish.squash.oms_signer import OmsVerifier
+    from squash.oms_signer import OmsVerifier
 
     bom = Path(req.bom_path)
     if not bom.exists():
@@ -2259,7 +2259,7 @@ async def pack_offline(req: PackOfflineRequest) -> JSONResponse:
     Equivalent to ``squash pack-offline <model_dir>``.
     Returns the bundle path and its size in bytes.
     """
-    from squish.squash.oms_signer import OmsSigner
+    from squash.oms_signer import OmsSigner
 
     mdir = Path(req.model_dir)
     if not mdir.exists():
@@ -2632,7 +2632,7 @@ async def cloud_get_audit(
 
     Addresses EU AI Act Art. 12 and SEC cybersecurity disclosure requirements.
     """
-    from squish.squash.governor import AgentAuditLogger
+    from squash.governor import AgentAuditLogger
 
     tenant_id = _resolve_tenant_id(request)
     limit = max(1, min(limit, 1000))
@@ -3061,7 +3061,7 @@ async def post_drift_check(req: DriftCheckRequest) -> JSONResponse:
     and ``summary`` (str).  Each hit has ``path``, ``expected_digest``,
     ``actual_digest``, ``missing``, and ``tampered`` fields.
     """
-    from squish.squash.drift import DriftConfig, DriftResult, check_drift
+    from squash.drift import DriftConfig, DriftResult, check_drift
 
     model_path = Path(req.model_dir).resolve()
     bom = Path(req.bom_path).resolve()

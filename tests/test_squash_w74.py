@@ -26,9 +26,9 @@ from unittest import mock
 import pytest
 from fastapi.testclient import TestClient
 
-import squish.squash.api as _api_module
-from squish.squash.api import app
-from squish.squash.cloud_db import CloudDB
+import squash.api as _api_module
+from squash.api import app
+from squash.cloud_db import CloudDB
 
 # ── constants ─────────────────────────────────────────────────────────────────
 

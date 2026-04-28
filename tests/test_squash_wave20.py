@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from squish.squash.policy import NtiaResult, NtiaValidator
+from squash.policy import NtiaResult, NtiaValidator
 
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────

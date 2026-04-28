@@ -7,7 +7,7 @@ re-evaluates policy on every generation if ``continuous_audit=True``.
 Usage::
 
     from langchain_community.llms import LlamaCpp
-    from squish.squash.integrations.langchain import SquashCallback
+    from squash.integrations.langchain import SquashCallback
 
     callback = SquashCallback(
         model_path=Path("./llama-3.1-8b.gguf"),
@@ -29,7 +29,7 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from squish.squash.attest import AttestConfig, AttestPipeline, AttestResult
+from squash.attest import AttestConfig, AttestPipeline, AttestResult
 
 log = logging.getLogger(__name__)
 
@@ -150,8 +150,8 @@ class SquashAuditCallback(SquashCallback):
     their own ``AgentAuditLogger`` instance for test isolation or custom log
     paths::
 
-        from squish.squash.governor import AgentAuditLogger
-        from squish.squash.integrations.langchain import SquashAuditCallback
+        from squash.governor import AgentAuditLogger
+        from squash.integrations.langchain import SquashAuditCallback
 
         logger = AgentAuditLogger(log_path="/var/log/squash/audit.jsonl")
         callback = SquashAuditCallback(
@@ -188,7 +188,7 @@ class SquashAuditCallback(SquashCallback):
     def _get_logger(self):
         if self._audit_logger is not None:
             return self._audit_logger
-        from squish.squash.governor import get_audit_logger, _hash_text  # noqa: F401
+        from squash.governor import get_audit_logger, _hash_text  # noqa: F401
         return get_audit_logger()
 
     # ── LangChain callback overrides ──────────────────────────────────────────
@@ -203,7 +203,7 @@ class SquashAuditCallback(SquashCallback):
         self._start_ts = _time.monotonic()
         self._maybe_attest()
         try:
-            from squish.squash.governor import _hash_text
+            from squash.governor import _hash_text
             combined = "\n".join(prompts)
             self._get_logger().append(
                 session_id=self._session_id,
@@ -225,7 +225,7 @@ class SquashAuditCallback(SquashCallback):
         self._start_ts = _time.monotonic()
         self._maybe_attest()
         try:
-            from squish.squash.governor import _hash_text
+            from squash.governor import _hash_text
             combined = str(messages)
             self._get_logger().append(
                 session_id=self._session_id,
@@ -244,7 +244,7 @@ class SquashAuditCallback(SquashCallback):
             log.debug("Squash continuous audit: re-evaluating policy …")
             self._run_attestation()
         try:
-            from squish.squash.governor import _hash_text
+            from squash.governor import _hash_text
             output_text = str(getattr(response, "generations", response))
             self._get_logger().append(
                 session_id=self._session_id,

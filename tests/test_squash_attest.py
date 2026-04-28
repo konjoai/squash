@@ -16,7 +16,7 @@ from pathlib import Path
 
 import pytest
 
-from squish.squash.attest import (
+from squash.attest import (
     AttestConfig,
     AttestPipeline,
     AttestResult,

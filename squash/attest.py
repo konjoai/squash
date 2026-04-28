@@ -47,11 +47,11 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from squish.squash.sbom_builder import CompressRunMeta, CycloneDXBuilder
-from squish.squash.spdx_builder import SpdxBuilder, SpdxOptions
-from squish.squash.policy import PolicyEngine, PolicyResult, AVAILABLE_POLICIES
-from squish.squash.scanner import ModelScanner, ScanResult
-from squish.squash.oms_signer import OmsSigner, _is_offline
+from squash.sbom_builder import CompressRunMeta, CycloneDXBuilder
+from squash.spdx_builder import SpdxBuilder, SpdxOptions
+from squash.policy import PolicyEngine, PolicyResult, AVAILABLE_POLICIES
+from squash.scanner import ModelScanner, ScanResult
+from squash.oms_signer import OmsSigner, _is_offline
 
 log = logging.getLogger(__name__)
 
@@ -310,7 +310,7 @@ class AttestPipeline:
         if (config.vex_feed_path or config.vex_feed_url) and result.cyclonedx_path:
             log.info("Evaluating VEX feed …")
             try:
-                from squish.squash.vex import (
+                from squash.vex import (
                     VexFeed,
                     VexEvaluator,
                     ModelInventory,
@@ -467,7 +467,7 @@ def _annotate_bom_with_scan(bom_path: Path, scan: ScanResult) -> None:
 def _bind_training_provenance(bom_path: Path, dataset_ids: list[str]) -> None:
     """Resolve HF dataset provenance and bind to BOM (best-effort)."""
     try:
-        from squish.squash.provenance import ProvenanceCollector
+        from squash.provenance import ProvenanceCollector
         manifest = ProvenanceCollector.from_hf_datasets(dataset_ids)
         manifest.bind_to_sbom(bom_path)
     except Exception as e:  # broad catch — provenance is enrichment, not gating
@@ -476,7 +476,7 @@ def _bind_training_provenance(bom_path: Path, dataset_ids: list[str]) -> None:
 
 def _build_master_record(config: AttestConfig, result: AttestResult) -> dict[str, Any]:
     """Build the squash-attest.json master record."""
-    import squish
+    import squash as squish  # version reference
 
     now = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     policies_summary = {

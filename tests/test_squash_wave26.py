@@ -18,9 +18,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from squish.squash.integrations.sagemaker import SageMakerSquash, _TAG_PREFIX
-from squish.squash.sbom_builder import OrasAdapter
-from squish.squash.vex import (
+from squash.integrations.sagemaker import SageMakerSquash, _TAG_PREFIX
+from squash.sbom_builder import OrasAdapter
+from squash.vex import (
     SQUASH_VEX_FEED_FALLBACK_URL,
     SQUASH_VEX_FEED_URL,
     VexCache,

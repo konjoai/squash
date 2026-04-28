@@ -11,7 +11,7 @@ record of GCP Vertex AI model attestation outcomes for supply-chain traceability
 """
 from __future__ import annotations
 
-from squish.squash.cloud_db import CloudDB
+from squash.cloud_db import CloudDB
 from starlette.testclient import TestClient
 
 
@@ -87,7 +87,7 @@ class TestCloudAPIVertexResults:
     """8 integration tests for POST/GET /cloud/tenants/{tenant_id}/vertex-result(s)."""
 
     def setup_method(self) -> None:
-        from squish.squash import api
+        from squash import api
 
         api._tenants.clear()
         api._inventory.clear()

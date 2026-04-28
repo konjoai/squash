@@ -160,7 +160,7 @@ class CycloneDXBuilder:
     @staticmethod
     def _build_bom(meta: CompressRunMeta) -> dict[str, Any]:
         """Return the full CycloneDX 1.7 BOM as a plain Python dict."""
-        import squish  # local import — squish is always installed
+        import squash as squish  # version reference
 
         try:
             import mlx_lm  # optional at import time; core dep in practice

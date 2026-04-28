@@ -15,8 +15,8 @@ from __future__ import annotations
 import pytest
 from fastapi.testclient import TestClient
 
-from squish.squash.api import app
-from squish.squash.cloud_db import CloudDB
+from squash.api import app
+from squash.cloud_db import CloudDB
 
 
 # ── helpers ──────────────────────────────────────────────────────────────────

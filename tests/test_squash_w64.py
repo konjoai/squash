@@ -9,8 +9,8 @@ from __future__ import annotations
 import pytest
 from starlette.testclient import TestClient
 
-from squish.squash.cloud_db import CloudDB
-from squish.squash.api import (
+from squash.cloud_db import CloudDB
+from squash.api import (
     app,
     _tenants,
     _policy_stats,

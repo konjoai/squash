@@ -25,7 +25,7 @@ class TestCloudDBDeleteTenant:
     """Unit tests for CloudDB.delete_tenant() — SQL cascade path."""
 
     def _make_db(self) -> Any:
-        from squish.squash.cloud_db import CloudDB
+        from squash.cloud_db import CloudDB
 
         tmp = tempfile.mktemp(suffix=".sqlite")  # noqa: S306
         db = CloudDB(tmp)
@@ -36,7 +36,7 @@ class TestCloudDBDeleteTenant:
 
     def test_delete_unknown_tenant_is_noop(self) -> None:
         """delete_tenant on a non-existent tenant_id raises no exception."""
-        from squish.squash.cloud_db import CloudDB
+        from squash.cloud_db import CloudDB
 
         with tempfile.NamedTemporaryFile(suffix=".sqlite", delete=False) as f:
             path = f.name
@@ -50,7 +50,7 @@ class TestCloudDBDeleteTenant:
 
     def test_delete_removes_tenant(self) -> None:
         """Upsert a tenant then delete it — get_tenant returns None."""
-        from squish.squash.cloud_db import CloudDB
+        from squash.cloud_db import CloudDB
 
         with tempfile.NamedTemporaryFile(suffix=".sqlite", delete=False) as f:
             path = f.name
@@ -67,7 +67,7 @@ class TestCloudDBDeleteTenant:
 
     def test_delete_cascades_inventory(self) -> None:
         """Appending inventory records then deleting the tenant cascades to 0 rows."""
-        from squish.squash.cloud_db import CloudDB
+        from squash.cloud_db import CloudDB
 
         with tempfile.NamedTemporaryFile(suffix=".sqlite", delete=False) as f:
             path = f.name
@@ -86,7 +86,7 @@ class TestCloudDBDeleteTenant:
 
     def test_delete_cascades_vex_alerts(self) -> None:
         """Appending VEX alert records then deleting the tenant cascades to 0 rows."""
-        from squish.squash.cloud_db import CloudDB
+        from squash.cloud_db import CloudDB
 
         with tempfile.NamedTemporaryFile(suffix=".sqlite", delete=False) as f:
             path = f.name
@@ -104,7 +104,7 @@ class TestCloudDBDeleteTenant:
 
     def test_delete_cascades_policy_stats(self) -> None:
         """Incrementing policy stats then deleting the tenant leaves no aggregate rows."""
-        from squish.squash.cloud_db import CloudDB
+        from squash.cloud_db import CloudDB
 
         with tempfile.NamedTemporaryFile(suffix=".sqlite", delete=False) as f:
             path = f.name
@@ -133,7 +133,7 @@ class TestCloudAPIPatch:
     @pytest.fixture(autouse=True)
     def _client(self) -> None:
         from fastapi.testclient import TestClient
-        from squish.squash.api import app, _tenants
+        from squash.api import app, _tenants
 
         _tenants.clear()
         self.client = TestClient(app, raise_server_exceptions=True)
@@ -212,7 +212,7 @@ class TestCloudAPIDelete:
     @pytest.fixture(autouse=True)
     def _client(self) -> None:
         from fastapi.testclient import TestClient
-        from squish.squash.api import app, _tenants, _inventory, _vex_alerts, _drift_events, _policy_stats
+        from squash.api import app, _tenants, _inventory, _vex_alerts, _drift_events, _policy_stats
 
         _tenants.clear()
         _inventory.clear()

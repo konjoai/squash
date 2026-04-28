@@ -38,14 +38,14 @@ class TestArtifactChunker(unittest.TestCase):
         path.write_text(json.dumps(bom))
 
     def test_load_returns_chunks_from_bom(self):
-        from squish.squash.chat import ArtifactChunker
+        from squash.chat import ArtifactChunker
         bom_path = Path(self.tmpdir) / "cyclonedx-mlbom.json"
         self._write_bom(bom_path)
         chunks = ArtifactChunker.load_model_dir(Path(self.tmpdir))
         self.assertGreater(len(chunks), 0)
 
     def test_chunk_source_file_matches_filename(self):
-        from squish.squash.chat import ArtifactChunker
+        from squash.chat import ArtifactChunker
         bom_path = Path(self.tmpdir) / "cyclonedx-mlbom.json"
         self._write_bom(bom_path)
         chunks = ArtifactChunker.load_model_dir(Path(self.tmpdir))
@@ -53,12 +53,12 @@ class TestArtifactChunker(unittest.TestCase):
         self.assertIn("cyclonedx-mlbom.json", sources)
 
     def test_empty_dir_returns_no_chunks(self):
-        from squish.squash.chat import ArtifactChunker
+        from squash.chat import ArtifactChunker
         chunks = ArtifactChunker.load_model_dir(Path(self.tmpdir))
         self.assertEqual(0, len(chunks))
 
     def test_chunk_text_contains_component_fields(self):
-        from squish.squash.chat import ArtifactChunker
+        from squash.chat import ArtifactChunker
         bom_path = Path(self.tmpdir) / "cyclonedx-mlbom.json"
         self._write_bom(bom_path)
         chunks = ArtifactChunker.load_model_dir(Path(self.tmpdir))
@@ -70,7 +70,7 @@ class TestBM25Retriever(unittest.TestCase):
     """Tests for BM25Retriever keyword scoring."""
 
     def _make_chunks(self):
-        from squish.squash.chat import Chunk
+        from squash.chat import Chunk
         return [
             Chunk("bom.json", "components[0]", "CVE-2024-0001 critical vulnerability in tokenizer"),
             Chunk("bom.json", "components[1]", "Apache License 2.0 model weights sha256"),
@@ -79,7 +79,7 @@ class TestBM25Retriever(unittest.TestCase):
         ]
 
     def test_retrieves_most_relevant_chunk(self):
-        from squish.squash.chat import BM25Retriever
+        from squash.chat import BM25Retriever
         chunks = self._make_chunks()
         retriever = BM25Retriever(chunks)
         results = retriever.retrieve("CVE vulnerability", k=1)
@@ -87,7 +87,7 @@ class TestBM25Retriever(unittest.TestCase):
         self.assertIn("CVE", results[0].text)
 
     def test_returns_empty_for_no_match(self):
-        from squish.squash.chat import BM25Retriever
+        from squash.chat import BM25Retriever
         chunks = self._make_chunks()
         retriever = BM25Retriever(chunks)
         # Query with terms that don't appear in any chunk
@@ -96,13 +96,13 @@ class TestBM25Retriever(unittest.TestCase):
         self.assertEqual(0, len(results))
 
     def test_empty_corpus_returns_empty(self):
-        from squish.squash.chat import BM25Retriever
+        from squash.chat import BM25Retriever
         retriever = BM25Retriever([])
         results = retriever.retrieve("anything", k=5)
         self.assertEqual([], results)
 
     def test_k_limits_results(self):
-        from squish.squash.chat import BM25Retriever
+        from squash.chat import BM25Retriever
         chunks = self._make_chunks()
         retriever = BM25Retriever(chunks)
         results = retriever.retrieve("model", k=2)
@@ -113,7 +113,7 @@ class TestChatAnswer(unittest.TestCase):
     """Tests for ChatAnswer str() formatting."""
 
     def test_str_contains_sources_block(self):
-        from squish.squash.chat import ChatAnswer
+        from squash.chat import ChatAnswer
         answer = ChatAnswer(
             question="Is there a CVE?",
             text="Yes, CVE-2024-0001 is present.",
@@ -126,7 +126,7 @@ class TestChatAnswer(unittest.TestCase):
         self.assertIn("cyclonedx-mlbom.json", rendered)
 
     def test_str_no_sources(self):
-        from squish.squash.chat import ChatAnswer
+        from squash.chat import ChatAnswer
         answer = ChatAnswer(
             question="q",
             text="answer",
@@ -170,7 +170,7 @@ class TestChatSessionMocked(unittest.TestCase):
         return FakeResponse()
 
     def test_ask_returns_chat_answer(self):
-        from squish.squash.chat import ChatSession, ChatAnswer
+        from squash.chat import ChatSession, ChatAnswer
         self._write_bom()
         session = ChatSession.from_model_dir(
             Path(self.tmpdir), endpoint="http://localhost/v1", model="llama3"
@@ -183,7 +183,7 @@ class TestChatSessionMocked(unittest.TestCase):
         self.assertGreater(len(answer.sources), 0)
 
     def test_ask_populates_history(self):
-        from squish.squash.chat import ChatSession
+        from squash.chat import ChatSession
         self._write_bom()
         session = ChatSession.from_model_dir(
             Path(self.tmpdir), endpoint="http://localhost/v1", model="llama3"
@@ -194,7 +194,7 @@ class TestChatSessionMocked(unittest.TestCase):
         self.assertEqual(2, len(session._history))  # user + assistant
 
     def test_clear_history_resets(self):
-        from squish.squash.chat import ChatSession
+        from squash.chat import ChatSession
         self._write_bom()
         session = ChatSession.from_model_dir(
             Path(self.tmpdir), endpoint="http://localhost/v1", model="llama3"
@@ -207,7 +207,7 @@ class TestChatSessionMocked(unittest.TestCase):
         self.assertEqual(0, len(session._history))
 
     def test_backend_error_returns_error_text(self):
-        from squish.squash.chat import ChatSession
+        from squash.chat import ChatSession
         self._write_bom()
         session = ChatSession.from_model_dir(
             Path(self.tmpdir), endpoint="http://localhost/v1", model="llama3"
@@ -217,7 +217,7 @@ class TestChatSessionMocked(unittest.TestCase):
         self.assertIn("unavailable", answer.text.lower())
 
     def test_from_model_dir_empty_dir_creates_session(self):
-        from squish.squash.chat import ChatSession
+        from squash.chat import ChatSession
         # Empty dir — no artifacts found; session should still be created
         session = ChatSession.from_model_dir(
             Path(self.tmpdir), endpoint="http://localhost/v1", model="llama3"

@@ -11,8 +11,8 @@ from unittest.mock import patch
 
 import pytest
 
-from squish.squash.sbom_builder import SbomDiff
-from squish.squash.policy import PolicyHistory, PolicyResult, PolicyFinding
+from squash.sbom_builder import SbomDiff
+from squash.policy import PolicyHistory, PolicyResult, PolicyFinding
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -185,7 +185,7 @@ class TestSquashDiffCli:
         path.write_text(json.dumps(bom))
 
     def test_diff_identical_exits_0(self):
-        from squish.squash.cli import main
+        from squash.cli import main
         bom = _make_bom()
         with tempfile.TemporaryDirectory() as tmpdir:
             a = Path(tmpdir) / "a.json"
@@ -201,7 +201,7 @@ class TestSquashDiffCli:
         assert exited == 0
 
     def test_diff_with_regression_and_flag_exits_1(self):
-        from squish.squash.cli import main
+        from squash.cli import main
         bom_a = _make_bom(vuln_ids=[])
         bom_b = _make_bom(vuln_ids=["CVE-2024-REGRESSION"])
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -218,7 +218,7 @@ class TestSquashDiffCli:
         assert exited == 1
 
     def test_diff_no_regression_flag_exits_0_even_with_regression(self):
-        from squish.squash.cli import main
+        from squash.cli import main
         bom_a = _make_bom(vuln_ids=[])
         bom_b = _make_bom(vuln_ids=["CVE-2024-REGRESSION"])
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -244,7 +244,7 @@ def api_client():
     pytest.importorskip("fastapi")
     from fastapi.testclient import TestClient
     os.environ.pop("SQUASH_API_TOKEN", None)
-    from squish.squash.api import app
+    from squash.api import app
     return TestClient(app)
 
 

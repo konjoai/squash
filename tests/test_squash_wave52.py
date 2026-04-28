@@ -22,7 +22,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from squish.squash.vex import (
+from squash.vex import (
     VexCache,
     VexDocument,
     VexFeed,

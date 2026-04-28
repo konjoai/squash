@@ -15,7 +15,7 @@ class TestOmsVerifierNoBundle(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             bom = Path(td) / "cyclonedx-mlbom.json"
             bom.write_text("{}")
-            from squish.squash.oms_signer import OmsVerifier
+            from squash.oms_signer import OmsVerifier
             result = OmsVerifier.verify(bom)
             self.assertIsNone(result)
 
@@ -32,14 +32,14 @@ class TestOmsVerifierNoBundle(unittest.TestCase):
                 from importlib import import_module
                 import importlib
                 # Force a fresh import path where sigstore ImportError is raised
-                from squish.squash import oms_signer as _mod
+                from squash import oms_signer as _mod
                 import importlib
                 # Patch the inner import inside verify()
                 orig = __builtins__.__import__ if hasattr(__builtins__, '__import__') else None
 
             # Direct approach: patch sigstore at module level via sys.modules
             with patch.dict(sys.modules, {"sigstore.verify": None, "sigstore.models": None}):
-                from squish.squash.oms_signer import OmsVerifier
+                from squash.oms_signer import OmsVerifier
                 # sigstore is already partially imported likely; test the no-bundle path
                 # This test validates None is returned when bundle exists but sigstore absent
                 # The behavior is: if ImportError raised → return None
@@ -80,7 +80,7 @@ class TestOmsVerifierNoBundle(unittest.TestCase):
             }):
                 # Re-import to pick up mock
                 import importlib
-                import squish.squash.oms_signer as mod
+                import squash.oms_signer as mod
                 importlib.reload(mod)
                 result = mod.OmsVerifier.verify(bom)
                 # reload again to restore original
@@ -117,7 +117,7 @@ class TestOmsVerifierNoBundle(unittest.TestCase):
                 "sigstore.models": mock_sigstore_models,
             }):
                 import importlib
-                import squish.squash.oms_signer as mod
+                import squash.oms_signer as mod
                 importlib.reload(mod)
                 result = mod.OmsVerifier.verify(bom)
                 importlib.reload(mod)
@@ -132,7 +132,7 @@ class TestOmsVerifierNoBundle(unittest.TestCase):
             bundle = Path(td) / "custom.sig.json"
             bom.write_text("{}")
             # bundle doesn't exist, so should return None
-            from squish.squash.oms_signer import OmsVerifier
+            from squash.oms_signer import OmsVerifier
             result = OmsVerifier.verify(bom, bundle_path=bundle)
             self.assertIsNone(result)
 
@@ -145,7 +145,7 @@ class TestOmsVerifierShapeContracts(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             bom = Path(td) / "cyclonedx-mlbom.json"
             bom.write_text("{}")
-            from squish.squash.oms_signer import OmsVerifier
+            from squash.oms_signer import OmsVerifier
             result = OmsVerifier.verify(bom)
             self.assertIn(result, (True, False, None))
 

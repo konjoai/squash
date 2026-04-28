@@ -15,7 +15,7 @@ from unittest.mock import MagicMock, patch
 
 from fastapi.testclient import TestClient
 
-from squish.squash.cloud_db import CloudDB
+from squash.cloud_db import CloudDB
 
 
 # ---------------------------------------------------------------------------
@@ -87,7 +87,7 @@ class TestCloudDBReads(unittest.TestCase):
 
 
 def _make_client() -> TestClient:
-    from squish.squash.api import app
+    from squash.api import app
     return TestClient(app, raise_server_exceptions=True)
 
 

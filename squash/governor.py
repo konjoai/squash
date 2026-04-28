@@ -82,7 +82,7 @@ class SquashGovernor(BaseHTTPMiddleware):
         self._lock                      = asyncio.Lock()
 
         # Register as the module-level singleton so routes can access boot_state.
-        import squish.squash.governor as _self_mod
+        import squash.governor as _self_mod
         _self_mod._INSTANCE = self
 
     # ------------------------------------------------------------------
@@ -164,7 +164,7 @@ class SquashGovernor(BaseHTTPMiddleware):
 
         # Import the hashing helpers from sbom_builder (never duplicate logic).
         try:
-            from squish.squash.sbom_builder import CycloneDXBuilder
+            from squash.sbom_builder import CycloneDXBuilder
         except ImportError:
             log.debug("SquashGovernor: sbom_builder unavailable — integrity unchecked")
             return True

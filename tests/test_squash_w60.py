@@ -30,7 +30,7 @@ class TestCloudDBDriftEvents:
     """Unit tests for CloudDB.read_drift_events(tenant_id) — SQL path."""
 
     def _db(self, path: str):
-        from squish.squash.cloud_db import CloudDB
+        from squash.cloud_db import CloudDB
         return CloudDB(path)
 
     def test_read_drift_events_returns_empty_on_fresh_db(self) -> None:
@@ -101,7 +101,7 @@ class TestCloudDBTenantPolicyStats:
     """Unit tests for CloudDB.read_tenant_policy_stats(tenant_id) — SQL path."""
 
     def _db(self, path: str):
-        from squish.squash.cloud_db import CloudDB
+        from squash.cloud_db import CloudDB
         return CloudDB(path)
 
     def test_read_tenant_policy_stats_returns_empty_on_fresh_db(self) -> None:
@@ -175,7 +175,7 @@ class TestCloudAPIDriftEventsEndpoint:
 
     @pytest.fixture(autouse=True)
     def _client(self) -> None:
-        from squish.squash.api import app, _tenants, _inventory, _vex_alerts, _drift_events, _policy_stats, _rate_window
+        from squash.api import app, _tenants, _inventory, _vex_alerts, _drift_events, _policy_stats, _rate_window
 
         _tenants.clear()
         _inventory.clear()
@@ -244,7 +244,7 @@ class TestCloudAPITenantPolicyStatsEndpoint:
 
     @pytest.fixture(autouse=True)
     def _client(self) -> None:
-        from squish.squash.api import app, _tenants, _inventory, _vex_alerts, _drift_events, _policy_stats, _rate_window
+        from squash.api import app, _tenants, _inventory, _vex_alerts, _drift_events, _policy_stats, _rate_window
 
         _tenants.clear()
         _inventory.clear()

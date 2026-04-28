@@ -23,7 +23,7 @@ from typing import Any
 
 import pytest
 
-from squish.squash.policy import (
+from squash.policy import (
     AVAILABLE_POLICIES,
     PolicyEngine,
     PolicyFinding,
@@ -427,7 +427,7 @@ class TestApiCustomRules:
         """Return a synchronous FastAPI TestClient for squash.api.app."""
         pytest.importorskip("fastapi")
         from fastapi.testclient import TestClient
-        from squish.squash.api import app
+        from squash.api import app
 
         return TestClient(app)
 

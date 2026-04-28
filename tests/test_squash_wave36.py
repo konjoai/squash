@@ -29,7 +29,7 @@ import pytest
 
 def _build_squash_parser() -> argparse.ArgumentParser:
     """Return the squash top-level parser with all subcommands registered."""
-    from squish.squash.cli import _build_parser
+    from squash.cli import _build_parser
     return _build_parser()
 
 
@@ -134,8 +134,8 @@ class TestSpdxOptionsConstruction:
 
     def _run_attest(self, tmp_path: Path, extra_args: list[str]):
         """Helper: run AttestPipeline.run() with the given extra CLI-like flags."""
-        from squish.squash.attest import AttestConfig, AttestPipeline
-        from squish.squash.spdx_builder import SpdxOptions
+        from squash.attest import AttestConfig, AttestPipeline
+        from squash.spdx_builder import SpdxOptions
 
         # Simulate how _cmd_attest constructs spdx_options
         ns = _parse_attest(extra_args)
@@ -161,25 +161,25 @@ class TestSpdxOptionsConstruction:
         assert spdx_opts is None
 
     def test_spdx_type_flag_triggers_construction(self):
-        from squish.squash.spdx_builder import SpdxOptions
+        from squash.spdx_builder import SpdxOptions
         spdx_opts = self._run_attest(None, ["--spdx-type", "summarization"])
         assert isinstance(spdx_opts, SpdxOptions)
         assert spdx_opts.type_of_model == "summarization"
 
     def test_safety_risk_flag_triggers_construction(self):
-        from squish.squash.spdx_builder import SpdxOptions
+        from squash.spdx_builder import SpdxOptions
         spdx_opts = self._run_attest(None, ["--spdx-safety-risk", "medium"])
         assert isinstance(spdx_opts, SpdxOptions)
         assert spdx_opts.safety_risk_assessment == "medium"
 
     def test_dataset_flag_triggers_construction(self):
-        from squish.squash.spdx_builder import SpdxOptions
+        from squash.spdx_builder import SpdxOptions
         spdx_opts = self._run_attest(None, ["--spdx-dataset", "pile"])
         assert isinstance(spdx_opts, SpdxOptions)
         assert spdx_opts.dataset_ids == ["pile"]
 
     def test_multiple_datasets_list_correct(self):
-        from squish.squash.spdx_builder import SpdxOptions
+        from squash.spdx_builder import SpdxOptions
         spdx_opts = self._run_attest(
             None,
             ["--spdx-dataset", "wikipedia", "--spdx-dataset", "c4", "--spdx-dataset", "books3"],
@@ -188,20 +188,20 @@ class TestSpdxOptionsConstruction:
         assert spdx_opts.dataset_ids == ["wikipedia", "c4", "books3"]
 
     def test_sensitive_data_flag_triggers_construction(self):
-        from squish.squash.spdx_builder import SpdxOptions
+        from squash.spdx_builder import SpdxOptions
         spdx_opts = self._run_attest(None, ["--spdx-sensitive-data", "present"])
         assert isinstance(spdx_opts, SpdxOptions)
         assert spdx_opts.sensitive_personal_information == "present"
 
     def test_training_info_flag_triggers_construction(self):
-        from squish.squash.spdx_builder import SpdxOptions
+        from squash.spdx_builder import SpdxOptions
         spdx_opts = self._run_attest(None, ["--spdx-training-info", "custom-training-log"])
         assert isinstance(spdx_opts, SpdxOptions)
         assert spdx_opts.information_about_training == "custom-training-log"
 
     def test_default_field_backfill_when_only_risk_supplied(self):
         """When only --spdx-safety-risk is given, other fields fall back to defaults."""
-        from squish.squash.spdx_builder import SpdxOptions
+        from squash.spdx_builder import SpdxOptions
         spdx_opts = self._run_attest(None, ["--spdx-safety-risk", "high"])
         assert isinstance(spdx_opts, SpdxOptions)
         assert spdx_opts.type_of_model == "text-generation"
@@ -217,8 +217,8 @@ class TestSpdxOptionsIntegration:
     """Run the full AttestPipeline with custom SpdxOptions and verify the SPDX JSON."""
 
     def test_custom_type_of_model_in_spdx_json(self, tmp_path):
-        from squish.squash.attest import AttestConfig, AttestPipeline
-        from squish.squash.spdx_builder import SpdxOptions
+        from squash.attest import AttestConfig, AttestPipeline
+        from squash.spdx_builder import SpdxOptions
 
         model_dir = _stub_model_dir(tmp_path)
         spdx_opts = SpdxOptions(
@@ -244,8 +244,8 @@ class TestSpdxOptionsIntegration:
         )
 
     def test_custom_safety_risk_in_spdx_json(self, tmp_path):
-        from squish.squash.attest import AttestConfig, AttestPipeline
-        from squish.squash.spdx_builder import SpdxOptions
+        from squash.attest import AttestConfig, AttestPipeline
+        from squash.spdx_builder import SpdxOptions
 
         model_dir = _stub_model_dir(tmp_path)
         spdx_opts = SpdxOptions(safety_risk_assessment="high")
@@ -262,7 +262,7 @@ class TestSpdxOptionsIntegration:
 
     def test_default_spdx_options_when_none(self, tmp_path):
         """AttestPipeline with spdx_options=None emits valid SPDX with defaults."""
-        from squish.squash.attest import AttestConfig, AttestPipeline
+        from squash.attest import AttestConfig, AttestPipeline
 
         model_dir = _stub_model_dir(tmp_path)
         result = AttestPipeline.run(AttestConfig(
@@ -278,8 +278,8 @@ class TestSpdxOptionsIntegration:
         assert "text-generation" in content
 
     def test_dataset_ids_in_spdx_json(self, tmp_path):
-        from squish.squash.attest import AttestConfig, AttestPipeline
-        from squish.squash.spdx_builder import SpdxOptions
+        from squash.attest import AttestConfig, AttestPipeline
+        from squash.spdx_builder import SpdxOptions
 
         model_dir = _stub_model_dir(tmp_path)
         spdx_opts = SpdxOptions(dataset_ids=["wikipedia", "c4"])

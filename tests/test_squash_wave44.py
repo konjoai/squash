@@ -28,7 +28,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from squish.squash.integrations.azure_devops import (
+from squash.integrations.azure_devops import (
     AzureDevOpsSquash,
     _DEFAULT_ARTIFACT_NAME,
     _emit_vso,
@@ -360,7 +360,7 @@ class TestAdoImportNoSdk:
         )
 
     def test_all_public_symbols_present(self):
-        import squish.squash.integrations.azure_devops as ado
+        import squash.integrations.azure_devops as ado
 
         for sym in [
             "_emit_vso",

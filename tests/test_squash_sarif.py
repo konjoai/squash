@@ -9,8 +9,8 @@ from pathlib import Path
 
 import pytest
 
-from squish.squash.sarif import SarifBuilder
-from squish.squash.scanner import ScanFinding, ScanResult
+from squash.sarif import SarifBuilder
+from squash.scanner import ScanFinding, ScanResult
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -160,7 +160,7 @@ def api_client():
     from fastapi.testclient import TestClient
     # Ensure no auth token bleeds from environment
     os.environ.pop("SQUASH_API_TOKEN", None)
-    from squish.squash.api import app
+    from squash.api import app
     return TestClient(app)
 
 
@@ -170,21 +170,21 @@ class TestSarifApiEndpoint:
         assert resp.status_code == 404
 
     def test_pending_job_returns_202(self, api_client):
-        from squish.squash.api import _scan_jobs
+        from squash.api import _scan_jobs
         _scan_jobs["pending-job-sarif"] = {"status": "pending", "result": None}
         resp = api_client.get("/scan/pending-job-sarif/sarif")
         assert resp.status_code == 202
         del _scan_jobs["pending-job-sarif"]
 
     def test_error_job_returns_400(self, api_client):
-        from squish.squash.api import _scan_jobs
+        from squash.api import _scan_jobs
         _scan_jobs["err-job-sarif"] = {"status": "error", "result": {"error": "boom"}}
         resp = api_client.get("/scan/err-job-sarif/sarif")
         assert resp.status_code == 400
         del _scan_jobs["err-job-sarif"]
 
     def test_done_job_returns_sarif_200(self, api_client):
-        from squish.squash.api import _scan_jobs
+        from squash.api import _scan_jobs
         _scan_jobs["done-job-sarif"] = {
             "status": "done",
             "result": {

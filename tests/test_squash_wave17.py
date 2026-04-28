@@ -12,7 +12,7 @@ _ENV_VAR = "SQUASH_WEBHOOK_URL"
 
 
 def _make_policy_result(passed: bool = True, error_count: int = 0):
-    from squish.squash.policy import PolicyResult, PolicyFinding
+    from squash.policy import PolicyResult, PolicyFinding
     findings = [
         PolicyFinding(
             rule_id=f"E{i}", severity="error", passed=False,
@@ -30,13 +30,13 @@ class TestPolicyWebhookNoUrl(unittest.TestCase):
 
     def test_notify_no_url_returns_false(self):
         """notify() returns False when no URL is provided and env var is unset."""
-        from squish.squash.policy import PolicyWebhook
+        from squash.policy import PolicyWebhook
         wh = PolicyWebhook()
         result = wh.notify(_make_policy_result(), model_path=Path("/tmp/model"))
         self.assertFalse(result)
 
     def test_notify_raw_empty_url_returns_false(self):
-        from squish.squash.policy import PolicyWebhook
+        from squash.policy import PolicyWebhook
         result = PolicyWebhook.notify_raw({"event": "test"}, webhook_url="")
         self.assertFalse(result)
 
@@ -50,7 +50,7 @@ class TestPolicyWebhookEnvVar(unittest.TestCase):
 
     def test_notify_reads_env_var(self):
         """notify() picks up SQUASH_WEBHOOK_URL from environment."""
-        from squish.squash.policy import PolicyWebhook
+        from squash.policy import PolicyWebhook
 
         mock_resp = MagicMock()
         mock_resp.status = 200
@@ -66,7 +66,7 @@ class TestPolicyWebhookEnvVar(unittest.TestCase):
 class TestPolicyWebhookMockUrllib(unittest.TestCase):
     def test_notify_sends_correct_payload(self):
         """notify() sends the expected event name and model_path."""
-        from squish.squash.policy import PolicyWebhook, PolicyResult
+        from squash.policy import PolicyWebhook, PolicyResult
 
         captured_request = {}
 
@@ -95,7 +95,7 @@ class TestPolicyWebhookMockUrllib(unittest.TestCase):
         self.assertEqual(payload["error_count"], 3)
 
     def test_notify_returns_true_on_200(self):
-        from squish.squash.policy import PolicyWebhook
+        from squash.policy import PolicyWebhook
 
         mock_resp = MagicMock()
         mock_resp.status = 200
@@ -112,7 +112,7 @@ class TestPolicyWebhookMockUrllib(unittest.TestCase):
         self.assertTrue(result)
 
     def test_notify_returns_false_on_http_error(self):
-        from squish.squash.policy import PolicyWebhook
+        from squash.policy import PolicyWebhook
         import urllib.error
 
         with patch("urllib.request.urlopen", side_effect=urllib.error.URLError("conn refused")):
@@ -125,7 +125,7 @@ class TestPolicyWebhookMockUrllib(unittest.TestCase):
         self.assertFalse(result)
 
     def test_notify_raw_sends_payload(self):
-        from squish.squash.policy import PolicyWebhook
+        from squash.policy import PolicyWebhook
 
         mock_resp = MagicMock()
         mock_resp.status = 200
@@ -141,7 +141,7 @@ class TestPolicyWebhookMockUrllib(unittest.TestCase):
 
     def test_notify_never_raises(self):
         """notify() must not propagate exceptions — always returns bool."""
-        from squish.squash.policy import PolicyWebhook
+        from squash.policy import PolicyWebhook
 
         with patch("urllib.request.urlopen", side_effect=RuntimeError("boom")):
             wh = PolicyWebhook()
@@ -156,14 +156,14 @@ class TestPolicyWebhookMockUrllib(unittest.TestCase):
 
 class TestPolicyWebhookDtypeContracts(unittest.TestCase):
     def test_notify_return_type(self):
-        from squish.squash.policy import PolicyWebhook
+        from squash.policy import PolicyWebhook
         os.environ.pop(_ENV_VAR, None)
         wh = PolicyWebhook()
         result = wh.notify(_make_policy_result(), model_path=Path("/m"))
         self.assertIsInstance(result, bool)
 
     def test_notify_raw_return_type(self):
-        from squish.squash.policy import PolicyWebhook
+        from squash.policy import PolicyWebhook
         result = PolicyWebhook.notify_raw({}, webhook_url="")
         self.assertIsInstance(result, bool)
 

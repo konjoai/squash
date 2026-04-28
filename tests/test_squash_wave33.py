@@ -32,7 +32,7 @@ from unittest.mock import patch
 
 import pytest
 
-from squish.squash.vex import (
+from squash.vex import (
     SQUASH_VEX_FEED_FALLBACK_URL,
     VexCache,
     VexFeed,

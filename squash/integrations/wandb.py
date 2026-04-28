@@ -7,7 +7,7 @@ W&B summary values and artifact metadata.
 Usage::
 
     import wandb
-    from squish.squash.integrations.wandb import WandbSquash
+    from squash.integrations.wandb import WandbSquash
 
     with wandb.init(project="my-llm") as run:
         artifact = wandb.Artifact("llama-3.1-8b-int4", type="model")
@@ -30,7 +30,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     import wandb as _wandb_mod
 
-from squish.squash.attest import AttestConfig, AttestPipeline, AttestResult
+from squash.attest import AttestConfig, AttestPipeline, AttestResult
 
 log = logging.getLogger(__name__)
 

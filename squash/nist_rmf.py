@@ -16,7 +16,7 @@ the overall posture.
 
 Usage::
 
-    from squish.squash.nist_rmf import NistRmfScanner
+    from squash.nist_rmf import NistRmfScanner
     from pathlib import Path
 
     report = NistRmfScanner.scan(Path("./my-model-dir"))

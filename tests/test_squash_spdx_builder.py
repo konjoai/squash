@@ -16,8 +16,8 @@ from pathlib import Path
 
 import pytest
 
-from squish.squash.sbom_builder import CompressRunMeta
-from squish.squash.spdx_builder import SpdxBuilder, SpdxOptions, SpdxArtifacts
+from squash.sbom_builder import CompressRunMeta
+from squash.spdx_builder import SpdxBuilder, SpdxOptions, SpdxArtifacts
 
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────

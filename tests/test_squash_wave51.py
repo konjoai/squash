@@ -81,23 +81,23 @@ def _write_model_files(directory: Path, file_entries: dict[str, bytes]) -> None:
 class TestDriftConfig(unittest.TestCase):
 
     def test_fields_stored(self):
-        from squish.squash.drift import DriftConfig
+        from squash.drift import DriftConfig
         cfg = DriftConfig(bom_path=Path("/x/bom.json"), model_dir=Path("/x/model"))
         self.assertEqual(cfg.bom_path, Path("/x/bom.json"))
         self.assertEqual(cfg.model_dir, Path("/x/model"))
 
     def test_tolerance_default_zero(self):
-        from squish.squash.drift import DriftConfig
+        from squash.drift import DriftConfig
         cfg = DriftConfig(bom_path=Path("/x"), model_dir=Path("/y"))
         self.assertEqual(cfg.tolerance, 0.0)
 
     def test_tolerance_configurable(self):
-        from squish.squash.drift import DriftConfig
+        from squash.drift import DriftConfig
         cfg = DriftConfig(bom_path=Path("/x"), model_dir=Path("/y"), tolerance=0.01)
         self.assertAlmostEqual(cfg.tolerance, 0.01)
 
     def test_bom_path_is_path(self):
-        from squish.squash.drift import DriftConfig
+        from squash.drift import DriftConfig
         cfg = DriftConfig(bom_path=Path("/x"), model_dir=Path("/y"))
         self.assertIsInstance(cfg.bom_path, Path)
         self.assertIsInstance(cfg.model_dir, Path)
@@ -110,25 +110,25 @@ class TestDriftConfig(unittest.TestCase):
 class TestDriftHit(unittest.TestCase):
 
     def test_missing_when_actual_empty(self):
-        from squish.squash.drift import DriftHit
+        from squash.drift import DriftHit
         hit = DriftHit(path="a.npy", expected_digest="abc", actual_digest="")
         self.assertTrue(hit.missing)
         self.assertFalse(hit.tampered)
 
     def test_tampered_when_digests_differ(self):
-        from squish.squash.drift import DriftHit
+        from squash.drift import DriftHit
         hit = DriftHit(path="a.npy", expected_digest="aaa", actual_digest="bbb")
         self.assertFalse(hit.missing)
         self.assertTrue(hit.tampered)
 
     def test_neither_when_digests_match(self):
-        from squish.squash.drift import DriftHit
+        from squash.drift import DriftHit
         hit = DriftHit(path="a.npy", expected_digest="abc", actual_digest="abc")
         self.assertFalse(hit.missing)
         self.assertFalse(hit.tampered)
 
     def test_fields_stored(self):
-        from squish.squash.drift import DriftHit
+        from squash.drift import DriftHit
         hit = DriftHit(path="x/y.safetensors", expected_digest="e3b0", actual_digest="")
         self.assertEqual(hit.path, "x/y.safetensors")
         self.assertEqual(hit.expected_digest, "e3b0")
@@ -142,33 +142,33 @@ class TestDriftHit(unittest.TestCase):
 class TestDriftResult(unittest.TestCase):
 
     def test_ok_true_no_hits(self):
-        from squish.squash.drift import DriftResult
+        from squash.drift import DriftResult
         r = DriftResult(hits=[], files_checked=3, ok=True)
         self.assertTrue(r.ok)
         self.assertIn("3", r.summary)
 
     def test_summary_clean(self):
-        from squish.squash.drift import DriftResult
+        from squash.drift import DriftResult
         r = DriftResult(hits=[], files_checked=5, ok=True)
         self.assertIn("No drift", r.summary)
         self.assertIn("5 file", r.summary)
 
     def test_summary_drift_tampered(self):
-        from squish.squash.drift import DriftHit, DriftResult
+        from squash.drift import DriftHit, DriftResult
         hits = [DriftHit(path="a", expected_digest="e", actual_digest="x")]
         r = DriftResult(hits=hits, files_checked=2, ok=False)
         self.assertIn("Drift detected", r.summary)
         self.assertIn("tampered", r.summary)
 
     def test_summary_drift_missing(self):
-        from squish.squash.drift import DriftHit, DriftResult
+        from squash.drift import DriftHit, DriftResult
         hits = [DriftHit(path="b", expected_digest="e", actual_digest="")]
         r = DriftResult(hits=hits, files_checked=2, ok=False)
         self.assertIn("Drift detected", r.summary)
         self.assertIn("missing", r.summary)
 
     def test_summary_drift_both(self):
-        from squish.squash.drift import DriftHit, DriftResult
+        from squash.drift import DriftHit, DriftResult
         hits = [
             DriftHit(path="a", expected_digest="e", actual_digest=""),
             DriftHit(path="b", expected_digest="e", actual_digest="x"),
@@ -178,18 +178,18 @@ class TestDriftResult(unittest.TestCase):
         self.assertIn("missing", r.summary)
 
     def test_custom_summary_preserved(self):
-        from squish.squash.drift import DriftResult
+        from squash.drift import DriftResult
         r = DriftResult(hits=[], files_checked=0, ok=True, summary="custom")
         self.assertEqual(r.summary, "custom")
 
     def test_files_checked_default_zero(self):
-        from squish.squash.drift import DriftResult
+        from squash.drift import DriftResult
         r = DriftResult()
         self.assertEqual(r.files_checked, 0)
         self.assertTrue(r.ok)
 
     def test_hits_default_empty_list(self):
-        from squish.squash.drift import DriftResult
+        from squash.drift import DriftResult
         r = DriftResult()
         self.assertEqual(r.hits, [])
 
@@ -201,7 +201,7 @@ class TestDriftResult(unittest.TestCase):
 class TestParseBomHashes(unittest.TestCase):
 
     def _parse(self, bom: dict) -> dict:
-        from squish.squash.drift import _parse_bom_hashes
+        from squash.drift import _parse_bom_hashes
         return _parse_bom_hashes(bom)
 
     def test_empty_bom_no_components(self):
@@ -308,7 +308,7 @@ class TestCheckDrift(unittest.TestCase):
         shutil.rmtree(self._tmpdir, ignore_errors=True)
 
     def test_clean_model_ok(self):
-        from squish.squash.drift import DriftConfig, check_drift
+        from squash.drift import DriftConfig, check_drift
         files = {"tensors/w.npy": b"weight_data_v1"}
         bom_path = _write_bom(self.tmp, files)
         _write_model_files(self.tmp, files)
@@ -318,7 +318,7 @@ class TestCheckDrift(unittest.TestCase):
         self.assertEqual(result.files_checked, 1)
 
     def test_clean_model_multiple_files(self):
-        from squish.squash.drift import DriftConfig, check_drift
+        from squash.drift import DriftConfig, check_drift
         files = {
             "tensors/model.0.weight.npy": b"layer0",
             "tensors/model.1.weight.npy": b"layer1",
@@ -331,7 +331,7 @@ class TestCheckDrift(unittest.TestCase):
         self.assertEqual(result.files_checked, 3)
 
     def test_tampered_file_detected(self):
-        from squish.squash.drift import DriftConfig, check_drift
+        from squash.drift import DriftConfig, check_drift
         bom_files = {"weight.npy": b"original content"}
         bom_path = _write_bom(self.tmp, bom_files)
         # Write tampered content to disk
@@ -347,7 +347,7 @@ class TestCheckDrift(unittest.TestCase):
         self.assertTrue(len(hit.actual_digest) == 64)  # hex SHA-256
 
     def test_missing_file_detected(self):
-        from squish.squash.drift import DriftConfig, check_drift
+        from squash.drift import DriftConfig, check_drift
         bom_files = {
             "exists.npy": b"present",
             "gone.npy": b"missing_from_disk",
@@ -364,7 +364,7 @@ class TestCheckDrift(unittest.TestCase):
         self.assertEqual(hit.actual_digest, "")
 
     def test_extra_files_on_disk_ignored(self):
-        from squish.squash.drift import DriftConfig, check_drift
+        from squash.drift import DriftConfig, check_drift
         bom_files = {"attested.npy": b"attested"}
         bom_path = _write_bom(self.tmp, bom_files)
         # Write BOM file + extra file not in BOM
@@ -378,7 +378,7 @@ class TestCheckDrift(unittest.TestCase):
         self.assertEqual(result.files_checked, 1)
 
     def test_all_files_missing_reports_all(self):
-        from squish.squash.drift import DriftConfig, check_drift
+        from squash.drift import DriftConfig, check_drift
         bom_files = {
             "a.npy": b"aaa",
             "b.npy": b"bbb",
@@ -392,20 +392,20 @@ class TestCheckDrift(unittest.TestCase):
         self.assertTrue(all(h.missing for h in result.hits))
 
     def test_invalid_json_raises(self):
-        from squish.squash.drift import DriftConfig, check_drift
+        from squash.drift import DriftConfig, check_drift
         bom_path = self.tmp / "bad.json"
         bom_path.write_text("not valid json", encoding="utf-8")
         with self.assertRaises(Exception):
             check_drift(DriftConfig(bom_path=bom_path, model_dir=self.tmp))
 
     def test_missing_bom_file_raises(self):
-        from squish.squash.drift import DriftConfig, check_drift
+        from squash.drift import DriftConfig, check_drift
         bom_path = self.tmp / "nonexistent.json"
         with self.assertRaises(FileNotFoundError):
             check_drift(DriftConfig(bom_path=bom_path, model_dir=self.tmp))
 
     def test_empty_bom_no_properties_raises_value_error(self):
-        from squish.squash.drift import DriftConfig, check_drift
+        from squash.drift import DriftConfig, check_drift
         bom_path = self.tmp / "empty.json"
         bom_path.write_text(
             json.dumps({"bomFormat": "CycloneDX", "components": []}),
@@ -415,7 +415,7 @@ class TestCheckDrift(unittest.TestCase):
             check_drift(DriftConfig(bom_path=bom_path, model_dir=self.tmp))
 
     def test_bom_with_no_squish_properties_raises_value_error(self):
-        from squish.squash.drift import DriftConfig, check_drift
+        from squash.drift import DriftConfig, check_drift
         bom = {
             "bomFormat": "CycloneDX",
             "components": [{"type": "library", "properties": [{"name": "other", "value": "x"}]}],
@@ -426,7 +426,7 @@ class TestCheckDrift(unittest.TestCase):
             check_drift(DriftConfig(bom_path=bom_path, model_dir=self.tmp))
 
     def test_files_checked_count(self):
-        from squish.squash.drift import DriftConfig, check_drift
+        from squash.drift import DriftConfig, check_drift
         files = {f"w{i}.npy": bytes([i, i, i]) for i in range(6)}
         bom_path = _write_bom(self.tmp, files)
         _write_model_files(self.tmp, files)
@@ -434,7 +434,7 @@ class TestCheckDrift(unittest.TestCase):
         self.assertEqual(result.files_checked, 6)
 
     def test_subdirectory_path_round_trips(self):
-        from squish.squash.drift import DriftConfig, check_drift
+        from squash.drift import DriftConfig, check_drift
         files = {"tensors/deep/layer.safetensors": b"\x00\x01\x02"}
         bom_path = _write_bom(self.tmp, files)
         _write_model_files(self.tmp, files)
@@ -442,7 +442,7 @@ class TestCheckDrift(unittest.TestCase):
         self.assertTrue(result.ok)
 
     def test_correct_expected_digest_recorded(self):
-        from squish.squash.drift import DriftConfig, check_drift
+        from squash.drift import DriftConfig, check_drift
         data = b"deterministic content for SHA-256 test"
         files = {"model.npy": data}
         bom_path = _write_bom(self.tmp, files)

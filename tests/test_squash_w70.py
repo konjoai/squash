@@ -12,8 +12,8 @@ import json
 import pytest
 from starlette.testclient import TestClient
 
-from squish.squash import api
-from squish.squash.cloud_db import CloudDB
+from squash import api
+from squash.cloud_db import CloudDB
 
 
 # ── CloudDB unit tests ────────────────────────────────────────────────────────

@@ -22,7 +22,7 @@ try:
     import httpx
     from fastapi.testclient import TestClient
 
-    from squish.squash.api import app
+    from squash.api import app
 except ImportError:
     pytest.skip("fastapi / httpx not installed", allow_module_level=True)
 
@@ -273,7 +273,7 @@ class TestBearerAuth:
         from fastapi.testclient import TestClient
         os.environ["SQUASH_API_TOKEN"] = "test-secret"
         try:
-            from squish.squash import api as _api
+            from squash import api as _api
             # Reload to pick up env — use a fresh client per test
             tc = TestClient(_api.app)
             resp = tc.get("/policies", headers={"Authorization": "Bearer test-secret"})
@@ -286,7 +286,7 @@ class TestBearerAuth:
         from fastapi.testclient import TestClient
         os.environ["SQUASH_API_TOKEN"] = "secret123"
         try:
-            from squish.squash import api as _api
+            from squash import api as _api
             tc = TestClient(_api.app)
             resp = tc.get("/policies", headers={"Authorization": "Bearer wrong"})
             assert resp.status_code == 401
@@ -299,7 +299,7 @@ class TestBearerAuth:
         from fastapi.testclient import TestClient
         os.environ["SQUASH_API_TOKEN"] = "secret123"
         try:
-            from squish.squash import api as _api
+            from squash import api as _api
             tc = TestClient(_api.app)
             resp = tc.get("/health")
             assert resp.status_code == 200
@@ -311,7 +311,7 @@ class TestBearerAuth:
         from fastapi.testclient import TestClient
         os.environ["SQUASH_API_TOKEN"] = "secret123"
         try:
-            from squish.squash import api as _api
+            from squash import api as _api
             tc = TestClient(_api.app)
             resp = tc.get("/metrics")
             assert resp.status_code == 200
@@ -327,7 +327,7 @@ class TestRateLimit:
         # Set a tiny rate limit for this test
         os.environ["SQUASH_RATE_LIMIT"] = "3"
         try:
-            from squish.squash import api as _api
+            from squash import api as _api
             # Reset window state to avoid interference from other tests
             _api._rate_window.clear()
             _api._RATE_LIMIT = 3
@@ -337,7 +337,7 @@ class TestRateLimit:
         finally:
             os.environ.pop("SQUASH_RATE_LIMIT", None)
             # Restore default
-            from squish.squash import api as _api2
+            from squash import api as _api2
             _api2._RATE_LIMIT = 60
             _api2._rate_window.clear()
 
@@ -345,7 +345,7 @@ class TestRateLimit:
         import os
         from fastapi.testclient import TestClient
         os.environ.pop("SQUASH_API_TOKEN", None)
-        from squish.squash import api as _api
+        from squash import api as _api
         _api._rate_window.clear()
         _api._RATE_LIMIT = 1
         tc = TestClient(_api.app)
@@ -377,7 +377,7 @@ class TestMetricsEndpoint:
     def test_counter_increments_on_scan(self, client, tmp_path):
         """Hitting /scan should increment squash_scan_total."""
         import os
-        from squish.squash import api as _api
+        from squash import api as _api
         before = _api._COUNTERS["squash_scan_total"]
         # Post a scan request (will return 202 with a job_id)
         d = tmp_path / "model"

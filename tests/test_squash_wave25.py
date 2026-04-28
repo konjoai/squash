@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from squish.squash.cicd import CicdAdapter, CicdReport, CiEnvironment
+from squash.cicd import CicdAdapter, CicdReport, CiEnvironment
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────

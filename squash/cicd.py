@@ -14,7 +14,7 @@ Supported environments
 
 Usage in CI::
 
-    from squish.squash.cicd import CicdAdapter
+    from squash.cicd import CicdAdapter
 
     env = CicdAdapter.detect()
     summary = CicdAdapter.job_summary(result, env)
@@ -292,9 +292,9 @@ class CicdAdapter:
             One of ``"github"``, ``"jenkins"``, ``"gitlab"``, ``"text"``.
             Overrides environment detection for annotation formatting.
         """
-        from squish.squash.policy import NtiaValidator  # lazy import
-        from squish.squash.risk import AiRiskAssessor  # lazy import
-        from squish.squash.governor import DriftMonitor  # lazy import
+        from squash.policy import NtiaValidator  # lazy import
+        from squash.risk import AiRiskAssessor  # lazy import
+        from squash.governor import DriftMonitor  # lazy import
 
         model_dir = Path(model_dir)
         bom_path = model_dir / "cyclonedx-mlbom.json"

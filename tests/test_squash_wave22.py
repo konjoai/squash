@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from squish.squash.sbom_builder import BomMerger
+from squash.sbom_builder import BomMerger
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────

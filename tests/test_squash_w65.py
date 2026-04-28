@@ -13,7 +13,7 @@ from typing import Any
 import pytest
 from starlette.testclient import TestClient
 
-from squish.squash.cloud_db import CloudDB
+from squash.cloud_db import CloudDB
 
 
 # ── helpers ────────────────────────────────────────────────────────────────────
@@ -101,7 +101,7 @@ class TestCloudAPIVexFeedEndpoint:
     """8 integration tests for GET /cloud/vex-feed."""
 
     def setup_method(self) -> None:
-        from squish.squash import api
+        from squash import api
 
         api._tenants.clear()
         api._inventory.clear()
@@ -131,7 +131,7 @@ class TestCloudAPIVexFeedEndpoint:
         assert body["alerts"] == []
 
     def _register_tenant(self, tenant_id: str) -> None:
-        from squish.squash import api
+        from squash import api
 
         api._tenants[tenant_id] = {
             "tenant_id": tenant_id,
@@ -154,7 +154,7 @@ class TestCloudAPIVexFeedEndpoint:
         assert body["total_alerts"] == 0
 
     def test_total_alerts_after_drift_check(self) -> None:
-        from squish.squash import api
+        from squash import api
 
         self._register_tenant("acme")
         api._vex_alerts["acme"].append({"cve": "CVE-2024-001", "severity": "HIGH"})
@@ -164,7 +164,7 @@ class TestCloudAPIVexFeedEndpoint:
         assert body["total_alerts"] == 2
 
     def test_alerts_include_tenant_id(self) -> None:
-        from squish.squash import api
+        from squash import api
 
         self._register_tenant("acme")
         api._vex_alerts["acme"].append({"cve": "CVE-2024-001"})

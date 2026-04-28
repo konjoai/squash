@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from squish.squash.scanner import ScanResult
+    from squash.scanner import ScanResult
 
 
 class SarifBuilder:

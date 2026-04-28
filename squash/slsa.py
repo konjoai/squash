@@ -239,7 +239,7 @@ class SlsaProvenanceBuilder:
     def _sign(cls, provenance_path: Path) -> None:
         """Sign the provenance file via OmsSigner (L2+)."""
         try:
-            from squish.squash.oms_signer import OmsSigner  # type: ignore[import]
+            from squash.oms_signer import OmsSigner  # type: ignore[import]
 
             signer = OmsSigner(str(provenance_path))
             signer.sign()
@@ -251,7 +251,7 @@ class SlsaProvenanceBuilder:
     def _verify(cls, provenance_path: Path) -> None:
         """Verify existing bundle via OmsVerifier (L3+)."""
         try:
-            from squish.squash.oms_verifier import OmsVerifier  # type: ignore[import]
+            from squash.oms_verifier import OmsVerifier  # type: ignore[import]
 
             verifier = OmsVerifier(str(provenance_path))
             verifier.verify()

@@ -18,7 +18,7 @@ Architecture
 
 Usage::
 
-    from squish.squash.integrations.kubernetes import (
+    from squash.integrations.kubernetes import (
         KubernetesWebhookHandler,
         WebhookConfig,
         serve_webhook,

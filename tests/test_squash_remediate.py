@@ -18,7 +18,7 @@ class TestRemediateResult(unittest.TestCase):
     """Tests for RemediateResult properties and summary."""
 
     def _make_result(self, converted=(), failed=()):
-        from squish.squash.remediate import RemediateResult
+        from squash.remediate import RemediateResult
         return RemediateResult(
             model_path=Path("/some/model"),
             target_format="safetensors",
@@ -33,7 +33,7 @@ class TestRemediateResult(unittest.TestCase):
         self.assertFalse(result.partial)
 
     def test_partial_when_both_converted_and_failed(self):
-        from squish.squash.remediate import ConvertedFile, FailedFile
+        from squash.remediate import ConvertedFile, FailedFile
         conv = ConvertedFile(
             source=Path("/m/w.bin"),
             destination=Path("/m/w.safetensors"),
@@ -47,7 +47,7 @@ class TestRemediateResult(unittest.TestCase):
         self.assertTrue(result.partial)
 
     def test_summary_contains_counts(self):
-        from squish.squash.remediate import ConvertedFile
+        from squash.remediate import ConvertedFile
         conv = ConvertedFile(
             source=Path("/m/w.bin"),
             destination=Path("/m/w.safetensors"),
@@ -72,7 +72,7 @@ class TestRemediatorFindPickleFiles(unittest.TestCase):
         shutil.rmtree(self.tmpdir, ignore_errors=True)
 
     def test_finds_bin_pt_pth(self):
-        from squish.squash.remediate import Remediator
+        from squash.remediate import Remediator
         base = Path(self.tmpdir)
         for name in ("model.bin", "weights.pt", "state.pth", "config.json"):
             (base / name).write_text("dummy")
@@ -84,14 +84,14 @@ class TestRemediatorFindPickleFiles(unittest.TestCase):
         self.assertNotIn("config.json", names)
 
     def test_single_bin_file_input(self):
-        from squish.squash.remediate import Remediator
+        from squash.remediate import Remediator
         p = Path(self.tmpdir) / "model.bin"
         p.write_text("dummy")
         found = Remediator._find_pickle_files(p)
         self.assertEqual([p], found)
 
     def test_non_pickle_extension_ignored(self):
-        from squish.squash.remediate import Remediator
+        from squash.remediate import Remediator
         base = Path(self.tmpdir)
         (base / "model.safetensors").write_text("dummy")
         found = Remediator._find_pickle_files(base)
@@ -109,7 +109,7 @@ class TestRemediatorSha256(unittest.TestCase):
         shutil.rmtree(self.tmpdir, ignore_errors=True)
 
     def test_sha256_matches_hashlib(self):
-        from squish.squash.remediate import Remediator
+        from squash.remediate import Remediator
         p = Path(self.tmpdir) / "data.bin"
         p.write_bytes(b"hello squash")
         expected = hashlib.sha256(b"hello squash").hexdigest()
@@ -138,7 +138,7 @@ class TestRemediatorPatchSbom(unittest.TestCase):
         }
 
     def test_patch_updates_matching_hash(self):
-        from squish.squash.remediate import Remediator
+        from squash.remediate import Remediator
         old_sha = "aabb" * 16
         new_sha = "ccdd" * 16
         bom = self._make_cyclonedx_bom(old_sha)
@@ -154,12 +154,12 @@ class TestRemediatorPatchSbom(unittest.TestCase):
         self.assertTrue(any(h["content"] == new_sha for h in hashes))
 
     def test_patch_returns_false_for_missing_file(self):
-        from squish.squash.remediate import Remediator
+        from squash.remediate import Remediator
         result = Remediator.patch_sbom(Path(self.tmpdir) / "nonexistent.json", {"x": {"new_sha256": "y"}})
         self.assertFalse(result)
 
     def test_patch_returns_false_for_invalid_json(self):
-        from squish.squash.remediate import Remediator
+        from squash.remediate import Remediator
         p = Path(self.tmpdir) / "bad.json"
         p.write_text("not-json")
         result = Remediator.patch_sbom(p, {"x": {}})
@@ -177,7 +177,7 @@ class TestRemediatorConvertDryRun(unittest.TestCase):
         shutil.rmtree(self.tmpdir, ignore_errors=True)
 
     def test_dry_run_produces_no_output_files(self):
-        from squish.squash.remediate import Remediator
+        from squash.remediate import Remediator
         base = Path(self.tmpdir)
         (base / "model.bin").write_bytes(b"\x80\x04dummy pickle bytes")
 

@@ -8,7 +8,7 @@ tasks.
 Usage (Python Script task in ``azure-pipelines.yml``)::
 
     from pathlib import Path
-    from squish.squash.integrations.azure_devops import AzureDevOpsSquash
+    from squash.integrations.azure_devops import AzureDevOpsSquash
 
     result = AzureDevOpsSquash.attest(
         model_path=Path("$(Build.ArtifactStagingDirectory)/model"),
@@ -42,7 +42,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     pass  # No ADO SDK imported at module level — all communication is stdout-based.
 
-from squish.squash.attest import AttestConfig, AttestPipeline, AttestResult
+from squash.attest import AttestConfig, AttestPipeline, AttestResult
 
 log = logging.getLogger(__name__)
 

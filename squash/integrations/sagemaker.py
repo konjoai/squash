@@ -10,7 +10,7 @@ Attests a local model directory within a SageMaker pipeline and then:
 
 Usage::
 
-    from squish.squash.integrations.sagemaker import SageMakerSquash
+    from squash.integrations.sagemaker import SageMakerSquash
 
     result = SageMakerSquash.attach_attestation(
         model_path=Path("./output/llama-3.1-8b"),
@@ -33,7 +33,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     pass  # boto3 / sagemaker imported lazily below
 
-from squish.squash.attest import AttestConfig, AttestPipeline, AttestResult
+from squash.attest import AttestConfig, AttestPipeline, AttestResult
 
 log = logging.getLogger(__name__)
 

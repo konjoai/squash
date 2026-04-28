@@ -8,7 +8,7 @@ Attests a local model directory immediately after logging a run, then:
 Usage::
 
     import mlflow
-    from squish.squash.integrations.mlflow import MLflowSquash
+    from squash.integrations.mlflow import MLflowSquash
 
     with mlflow.start_run() as run:
         # … your training / fine-tuning …
@@ -31,7 +31,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     import mlflow
 
-from squish.squash.attest import AttestConfig, AttestPipeline, AttestResult
+from squash.attest import AttestConfig, AttestPipeline, AttestResult
 
 log = logging.getLogger(__name__)
 

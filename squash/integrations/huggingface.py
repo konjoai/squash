@@ -7,7 +7,7 @@ that the attestation status is human-readable on the Hub UI.
 
 Usage::
 
-    from squish.squash.integrations.huggingface import HFSquash
+    from squash.integrations.huggingface import HFSquash
 
     HFSquash.attest_and_push(
         repo_id="myorg/llama-3.1-8b-int4",
@@ -29,7 +29,7 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
-from squish.squash.attest import AttestConfig, AttestPipeline, AttestResult
+from squash.attest import AttestConfig, AttestPipeline, AttestResult
 
 log = logging.getLogger(__name__)
 

@@ -32,7 +32,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from squish.squash.sbom_builder import CompressRunMeta, CycloneDXBuilder
+from squash.sbom_builder import CompressRunMeta, CycloneDXBuilder
 
 _SPDX_VERSION = "SPDX-2.3"
 _DATA_LICENSE = "CC0-1.0"
@@ -122,7 +122,7 @@ class SpdxBuilder:
     @staticmethod
     def _build_doc(meta: CompressRunMeta, opts: SpdxOptions) -> dict[str, Any]:
         """Return the full SPDX 2.3 document as a plain Python dict."""
-        import squish  # always installed
+        import squash as squish  # version reference
 
         serial = str(uuid.uuid4())
         now = datetime.datetime.now(datetime.timezone.utc).strftime(

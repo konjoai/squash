@@ -10,7 +10,7 @@ Attests a local model directory within a Google Cloud / Vertex AI workflow and t
 
 Usage::
 
-    from squish.squash.integrations.vertex_ai import VertexAISquash
+    from squash.integrations.vertex_ai import VertexAISquash
 
     result = VertexAISquash.attach_attestation(
         model_path=Path("./output/gemma-3-4b"),
@@ -41,7 +41,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     pass  # google-cloud-aiplatform / google-cloud-storage imported lazily below
 
-from squish.squash.attest import AttestConfig, AttestPipeline, AttestResult
+from squash.attest import AttestConfig, AttestPipeline, AttestResult
 
 log = logging.getLogger(__name__)
 

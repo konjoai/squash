@@ -16,7 +16,7 @@ Output:
 
 Usage::
 
-    from squish.squash.report import ComplianceReporter
+    from squash.report import ComplianceReporter
     html = ComplianceReporter.generate_html(Path("./my-model"))
     Path("./my-model/squash-report.html").write_text(html)
 

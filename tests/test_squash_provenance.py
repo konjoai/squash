@@ -16,7 +16,7 @@ from pathlib import Path
 
 import pytest
 
-from squish.squash.provenance import DatasetRecord, ProvenanceCollector, ProvenanceManifest
+from squash.provenance import DatasetRecord, ProvenanceCollector, ProvenanceManifest
 
 
 # ── Unit: DatasetRecord ───────────────────────────────────────────────────────

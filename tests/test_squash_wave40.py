@@ -18,7 +18,7 @@ from unittest.mock import MagicMock, call, patch
 
 import pytest
 
-from squish.squash.integrations.vertex_ai import (
+from squash.integrations.vertex_ai import (
     VertexAISquash,
     _LABEL_PREFIX,
     _sanitize_label,
@@ -394,7 +394,7 @@ class TestVertexAIModule:
         """vertex_ai.py must be importable even if google-cloud-aiplatform is absent."""
         # Module is already imported at the top of this file — this test
         # asserts that the import didn't fail even when SDK is not installed.
-        import squish.squash.integrations.vertex_ai as vmod
+        import squash.integrations.vertex_ai as vmod
         assert hasattr(vmod, "VertexAISquash")
         assert hasattr(vmod, "_sanitize_label")
 
@@ -404,5 +404,5 @@ class TestVertexAIModule:
 
     def test_vertex_ai_in_integrations_init(self):
         """vertex_ai should be mentioned in the integrations __init__ docstring."""
-        import squish.squash.integrations as pkg
+        import squash.integrations as pkg
         assert "vertex_ai" in (pkg.__doc__ or "")

@@ -37,7 +37,7 @@ import sys
 
 import pytest
 
-from squish.squash.policy import AVAILABLE_POLICIES
+from squash.policy import AVAILABLE_POLICIES
 
 
 # ── helpers ───────────────────────────────────────────────────────────────────
@@ -45,7 +45,7 @@ from squish.squash.policy import AVAILABLE_POLICIES
 
 def _build_parser():
     """Return the squash CLI argparse parser without side effects."""
-    from squish.squash.cli import _build_parser as _bp
+    from squash.cli import _build_parser as _bp
     return _bp()
 
 

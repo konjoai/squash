@@ -11,7 +11,7 @@ import json
 
 import pytest
 
-from squish.squash.nist_rmf import (
+from squash.nist_rmf import (
     NistControlStatus,
     NistRmfControl,
     NistRmfFunction,
@@ -325,21 +325,21 @@ class TestManageControls:
 
 class TestExports:
     def test_nist_rmf_function_exported(self):
-        from squish.squash import NistRmfFunction as F  # noqa: F401
+        from squash import NistRmfFunction as F  # noqa: F401
         assert F.GOVERN
 
     def test_nist_rmf_report_exported(self):
-        from squish.squash import NistRmfReport as R  # noqa: F401
+        from squash import NistRmfReport as R  # noqa: F401
         assert R
 
     def test_nist_rmf_scanner_exported(self):
-        from squish.squash import NistRmfScanner as S  # noqa: F401
+        from squash import NistRmfScanner as S  # noqa: F401
         assert S
 
     def test_nist_control_status_exported(self):
-        from squish.squash import NistControlStatus as CS  # noqa: F401
+        from squash import NistControlStatus as CS  # noqa: F401
         assert CS.PASS
 
     def test_nist_rmf_posture_exported(self):
-        from squish.squash import NistRmfPosture as P  # noqa: F401
+        from squash import NistRmfPosture as P  # noqa: F401
         assert P.COMPLIANT

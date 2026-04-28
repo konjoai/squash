@@ -1,27 +1,32 @@
-"""squish.squash — AI-SBOM governance layer (Squish Squash).
+"""squash — Automated EU AI Act compliance for ML teams.
 
-Phase 1: CycloneDX 1.7 ML-BOM sidecar written at compress time.
-Phase 2: lm_eval delta binding + OpenSSF Model Signing (eval_binder, oms_signer).
-Phase 3: Runtime governor middleware + /sbom and /health/model endpoints (governor).
-Phase 7: Standalone attestation engine — SPDX 2.3 dual output, policy templates,
-         security scanner, VEX engine, training data provenance, REST API,
-         MLOps integrations (MLflow, W&B, HF Hub, LangChain), CI/CD adapters.
+Squash generates Annex IV technical documentation, runs policy checks against 10+
+regulatory frameworks, and produces cryptographically signed audit records — all
+inside your CI/CD pipeline.
 
-Install the optional dependency group to enable:
-    pip install "squish[squash]"
+Quick start::
 
-For the REST microservice:
-    pip install "squish[squash-api]"
-    uvicorn squish.squash.api:app --host 0.0.0.0 --port 4444
+    pip install squash-ai
+    squash attest ./my-model --policy eu-ai-act
+
+For the REST microservice::
+
+    pip install "squash-ai[api]"
+    uvicorn squash.api:app --host 0.0.0.0 --port 4444
+
+Frameworks covered: EU AI Act · NIST AI RMF · ISO 42001 · OWASP LLM Top 10 ·
+FedRAMP · CMMC · SOC 2-AI · HITRUST · GDPR-AI · DORA
 """
 
-from squish.squash.sbom_builder import CompressRunMeta, CycloneDXBuilder, SbomDiff, SbomRegistry, EvalBinder
-from squish.squash.oms_signer import OmsSigner, OmsVerifier
-from squish.squash.governor import SquashGovernor
+__version__ = "0.9.14"
+
+from squash.sbom_builder import CompressRunMeta, CycloneDXBuilder, SbomDiff, SbomRegistry, EvalBinder
+from squash.oms_signer import OmsSigner, OmsVerifier
+from squash.governor import SquashGovernor
 
 # Phase 7 exports — lazy-guarded; raise ImportError at access time if cyclonedx absent
-from squish.squash.spdx_builder import SpdxArtifacts, SpdxBuilder, SpdxOptions
-from squish.squash.policy import (
+from squash.spdx_builder import SpdxArtifacts, SpdxBuilder, SpdxOptions
+from squash.policy import (
     AVAILABLE_POLICIES,
     PolicyEngine,
     PolicyFinding,
@@ -30,8 +35,8 @@ from squish.squash.policy import (
     PolicyRegistry,
     PolicyWebhook,
 )
-from squish.squash.scanner import ModelScanner, ScanFinding, ScanResult
-from squish.squash.vex import (
+from squash.scanner import ModelScanner, ScanFinding, ScanResult
+from squash.vex import (
     ModelInventory,
     ModelInventoryEntry,
     VexCache,
@@ -41,12 +46,12 @@ from squish.squash.vex import (
     VexReport,
     VexStatement,
 )
-from squish.squash.provenance import (
+from squash.provenance import (
     DatasetRecord,
     ProvenanceCollector,
     ProvenanceManifest,
 )
-from squish.squash.attest import (
+from squash.attest import (
     AttestConfig,
     AttestPipeline,
     AttestResult,
@@ -55,44 +60,44 @@ from squish.squash.attest import (
     CompositeAttestPipeline,
     CompositeAttestResult,
 )
-from squish.squash.sarif import SarifBuilder
-from squish.squash.report import ComplianceReporter
-from squish.squash.policy import NtiaResult, NtiaValidator  # noqa: F401 (Wave 20)
-from squish.squash.slsa import SlsaLevel, SlsaAttestation, SlsaProvenanceBuilder  # noqa: F401 (Wave 21)
-from squish.squash.sbom_builder import BomMerger  # noqa: F401 (Wave 22)
-from squish.squash.risk import (  # noqa: F401 (Wave 23)
+from squash.sarif import SarifBuilder
+from squash.report import ComplianceReporter
+from squash.policy import NtiaResult, NtiaValidator  # noqa: F401 (Wave 20)
+from squash.slsa import SlsaLevel, SlsaAttestation, SlsaProvenanceBuilder  # noqa: F401 (Wave 21)
+from squash.sbom_builder import BomMerger  # noqa: F401 (Wave 22)
+from squash.risk import (  # noqa: F401 (Wave 23)
     RiskCategory,
     EuAiActCategory,
     NistRmfCategory,
     RiskAssessmentResult,
     AiRiskAssessor,
 )
-from squish.squash.governor import DriftEvent, DriftMonitor  # noqa: F401 (Wave 24)
-from squish.squash.cicd import CiEnvironment, CicdAdapter, CicdReport  # noqa: F401 (Wave 25)
-from squish.squash.integrations.sagemaker import SageMakerSquash  # noqa: F401 (Wave 26)
-from squish.squash.sbom_builder import OrasAdapter  # noqa: F401 (Wave 26)
-from squish.squash.vex import VexFeedManifest, SQUASH_VEX_FEED_URL, SQUASH_VEX_FEED_FALLBACK_URL  # noqa: F401 (Wave 26)
-from squish.squash.integrations.ray import (  # noqa: F401 (Wave 28)
+from squash.governor import DriftEvent, DriftMonitor  # noqa: F401 (Wave 24)
+from squash.cicd import CiEnvironment, CicdAdapter, CicdReport  # noqa: F401 (Wave 25)
+from squash.integrations.sagemaker import SageMakerSquash  # noqa: F401 (Wave 26)
+from squash.sbom_builder import OrasAdapter  # noqa: F401 (Wave 26)
+from squash.vex import VexFeedManifest, SQUASH_VEX_FEED_URL, SQUASH_VEX_FEED_FALLBACK_URL  # noqa: F401 (Wave 26)
+from squash.integrations.ray import (  # noqa: F401 (Wave 28)
     SquashServeConfig,
     SquashServeDeployment,
     squash_serve,
 )
-from squish.squash.integrations.kubernetes import (  # noqa: F401 (Wave 27)
+from squash.integrations.kubernetes import (  # noqa: F401 (Wave 27)
     KubernetesWebhookHandler,
     WebhookConfig,
 )
-from squish.squash.remediate import (  # noqa: F401 (Wave 54)
+from squash.remediate import (  # noqa: F401 (Wave 54)
     Remediator,
     RemediateResult,
     ConvertedFile,
     FailedFile,
 )
-from squish.squash.evaluator import (  # noqa: F401 (Wave 55)
+from squash.evaluator import (  # noqa: F401 (Wave 55)
     EvalEngine,
     EvalReport,
     ProbeResult,
 )
-from squish.squash.edge_formats import (  # noqa: F401 (Wave 56)
+from squash.edge_formats import (  # noqa: F401 (Wave 56)
     TFLiteParser,
     TFLiteMetadata,
     CoreMLParser,
@@ -101,15 +106,15 @@ from squish.squash.edge_formats import (  # noqa: F401 (Wave 56)
     EdgeFinding,
     TensorDescriptor,
 )
-from squish.squash.chat import ChatSession  # noqa: F401 (Wave 56)
-from squish.squash.model_card import (  # noqa: F401 (Wave 57)
+from squash.chat import ChatSession  # noqa: F401 (Wave 56)
+from squash.model_card import (  # noqa: F401 (Wave 57)
     ModelCard,
     ModelCardConfig,
     ModelCardGenerator,
     ModelCardSection,
     KNOWN_FORMATS as MODEL_CARD_KNOWN_FORMATS,
 )
-from squish.squash.nist_rmf import (  # noqa: F401 (Wave 83)
+from squash.nist_rmf import (  # noqa: F401 (Wave 83)
     NistRmfFunction,
     NistControlStatus,
     NistRmfControl,
@@ -119,26 +124,27 @@ from squish.squash.nist_rmf import (  # noqa: F401 (Wave 83)
 )
 
 __all__ = [
-    # Phase 1–3 (existing)
+    # Core
     "CycloneDXBuilder",
     "CompressRunMeta",
     "EvalBinder",
     "OmsSigner",
+    "OmsVerifier",
     "SquashGovernor",
-    # Phase 7: SPDX
+    # SPDX
     "SpdxBuilder",
     "SpdxOptions",
     "SpdxArtifacts",
-    # Phase 7: Policy
+    # Policy
     "PolicyEngine",
     "PolicyResult",
     "PolicyFinding",
     "AVAILABLE_POLICIES",
-    # Phase 7: Scanner
+    # Scanner
     "ModelScanner",
     "ScanResult",
     "ScanFinding",
-    # Phase 7: VEX
+    # VEX
     "VexFeed",
     "VexEvaluator",
     "VexReport",
@@ -146,79 +152,77 @@ __all__ = [
     "ModelInventoryEntry",
     "VexDocument",
     "VexStatement",
-    # Phase 7: Provenance
+    # Provenance
     "ProvenanceCollector",
     "ProvenanceManifest",
     "DatasetRecord",
-    # Phase 7: Attestation pipeline
+    # Attestation pipeline
     "AttestPipeline",
     "AttestConfig",
     "AttestResult",
     "AttestationViolationError",
-    # Wave 11: SARIF export
+    # SARIF export
     "SarifBuilder",
-    # Wave 12: SBOM diff + policy history
+    # SBOM diff + policy history
     "SbomDiff",
     "PolicyHistory",
-    # Wave 14: Sigstore verify
-    "OmsVerifier",
-    # Wave 15: HTML compliance report
+    # HTML compliance report
     "ComplianceReporter",
-    # Wave 16: VEX cache
+    # VEX cache
     "VexCache",
-    # Wave 17: Policy webhooks
+    # Policy webhooks
     "PolicyWebhook",
-    # Wave 18: Composite attestation
+    # Composite attestation
     "CompositeAttestConfig",
     "CompositeAttestPipeline",
     "CompositeAttestResult",
-    # Wave 19: SBOM registry push
+    # SBOM registry push
     "SbomRegistry",
-    # Wave 20: NTIA minimum elements
+    # NTIA minimum elements
     "NtiaResult",
     "NtiaValidator",
-    # Wave 21: SLSA provenance
+    # SLSA provenance
     "SlsaLevel",
     "SlsaAttestation",
     "SlsaProvenanceBuilder",
-    # Wave 22: BOM merge
+    # BOM merge
     "BomMerger",
-    # Wave 23: AI risk assessment
+    # AI risk assessment
     "RiskCategory",
     "EuAiActCategory",
     "NistRmfCategory",
     "RiskAssessmentResult",
     "AiRiskAssessor",
-    # Wave 24: Drift detection
+    # Drift detection
     "DriftEvent",
     "DriftMonitor",
-    # Wave 25: CI/CD integration
+    # CI/CD integration
     "CiEnvironment",
     "CicdAdapter",
     "CicdReport",
-    # Wave 26: SageMaker, ORAS, VEX feed
+    # SageMaker, ORAS, VEX feed
     "SageMakerSquash",
     "OrasAdapter",
     "VexFeedManifest",
     "SQUASH_VEX_FEED_URL",
     "SQUASH_VEX_FEED_FALLBACK_URL",
-    # Wave 27: Kubernetes Admission Webhook
+    # Kubernetes Admission Webhook
     "KubernetesWebhookHandler",
     "WebhookConfig",
-    # Wave 28: Ray Serve decorator
+    # Ray Serve decorator
     "SquashServeConfig",
     "SquashServeDeployment",
     "squash_serve",
-    # Wave 54: Remediate (pickle → safetensors)
+    # Remediate (pickle → safetensors)
     "Remediator",
     "RemediateResult",
     "ConvertedFile",
     "FailedFile",
-    # Wave 55: Dynamic evaluation / red-teaming
+    # Dynamic evaluation / red-teaming
     "EvalEngine",
     "EvalReport",
     "ProbeResult",
-    # Wave 56: Edge AI format support
+    # Edge AI format support
     "TFLiteParser",
     "TFLiteMetadata",
     "CoreMLParser",
@@ -226,15 +230,15 @@ __all__ = [
     "EdgeSecurityScanner",
     "EdgeFinding",
     "TensorDescriptor",
-    # Wave 56: RAG compliance chat
+    # RAG compliance chat
     "ChatSession",
-    # Wave 57: Model card generator
+    # Model card generator
     "ModelCard",
     "ModelCardConfig",
     "ModelCardGenerator",
     "ModelCardSection",
     "MODEL_CARD_KNOWN_FORMATS",
-    # Wave 83: NIST AI RMF 1.0 controls scanner
+    # NIST AI RMF 1.0 controls scanner
     "NistRmfFunction",
     "NistControlStatus",
     "NistRmfControl",

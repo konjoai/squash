@@ -162,7 +162,7 @@ class TestCircleCIOrbExists:
 
 class TestSquashServeConfig:
     def _import(self):
-        from squish.squash.integrations.ray import SquashServeConfig
+        from squash.integrations.ray import SquashServeConfig
         return SquashServeConfig
 
     def test_default_model_dir_is_none(self):
@@ -205,7 +205,7 @@ class TestSquashServeConfig:
 
 class TestSquashServeDecorator:
     def _import(self):
-        from squish.squash.integrations.ray import squash_serve
+        from squash.integrations.ray import squash_serve
         return squash_serve
 
     def test_returns_callable_when_called_with_args(self):
@@ -311,7 +311,7 @@ class TestSquashServeDecorator:
 
 class TestRunSquashValidation:
     def _fn(self):
-        from squish.squash.integrations.ray import _run_squash_validation, SquashServeConfig
+        from squash.integrations.ray import _run_squash_validation, SquashServeConfig
         return _run_squash_validation, SquashServeConfig
 
     def test_no_model_dir_returns_not_validated(self):
@@ -388,11 +388,11 @@ class TestRunSquashValidation:
 
 class TestSquashServeDeploymentMixin:
     def test_mixin_is_importable(self):
-        from squish.squash.integrations.ray import SquashServeDeployment
+        from squash.integrations.ray import SquashServeDeployment
         assert SquashServeDeployment is not None
 
     def test_subclass_inherits_bind_patch(self):
-        from squish.squash.integrations.ray import SquashServeDeployment
+        from squash.integrations.ray import SquashServeDeployment
 
         captured: list = []
 
@@ -409,7 +409,7 @@ class TestSquashServeDeploymentMixin:
         assert "squash_bom_summary" in captured[0]
 
     def test_subclass_overrides_squash_policy(self):
-        from squish.squash.integrations.ray import SquashServeDeployment
+        from squash.integrations.ray import SquashServeDeployment
 
         class MyModel(SquashServeDeployment):
             _squash_model_dir = None
@@ -426,11 +426,11 @@ class TestSquashServeDeploymentMixin:
         assert "squash_bom_summary" in result["user_config"]
 
     def test_mixin_default_require_bom_is_true(self):
-        from squish.squash.integrations.ray import SquashServeDeployment
+        from squash.integrations.ray import SquashServeDeployment
         assert SquashServeDeployment._squash_require_bom is True
 
     def test_mixin_default_policy_is_none(self):
-        from squish.squash.integrations.ray import SquashServeDeployment
+        from squash.integrations.ray import SquashServeDeployment
         assert SquashServeDeployment._squash_policy is None
 
 
@@ -459,31 +459,31 @@ class TestModuleCount:
 
 class TestSquashAllExports:
     def test_squash_serve_in_all(self):
-        import squish.squash as sq
+        import squash as sq
         assert "squash_serve" in sq.__all__
 
     def test_squash_serve_config_in_all(self):
-        import squish.squash as sq
+        import squash as sq
         assert "SquashServeConfig" in sq.__all__
 
     def test_squash_serve_deployment_in_all(self):
-        import squish.squash as sq
+        import squash as sq
         assert "SquashServeDeployment" in sq.__all__
 
     def test_squash_serve_importable_from_squash(self):
-        from squish.squash import squash_serve
+        from squash import squash_serve
         assert callable(squash_serve)
 
     def test_squash_serve_config_importable_from_squash(self):
-        from squish.squash import SquashServeConfig
+        from squash import SquashServeConfig
         assert SquashServeConfig is not None
 
     def test_squash_serve_deployment_importable_from_squash(self):
-        from squish.squash import SquashServeDeployment
+        from squash import SquashServeDeployment
         assert SquashServeDeployment is not None
 
     def test_wave27_exports_still_present(self):
-        import squish.squash as sq
+        import squash as sq
         assert "KubernetesWebhookHandler" in sq.__all__
         assert "WebhookConfig" in sq.__all__
 
@@ -495,27 +495,27 @@ class TestSquashAllExports:
 
 class TestRayModuleApiSurface:
     def test_module_has_squash_serve(self):
-        import squish.squash.integrations.ray as rmod
+        import squash.integrations.ray as rmod
         assert hasattr(rmod, "squash_serve")
 
     def test_module_has_squash_serve_config(self):
-        import squish.squash.integrations.ray as rmod
+        import squash.integrations.ray as rmod
         assert hasattr(rmod, "SquashServeConfig")
 
     def test_module_has_squash_serve_deployment(self):
-        import squish.squash.integrations.ray as rmod
+        import squash.integrations.ray as rmod
         assert hasattr(rmod, "SquashServeDeployment")
 
     def test_module_has_wrap_deployment(self):
-        import squish.squash.integrations.ray as rmod
+        import squash.integrations.ray as rmod
         assert hasattr(rmod, "_wrap_deployment")
 
     def test_squash_metadata_key_constant(self):
-        import squish.squash.integrations.ray as rmod
+        import squash.integrations.ray as rmod
         assert rmod._SQUASH_METADATA_KEY == "squash_bom_summary"
 
     def test_squash_serve_accepts_no_args(self):
-        from squish.squash.integrations.ray import squash_serve
+        from squash.integrations.ray import squash_serve
 
         @squash_serve
         class _Fake:
@@ -524,7 +524,7 @@ class TestRayModuleApiSurface:
         assert _Fake is not None
 
     def test_squash_serve_accepts_keyword_args(self):
-        from squish.squash.integrations.ray import squash_serve
+        from squash.integrations.ray import squash_serve
 
         @squash_serve(model_dir=None, require_bom=False)
         class _Fake:
@@ -540,7 +540,7 @@ class TestRayModuleApiSurface:
 
 class TestFullDecoratorRoundTrip:
     def test_bind_returns_original_return_value(self):
-        from squish.squash.integrations.ray import squash_serve
+        from squash.integrations.ray import squash_serve
 
         sentinel = object()
 
@@ -554,7 +554,7 @@ class TestFullDecoratorRoundTrip:
         assert result is sentinel
 
     def test_bind_passes_through_positional_args(self):
-        from squish.squash.integrations.ray import squash_serve
+        from squash.integrations.ray import squash_serve
 
         captured: list = []
 
@@ -568,7 +568,7 @@ class TestFullDecoratorRoundTrip:
         assert captured[0] == ("pos1", "pos2")
 
     def test_bom_summary_dict_has_validated_key(self):
-        from squish.squash.integrations.ray import squash_serve
+        from squash.integrations.ray import squash_serve
 
         summaries: list = []
 
@@ -583,7 +583,7 @@ class TestFullDecoratorRoundTrip:
 
     def test_class_without_bind_falls_back_gracefully(self):
         """Deployer class with no bind() at all — patched bind returns the class."""
-        from squish.squash.integrations.ray import squash_serve
+        from squash.integrations.ray import squash_serve
 
         class NoBind:
             pass
@@ -595,7 +595,7 @@ class TestFullDecoratorRoundTrip:
 
     def test_double_decoration_is_idempotent(self):
         """Applying @squash_serve twice should not crash."""
-        from squish.squash.integrations.ray import squash_serve
+        from squash.integrations.ray import squash_serve
 
         class FakeDeployment:
             @classmethod

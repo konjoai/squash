@@ -35,11 +35,11 @@ def _write_bom(path: Path) -> None:
 class TestEvalBinderShim(unittest.TestCase):
     def test_import_from_sbom_builder(self):
         """EvalBinder is importable from sbom_builder (canonical location)."""
-        from squish.squash.sbom_builder import EvalBinder
+        from squash.sbom_builder import EvalBinder
         self.assertIsNotNone(EvalBinder)
 
     def test_eval_binder_has_bind(self):
-        from squish.squash.sbom_builder import EvalBinder
+        from squash.sbom_builder import EvalBinder
         self.assertTrue(callable(EvalBinder.bind))
 
 
@@ -56,7 +56,7 @@ class TestEvalBinderBind(unittest.TestCase):
                 }
             }))
 
-            from squish.squash.sbom_builder import EvalBinder
+            from squash.sbom_builder import EvalBinder
             EvalBinder.bind(bom_path, lmeval)
 
             updated = json.loads(bom_path.read_text())
@@ -69,7 +69,7 @@ class TestEvalBinderBind(unittest.TestCase):
             _write_bom(bom_path)
             lmeval = Path(td) / "missing.json"
 
-            from squish.squash.sbom_builder import EvalBinder
+            from squash.sbom_builder import EvalBinder
             with self.assertRaises(Exception):
                 EvalBinder.bind(bom_path, lmeval)
 
@@ -80,7 +80,7 @@ class TestEvalBinderBind(unittest.TestCase):
             lmeval = Path(td) / "lmeval.json"
             lmeval.write_text(json.dumps({"results": {}}))
 
-            from squish.squash.sbom_builder import EvalBinder
+            from squash.sbom_builder import EvalBinder
             result = EvalBinder.bind(bom_path, lmeval)
             self.assertIsNone(result)  # returns None (in-place)
 
@@ -101,7 +101,7 @@ class TestSbomRegistryDtrack(unittest.TestCase):
             mock_resp.__exit__ = MagicMock(return_value=False)
 
             with patch("urllib.request.urlopen", return_value=mock_resp):
-                from squish.squash.sbom_builder import SbomRegistry
+                from squash.sbom_builder import SbomRegistry
                 url = SbomRegistry.push_dtrack(
                     bom,
                     base_url="http://dtrack.example.com",
@@ -131,7 +131,7 @@ class TestSbomRegistryDtrack(unittest.TestCase):
             bom = Path(td) / "bom.json"
             _write_bom(bom)
             with patch("urllib.request.urlopen", fake_urlopen):
-                from squish.squash.sbom_builder import SbomRegistry
+                from squash.sbom_builder import SbomRegistry
                 SbomRegistry.push_dtrack(bom, "http://dt.example.com", "my-api-key")
 
         self.assertEqual(captured["method"], "PUT")
@@ -145,7 +145,7 @@ class TestSbomRegistryDtrack(unittest.TestCase):
             with patch("urllib.request.urlopen",
                        side_effect=urllib.error.HTTPError(
                            url=None, code=403, msg="Forbidden", hdrs=None, fp=None)):
-                from squish.squash.sbom_builder import SbomRegistry
+                from squash.sbom_builder import SbomRegistry
                 with self.assertRaises(RuntimeError):
                     SbomRegistry.push_dtrack(bom, "http://dt.example.com", "bad-key")
 
@@ -163,7 +163,7 @@ class TestSbomRegistryGuac(unittest.TestCase):
 
             endpoint = "http://guac.example.com/api/v1/upload"
             with patch("urllib.request.urlopen", return_value=mock_resp):
-                from squish.squash.sbom_builder import SbomRegistry
+                from squash.sbom_builder import SbomRegistry
                 result = SbomRegistry.push_guac(bom, endpoint)
 
             self.assertEqual(result, endpoint)
@@ -177,7 +177,7 @@ class TestSbomRegistryGuac(unittest.TestCase):
                        side_effect=urllib.error.HTTPError(
                            url=None, code=500, msg="Internal Server Error",
                            hdrs=None, fp=None)):
-                from squish.squash.sbom_builder import SbomRegistry
+                from squash.sbom_builder import SbomRegistry
                 with self.assertRaises(RuntimeError):
                     SbomRegistry.push_guac(bom, "http://guac.example.com/upload")
 
@@ -194,7 +194,7 @@ class TestSbomRegistrySquash(unittest.TestCase):
             mock_resp.__exit__ = MagicMock(return_value=False)
 
             with patch("urllib.request.urlopen", return_value=mock_resp):
-                from squish.squash.sbom_builder import SbomRegistry
+                from squash.sbom_builder import SbomRegistry
                 result = SbomRegistry.push_squash(
                     bom,
                     registry_url="http://registry.example.com",
@@ -211,7 +211,7 @@ class TestSbomRegistrySquash(unittest.TestCase):
                        side_effect=urllib.error.HTTPError(
                            url=None, code=401, msg="Unauthorized",
                            hdrs=None, fp=None)):
-                from squish.squash.sbom_builder import SbomRegistry
+                from squash.sbom_builder import SbomRegistry
                 with self.assertRaises(RuntimeError):
                     SbomRegistry.push_squash(bom, "http://reg.example.com", "bad-token")
 
@@ -226,7 +226,7 @@ class TestSbomRegistryDtypeContracts(unittest.TestCase):
             mock_resp.__enter__ = lambda s: s
             mock_resp.__exit__ = MagicMock(return_value=False)
             with patch("urllib.request.urlopen", return_value=mock_resp):
-                from squish.squash.sbom_builder import SbomRegistry
+                from squash.sbom_builder import SbomRegistry
                 result = SbomRegistry.push_dtrack(bom, "http://dt.example.com", "key")
             self.assertIsInstance(result, str)
 
@@ -239,7 +239,7 @@ class TestSbomRegistryDtypeContracts(unittest.TestCase):
             mock_resp.__enter__ = lambda s: s
             mock_resp.__exit__ = MagicMock(return_value=False)
             with patch("urllib.request.urlopen", return_value=mock_resp):
-                from squish.squash.sbom_builder import SbomRegistry
+                from squash.sbom_builder import SbomRegistry
                 result = SbomRegistry.push_guac(bom, "http://guac.example.com")
             self.assertIsInstance(result, str)
 

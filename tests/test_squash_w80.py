@@ -139,17 +139,17 @@ _orig_squash_api = None
 
 def setUpModule() -> None:  # noqa: N802
     global _orig_squash_api
-    _orig_squash_api = sys.modules.get("squish.squash.api")
-    sys.modules["squish.squash.api"] = _api
+    _orig_squash_api = sys.modules.get("squash.api")
+    sys.modules["squash.api"] = _api
     _squish_squash_pkg.api = _api  # type: ignore[attr-defined]
 
 
 def tearDownModule() -> None:  # noqa: N802
     if _orig_squash_api is not None:
-        sys.modules["squish.squash.api"] = _orig_squash_api
+        sys.modules["squash.api"] = _orig_squash_api
         _squish_squash_pkg.api = _orig_squash_api  # type: ignore[attr-defined]
     else:
-        sys.modules.pop("squish.squash.api", None)
+        sys.modules.pop("squash.api", None)
 
 
 # ---------------------------------------------------------------------------

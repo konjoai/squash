@@ -14,7 +14,7 @@ obligations require a complete, auditable attestation trail per tenant.
 """
 from __future__ import annotations
 
-from squish.squash.cloud_db import CloudDB
+from squash.cloud_db import CloudDB
 from starlette.testclient import TestClient
 
 
@@ -94,7 +94,7 @@ class TestCloudAPIGetAttestations:
     """8 integration tests for GET /cloud/tenants/{tenant_id}/attestations."""
 
     def setup_method(self) -> None:
-        from squish.squash import api
+        from squash import api
 
         api._tenants.clear()
         api._inventory.clear()

@@ -17,7 +17,7 @@ safe to *import* and *define* without Ray installed; they only require Ray at
 Usage — decorator::
 
     from ray import serve
-    from squish.squash.integrations.ray import squash_serve
+    from squash.integrations.ray import squash_serve
 
     @squash_serve(model_dir="models/my-llm", policy="eu-ai-act")
     @serve.deployment
@@ -30,7 +30,7 @@ Usage — decorator::
 Usage — mix-in base class::
 
     from ray import serve
-    from squish.squash.integrations.ray import SquashServeDeployment
+    from squash.integrations.ray import SquashServeDeployment
 
     @serve.deployment
     class MyLLM(SquashServeDeployment):
@@ -203,7 +203,7 @@ def _run_squash_validation(config: SquashServeConfig) -> dict[str, Any]:
         return {"validated": False, "reason": "model_dir not found", "path": str(model_path)}
 
     try:
-        from squish.squash.attest import AttestConfig, AttestPipeline  # noqa: PLC0415
+        from squash.attest import AttestConfig, AttestPipeline  # noqa: PLC0415
 
         attest_config = AttestConfig(
             model_path=model_path,

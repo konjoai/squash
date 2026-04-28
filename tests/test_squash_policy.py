@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import pytest
 
-from squish.squash.policy import (
+from squash.policy import (
     AVAILABLE_POLICIES,
     PolicyEngine,
     PolicyFinding,

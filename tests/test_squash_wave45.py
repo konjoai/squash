@@ -66,7 +66,7 @@ def _tool(
 
 class TestMcpScanFinding(unittest.TestCase):
     def setUp(self):
-        from squish.squash.mcp import McpScanFinding
+        from squash.mcp import McpScanFinding
         self.Finding = McpScanFinding
 
     def test_fields_accessible(self):
@@ -109,7 +109,7 @@ class TestMcpScanFinding(unittest.TestCase):
 
 class TestMcpScanResult(unittest.TestCase):
     def setUp(self):
-        from squish.squash.mcp import McpScanFinding, McpScanResult
+        from squash.mcp import McpScanFinding, McpScanResult
         self.Result = McpScanResult
         self.Finding = McpScanFinding
 
@@ -149,7 +149,7 @@ class TestMcpScanResult(unittest.TestCase):
 
 class TestMcpScannerInjection(unittest.TestCase):
     def setUp(self):
-        from squish.squash.mcp import McpScanner
+        from squash.mcp import McpScanner
         self.scanner = McpScanner
 
     def _scan_phrase(self, text: str, field: str = "description") -> list:
@@ -221,7 +221,7 @@ class TestMcpScannerInjection(unittest.TestCase):
 
 class TestMcpScannerSsrf(unittest.TestCase):
     def setUp(self):
-        from squish.squash.mcp import McpScanner
+        from squash.mcp import McpScanner
         self.scanner = McpScanner
 
     def _scan(self, text: str) -> list:
@@ -281,7 +281,7 @@ class TestMcpScannerSsrf(unittest.TestCase):
 
 class TestMcpScannerShadowing(unittest.TestCase):
     def setUp(self):
-        from squish.squash.mcp import McpScanner
+        from squash.mcp import McpScanner
         self.scanner = McpScanner
 
     def _scan_name(self, name: str) -> list:
@@ -340,7 +340,7 @@ class TestMcpScannerShadowing(unittest.TestCase):
 
 class TestMcpScannerIntegrity(unittest.TestCase):
     def setUp(self):
-        from squish.squash.mcp import McpScanner
+        from squash.mcp import McpScanner
         self.scanner = McpScanner
 
     def test_missing_name_flagged(self):
@@ -390,7 +390,7 @@ class TestMcpScannerIntegrity(unittest.TestCase):
 
 class TestMcpScannerExfil(unittest.TestCase):
     def setUp(self):
-        from squish.squash.mcp import McpScanner
+        from squash.mcp import McpScanner
         self.scanner = McpScanner
 
     def _scan(self, text: str) -> list:
@@ -433,7 +433,7 @@ class TestMcpScannerExfil(unittest.TestCase):
 
 class TestMcpScannerPermission(unittest.TestCase):
     def setUp(self):
-        from squish.squash.mcp import McpScanner
+        from squash.mcp import McpScanner
         self.scanner = McpScanner
 
     def _scan(self, text: str) -> list:
@@ -481,7 +481,7 @@ class TestMcpScannerPermission(unittest.TestCase):
 
 class TestMcpScannerClean(unittest.TestCase):
     def setUp(self):
-        from squish.squash.mcp import McpScanner
+        from squash.mcp import McpScanner
         self.scanner = McpScanner
 
     def test_single_clean_tool_safe(self):
@@ -551,7 +551,7 @@ class TestMcpScannerClean(unittest.TestCase):
 
 class TestMcpScannerEdge(unittest.TestCase):
     def setUp(self):
-        from squish.squash.mcp import McpScanner
+        from squash.mcp import McpScanner
         self.scanner = McpScanner
 
     def test_scan_non_dict_non_list_returns_unsafe(self):
@@ -603,7 +603,7 @@ class TestMcpScannerEdge(unittest.TestCase):
 
 class TestMcpScannerScanFile(unittest.TestCase):
     def setUp(self):
-        from squish.squash.mcp import McpScanner
+        from squash.mcp import McpScanner
         self.scanner = McpScanner
 
     def test_scan_file_clean_catalog(self):
@@ -653,7 +653,7 @@ class TestMcpScannerScanFile(unittest.TestCase):
 
 class TestMcpSigner(unittest.TestCase):
     def setUp(self):
-        from squish.squash.mcp import McpSigner
+        from squash.mcp import McpSigner
         self.signer = McpSigner
 
     def test_sign_returns_none_without_sigstore(self):
@@ -688,35 +688,35 @@ class TestMcpSigner(unittest.TestCase):
 
 class TestMcpStrictPolicy(unittest.TestCase):
     def test_mcp_strict_in_available_policies(self):
-        from squish.squash.policy import AVAILABLE_POLICIES
+        from squash.policy import AVAILABLE_POLICIES
         self.assertIn("mcp-strict", AVAILABLE_POLICIES)
 
     def test_mcp_strict_has_rules(self):
-        from squish.squash.policy import _POLICIES  # noqa: PLC2701
+        from squash.policy import _POLICIES  # noqa: PLC2701
         rules = _POLICIES["mcp-strict"]
         self.assertIsInstance(rules, list)
         self.assertGreater(len(rules), 0)
 
     def test_mcp_strict_rule_ids(self):
-        from squish.squash.policy import _POLICIES  # noqa: PLC2701
+        from squash.policy import _POLICIES  # noqa: PLC2701
         rule_ids = {r["id"] for r in _POLICIES["mcp-strict"]}
         # All six MCP rules must be represented in the policy
         for expected in ("MCP-001", "MCP-002", "MCP-003", "MCP-004", "MCP-005", "MCP-006"):
             self.assertIn(expected, rule_ids, f"Rule {expected} missing from mcp-strict policy")
 
     def test_mcp_strict_rule_structure(self):
-        from squish.squash.policy import _POLICIES  # noqa: PLC2701
+        from squash.policy import _POLICIES  # noqa: PLC2701
         for rule in _POLICIES["mcp-strict"]:
             for key in ("id", "field", "check", "severity", "rationale", "remediation"):
                 self.assertIn(key, rule, f"Rule {rule.get('id')} missing key '{key}'")
 
     def test_mcp_strict_severities_valid(self):
-        from squish.squash.policy import _POLICIES  # noqa: PLC2701
+        from squash.policy import _POLICIES  # noqa: PLC2701
         for rule in _POLICIES["mcp-strict"]:
             self.assertIn(rule["severity"], ("error", "warning"))
 
     def test_existing_policies_unaffected(self):
-        from squish.squash.policy import AVAILABLE_POLICIES
+        from squash.policy import AVAILABLE_POLICIES
         for expected in ("enterprise-strict", "eu-ai-act", "nist-ai-rmf"):
             self.assertIn(expected, AVAILABLE_POLICIES)
 
@@ -725,7 +725,7 @@ class TestMcpStrictPolicy(unittest.TestCase):
 
 class TestAttestMcpCli(unittest.TestCase):
     def setUp(self):
-        from squish.squash.cli import _build_parser
+        from squash.cli import _build_parser
         self.parser = _build_parser()
 
     def _parse(self, *args: str):
@@ -780,12 +780,12 @@ class TestAttestMcpCli(unittest.TestCase):
 
 class TestAttestMcpApi(unittest.TestCase):
     def test_attest_mcp_route_registered(self):
-        from squish.squash.api import app
+        from squash.api import app
         routes = {r.path for r in app.routes}
         self.assertIn("/attest/mcp", routes)
 
     def test_mcp_attest_request_model_importable(self):
-        from squish.squash.api import McpAttestRequest
+        from squash.api import McpAttestRequest
         req = McpAttestRequest(catalog_path="/tmp/x.json")
         self.assertEqual(req.catalog_path, "/tmp/x.json")
         self.assertEqual(req.policy, "mcp-strict")
@@ -793,16 +793,16 @@ class TestAttestMcpApi(unittest.TestCase):
         self.assertFalse(req.fail_on_violation)
 
     def test_mcp_attest_request_defaults(self):
-        from squish.squash.api import McpAttestRequest
+        from squash.api import McpAttestRequest
         req = McpAttestRequest(catalog_path="/some/path.json")
         self.assertEqual(req.policy, "mcp-strict")
         self.assertFalse(req.sign)
         self.assertFalse(req.fail_on_violation)
 
     def test_docstring_lists_mcp_endpoint(self):
-        from squish.squash.api import app
+        from squash.api import app
         module_doc = app.__module__
-        import squish.squash.api as api_module
+        import squash.api as api_module
         self.assertIn("/attest/mcp", api_module.__doc__)
 
 
@@ -831,11 +831,11 @@ class TestEvalBinderDeleted(unittest.TestCase):
 
 class TestEvalBinderSbomBuilder(unittest.TestCase):
     def test_eval_binder_importable_from_sbom_builder(self):
-        from squish.squash.sbom_builder import EvalBinder
+        from squash.sbom_builder import EvalBinder
         self.assertIsNotNone(EvalBinder)
 
     def test_eval_binder_has_bind_method(self):
-        from squish.squash.sbom_builder import EvalBinder
+        from squash.sbom_builder import EvalBinder
         self.assertTrue(callable(EvalBinder.bind))
 
 

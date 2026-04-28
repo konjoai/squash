@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pytest
 
-from squish.squash.vex import (
+from squash.vex import (
     ModelInventory,
     ModelInventoryEntry,
     VexDocument,

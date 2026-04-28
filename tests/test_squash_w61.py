@@ -10,7 +10,7 @@ from collections import defaultdict
 import pytest
 from fastapi.testclient import TestClient
 
-from squish.squash.api import (
+from squash.api import (
     app,
     _drift_events,
     _inventory,
@@ -19,7 +19,7 @@ from squish.squash.api import (
     _tenants,
     _vex_alerts,
 )
-from squish.squash.cloud_db import CloudDB
+from squash.cloud_db import CloudDB
 
 
 # ── CloudDB unit tests ────────────────────────────────────────────────────────

@@ -48,9 +48,9 @@ if _SQUISH_ROOT not in sys.path:
 
 import squash.api as _api  # noqa: E402 — after stubs
 
-# Build minimal package stubs so `from squish.squash import api` resolves to
+# Build minimal package stubs so `from squash import api` resolves to
 # _api at test execution time. Aliasing is deferred to setUpModule/tearDownModule
-# to avoid permanently replacing squish.squash.api during pytest collection.
+# to avoid permanently replacing squash.api during pytest collection.
 _squish_pkg = sys.modules.setdefault("squish", types.ModuleType("squish"))
 _squish_squash_pkg = sys.modules.setdefault("squish.squash", types.ModuleType("squish.squash"))
 
@@ -126,17 +126,17 @@ _orig_squash_api = None
 
 def setUpModule() -> None:  # noqa: N802 — unittest naming convention
     global _orig_squash_api
-    _orig_squash_api = sys.modules.get("squish.squash.api")
-    sys.modules["squish.squash.api"] = _api
+    _orig_squash_api = sys.modules.get("squash.api")
+    sys.modules["squash.api"] = _api
     _squish_squash_pkg.api = _api  # type: ignore[attr-defined]
 
 
 def tearDownModule() -> None:  # noqa: N802 — unittest naming convention
     if _orig_squash_api is not None:
-        sys.modules["squish.squash.api"] = _orig_squash_api
+        sys.modules["squash.api"] = _orig_squash_api
         _squish_squash_pkg.api = _orig_squash_api  # type: ignore[attr-defined]
     else:
-        sys.modules.pop("squish.squash.api", None)
+        sys.modules.pop("squash.api", None)
 
 
 # ---------------------------------------------------------------------------

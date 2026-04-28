@@ -57,7 +57,7 @@ from typing import Any
 
 import pytest
 
-from squish.squash.policy import (
+from squash.policy import (
     AVAILABLE_POLICIES,
     PolicyEngine,
     _POLICIES,

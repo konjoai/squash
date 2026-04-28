@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pytest
 
-from squish.squash.scanner import ModelScanner, ScanResult, ScanFinding
+from squash.scanner import ModelScanner, ScanResult, ScanFinding
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────

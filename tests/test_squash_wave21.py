@@ -9,7 +9,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from squish.squash.slsa import SlsaAttestation, SlsaLevel, SlsaProvenanceBuilder
+from squash.slsa import SlsaAttestation, SlsaLevel, SlsaProvenanceBuilder
 
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────

@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from squish.squash.risk import (
+from squash.risk import (
     AiRiskAssessor,
     EuAiActCategory,
     NistRmfCategory,

@@ -17,7 +17,7 @@ class TestProbeResult(unittest.TestCase):
     """Tests for ProbeResult dataclass."""
 
     def _make(self, status="pass", severity="high"):
-        from squish.squash.evaluator import ProbeResult
+        from squash.evaluator import ProbeResult
         return ProbeResult(
             probe_id="SQEV-001",
             category="prompt_injection",
@@ -42,7 +42,7 @@ class TestEvalReportProperties(unittest.TestCase):
     """Tests for EvalReport computed properties."""
 
     def _make_report(self, results):
-        from squish.squash.evaluator import EvalReport
+        from squash.evaluator import EvalReport
         return EvalReport(
             report_id="test-123",
             endpoint="http://localhost/v1",
@@ -52,7 +52,7 @@ class TestEvalReportProperties(unittest.TestCase):
         )
 
     def _make_probe(self, status, severity="high"):
-        from squish.squash.evaluator import ProbeResult
+        from squash.evaluator import ProbeResult
         return ProbeResult(
             probe_id="SQEV-001",
             category="test",
@@ -108,7 +108,7 @@ class TestEvalReportSave(unittest.TestCase):
         shutil.rmtree(self.tmpdir, ignore_errors=True)
 
     def test_save_writes_valid_json(self):
-        from squish.squash.evaluator import EvalReport, ProbeResult
+        from squash.evaluator import EvalReport, ProbeResult
         probe = ProbeResult(
             probe_id="SQEV-001", category="test", severity="high",
             title="Test probe", status="pass", response_snippet="ok",
@@ -126,7 +126,7 @@ class TestEvalReportSave(unittest.TestCase):
         self.assertEqual(1, len(data["probe_results"]))
 
     def test_summary_text_contains_stats(self):
-        from squish.squash.evaluator import EvalReport, ProbeResult
+        from squash.evaluator import EvalReport, ProbeResult
         probe = ProbeResult(
             probe_id="SQEV-001", category="test", severity="high",
             title="Fail probe", status="fail", response_snippet="bad",
@@ -159,17 +159,17 @@ class TestEvalEngineMocked(unittest.TestCase):
         return FakeResponse()
 
     def test_run_returns_eval_report(self):
-        from squish.squash.evaluator import EvalEngine
+        from squash.evaluator import EvalEngine
         engine = EvalEngine(endpoint="http://localhost/v1", model="test")
         safe_reply = "I cannot help with that request."
         with patch("urllib.request.urlopen", return_value=self._mock_response(safe_reply)):
             report = engine.run()
-        from squish.squash.evaluator import EvalReport
+        from squash.evaluator import EvalReport
         self.assertIsInstance(report, EvalReport)
         self.assertEqual(8, report.total)
 
     def test_all_safe_replies_produce_pass(self):
-        from squish.squash.evaluator import EvalEngine
+        from squash.evaluator import EvalEngine
         engine = EvalEngine(endpoint="http://localhost/v1", model="test")
         safe_reply = "I am not able to assist with that."
         with patch("urllib.request.urlopen", return_value=self._mock_response(safe_reply)):
@@ -177,7 +177,7 @@ class TestEvalEngineMocked(unittest.TestCase):
         self.assertEqual(report.total, report.passed)
 
     def test_network_error_produces_error_status(self):
-        from squish.squash.evaluator import EvalEngine
+        from squash.evaluator import EvalEngine
         engine = EvalEngine(endpoint="http://localhost/v1", model="test")
         with patch("urllib.request.urlopen", side_effect=OSError("connection refused")):
             report = engine.run()
@@ -186,7 +186,7 @@ class TestEvalEngineMocked(unittest.TestCase):
         self.assertEqual(0, report.passed)
 
     def test_patch_bom_writes_properties(self):
-        from squish.squash.evaluator import EvalEngine, EvalReport, ProbeResult
+        from squash.evaluator import EvalEngine, EvalReport, ProbeResult
         engine = EvalEngine(endpoint="http://localhost/v1", model="test")
         probe = ProbeResult(
             probe_id="SQEV-001", category="test", severity="high",

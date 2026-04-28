@@ -9,7 +9,7 @@ from unittest.mock import MagicMock, patch
 
 
 def _make_attest_result(model_dir: Path, passed: bool = True) -> "AttestResult":
-    from squish.squash.attest import AttestResult
+    from squash.attest import AttestResult
     return AttestResult(
         model_id=model_dir.name,
         output_dir=model_dir,
@@ -21,7 +21,7 @@ def _make_attest_result(model_dir: Path, passed: bool = True) -> "AttestResult":
 
 class TestCompositeAttestConfig(unittest.TestCase):
     def test_config_fields(self):
-        from squish.squash.attest import CompositeAttestConfig
+        from squash.attest import CompositeAttestConfig
         cfg = CompositeAttestConfig(
             model_paths=[Path("/models/a"), Path("/models/b")],
             policies=["no-cvss"],
@@ -32,14 +32,14 @@ class TestCompositeAttestConfig(unittest.TestCase):
         self.assertFalse(cfg.sign)
 
     def test_config_output_dir_defaults_none(self):
-        from squish.squash.attest import CompositeAttestConfig
+        from squash.attest import CompositeAttestConfig
         cfg = CompositeAttestConfig(model_paths=[Path("/m")])
         self.assertIsNone(cfg.output_dir)
 
 
 class TestCompositeAttestResult(unittest.TestCase):
     def test_result_passed_all_pass(self):
-        from squish.squash.attest import CompositeAttestResult
+        from squash.attest import CompositeAttestResult
         r = CompositeAttestResult(
             component_results=[],
             parent_bom_path=None,
@@ -50,7 +50,7 @@ class TestCompositeAttestResult(unittest.TestCase):
         self.assertEqual(r.error, "")
 
     def test_result_failed(self):
-        from squish.squash.attest import CompositeAttestResult
+        from squash.attest import CompositeAttestResult
         r = CompositeAttestResult(
             component_results=[],
             parent_bom_path=None,
@@ -80,7 +80,7 @@ class TestCompositeAttestPipelineRun(unittest.TestCase):
                     "dependencies": [],
                 }))
 
-            from squish.squash.attest import CompositeAttestConfig, CompositeAttestPipeline
+            from squash.attest import CompositeAttestConfig, CompositeAttestPipeline
 
             mock_result_a = _make_attest_result(model_a, passed=True)
             mock_result_b = _make_attest_result(model_b, passed=True)
@@ -94,7 +94,7 @@ class TestCompositeAttestPipelineRun(unittest.TestCase):
                 )
                 result = CompositeAttestPipeline.run(cfg)
 
-            from squish.squash.attest import CompositeAttestResult
+            from squash.attest import CompositeAttestResult
             self.assertIsInstance(result, CompositeAttestResult)
 
     def test_run_never_raises(self):
@@ -103,7 +103,7 @@ class TestCompositeAttestPipelineRun(unittest.TestCase):
             model_a = Path(td) / "model-a"
             model_a.mkdir()
 
-            from squish.squash.attest import CompositeAttestConfig, CompositeAttestPipeline
+            from squash.attest import CompositeAttestConfig, CompositeAttestPipeline
 
             with patch("squish.squash.attest.AttestPipeline") as MockPipeline:
                 MockPipeline.run.side_effect = RuntimeError("disk full")
@@ -133,7 +133,7 @@ class TestCompositeAttestPipelineRun(unittest.TestCase):
                     "dependencies": [],
                 }))
 
-            from squish.squash.attest import (
+            from squash.attest import (
                 CompositeAttestConfig,
                 CompositeAttestPipeline,
             )
@@ -160,14 +160,14 @@ class TestCompositeAttestPipelineRun(unittest.TestCase):
 
 class TestCompositeAttestDtypeContracts(unittest.TestCase):
     def test_config_types(self):
-        from squish.squash.attest import CompositeAttestConfig
+        from squash.attest import CompositeAttestConfig
         cfg = CompositeAttestConfig(model_paths=[Path("/x"), Path("/y")])
         self.assertIsInstance(cfg.model_paths, list)
         self.assertIsInstance(cfg.policies, list)
         self.assertIsInstance(cfg.sign, bool)
 
     def test_result_types(self):
-        from squish.squash.attest import CompositeAttestResult
+        from squash.attest import CompositeAttestResult
         r = CompositeAttestResult(
             component_results=[], parent_bom_path=None,
             output_dir=Path("/x"), passed=True,

@@ -40,7 +40,7 @@ class TestTFLiteParserMagic(unittest.TestCase):
         shutil.rmtree(self.tmpdir, ignore_errors=True)
 
     def test_valid_tfl3_magic_parses_without_error(self):
-        from squish.squash.edge_formats import TFLiteParser
+        from squash.edge_formats import TFLiteParser
         p = Path(self.tmpdir) / "model.tflite"
         p.write_bytes(_make_tflite_bytes(schema_version=3, valid_magic=True))
         meta = TFLiteParser.parse(p)
@@ -50,14 +50,14 @@ class TestTFLiteParserMagic(unittest.TestCase):
             self.assertNotIn("unknown magic", meta.parse_error.lower())
 
     def test_invalid_magic_recorded_as_parse_error(self):
-        from squish.squash.edge_formats import TFLiteParser
+        from squash.edge_formats import TFLiteParser
         p = Path(self.tmpdir) / "bad.tflite"
         p.write_bytes(_make_tflite_bytes(valid_magic=False))
         meta = TFLiteParser.parse(p)
         self.assertIsNotNone(meta.parse_error)
 
     def test_sha256_is_hex64(self):
-        from squish.squash.edge_formats import TFLiteParser
+        from squash.edge_formats import TFLiteParser
         p = Path(self.tmpdir) / "model.tflite"
         raw = _make_tflite_bytes()
         p.write_bytes(raw)
@@ -67,7 +67,7 @@ class TestTFLiteParserMagic(unittest.TestCase):
         self.assertEqual(64, len(meta.sha256))
 
     def test_file_path_stored(self):
-        from squish.squash.edge_formats import TFLiteParser
+        from squash.edge_formats import TFLiteParser
         p = Path(self.tmpdir) / "model.tflite"
         p.write_bytes(_make_tflite_bytes())
         meta = TFLiteParser.parse(p)
@@ -85,7 +85,7 @@ class TestTFLiteParserCycloneDXProperties(unittest.TestCase):
         shutil.rmtree(self.tmpdir, ignore_errors=True)
 
     def test_properties_have_squash_keys(self):
-        from squish.squash.edge_formats import TFLiteParser
+        from squash.edge_formats import TFLiteParser
         p = Path(self.tmpdir) / "model.tflite"
         p.write_bytes(_make_tflite_bytes())
         meta = TFLiteParser.parse(p)
@@ -130,7 +130,7 @@ class TestCoreMLParser(unittest.TestCase):
         return pkg
 
     def test_parse_returns_metadata(self):
-        from squish.squash.edge_formats import CoreMLParser
+        from squash.edge_formats import CoreMLParser
         pkg = self._make_mlpackage()
         meta = CoreMLParser.parse(pkg)
         self.assertEqual(pkg, meta.package_path)
@@ -138,20 +138,20 @@ class TestCoreMLParser(unittest.TestCase):
         self.assertEqual(64, len(meta.sha256))
 
     def test_spec_version_read(self):
-        from squish.squash.edge_formats import CoreMLParser
+        from squash.edge_formats import CoreMLParser
         pkg = self._make_mlpackage(spec_version=7)
         meta = CoreMLParser.parse(pkg)
         self.assertEqual(7, meta.spec_version)
 
     def test_model_version_and_description(self):
-        from squish.squash.edge_formats import CoreMLParser
+        from squash.edge_formats import CoreMLParser
         pkg = self._make_mlpackage()
         meta = CoreMLParser.parse(pkg)
         self.assertEqual("1.2", meta.model_version)
         self.assertEqual("Test model", meta.short_description)
 
     def test_properties_returned(self):
-        from squish.squash.edge_formats import CoreMLParser
+        from squash.edge_formats import CoreMLParser
         pkg = self._make_mlpackage()
         meta = CoreMLParser.parse(pkg)
         props = meta.to_cyclonedx_properties()
@@ -171,7 +171,7 @@ class TestEdgeSecurityScanner(unittest.TestCase):
         shutil.rmtree(self.tmpdir, ignore_errors=True)
 
     def test_invalid_magic_triggers_edge_tflite_001(self):
-        from squish.squash.edge_formats import EdgeSecurityScanner
+        from squash.edge_formats import EdgeSecurityScanner
         p = Path(self.tmpdir) / "bad.tflite"
         p.write_bytes(_make_tflite_bytes(valid_magic=False))
         findings = EdgeSecurityScanner.scan(p)
@@ -179,7 +179,7 @@ class TestEdgeSecurityScanner(unittest.TestCase):
         self.assertIn("EDGE-TFLITE-001", ids)
 
     def test_valid_tflite_no_critical_findings(self):
-        from squish.squash.edge_formats import EdgeSecurityScanner
+        from squash.edge_formats import EdgeSecurityScanner
         p = Path(self.tmpdir) / "ok.tflite"
         p.write_bytes(_make_tflite_bytes(valid_magic=True))
         findings = EdgeSecurityScanner.scan(p)
@@ -187,7 +187,7 @@ class TestEdgeSecurityScanner(unittest.TestCase):
         self.assertEqual(0, len(critical))
 
     def test_coreml_missing_model_data_triggers_edge_coreml_001(self):
-        from squish.squash.edge_formats import EdgeSecurityScanner
+        from squash.edge_formats import EdgeSecurityScanner
         pkg = Path(self.tmpdir) / "EmptyModel.mlpackage"
         pkg.mkdir()
         (pkg / "Manifest.json").write_text(json.dumps({"fileFormatVersion": "1.0.0"}))
@@ -197,7 +197,7 @@ class TestEdgeSecurityScanner(unittest.TestCase):
         self.assertIn("EDGE-COREML-001", ids)
 
     def test_coreml_objc_injection_pattern_detected(self):
-        from squish.squash.edge_formats import EdgeSecurityScanner
+        from squash.edge_formats import EdgeSecurityScanner
         pkg = Path(self.tmpdir) / "InjectModel.mlpackage"
         pkg.mkdir()
         # Create model data so COREML-001 is NOT triggered
@@ -214,7 +214,7 @@ class TestEdgeSecurityScanner(unittest.TestCase):
         self.assertIn("EDGE-COREML-002", ids)
 
     def test_unsupported_extension_returns_empty(self):
-        from squish.squash.edge_formats import EdgeSecurityScanner
+        from squash.edge_formats import EdgeSecurityScanner
         p = Path(self.tmpdir) / "model.onnx"
         p.write_bytes(b"\x00" * 32)
         findings = EdgeSecurityScanner.scan(p)
@@ -225,7 +225,7 @@ class TestEdgeFindingSeverities(unittest.TestCase):
     """EdgeFinding dataclass must store severity and IDs."""
 
     def test_finding_fields(self):
-        from squish.squash.edge_formats import EdgeFinding
+        from squash.edge_formats import EdgeFinding
         f = EdgeFinding(
             severity="high",
             finding_id="EDGE-TFLITE-001",

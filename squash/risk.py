@@ -2,7 +2,7 @@
 
 Usage::
 
-    from squish.squash.risk import AiRiskAssessor
+    from squash.risk import AiRiskAssessor
 
     result_eu  = AiRiskAssessor.assess_eu_ai_act(Path("my-model/cyclonedx-mlbom.json"))
     result_rmf = AiRiskAssessor.assess_nist_rmf(Path("my-model/cyclonedx-mlbom.json"))

@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from squish.squash.governor import DriftEvent, DriftMonitor
+from squash.governor import DriftEvent, DriftMonitor
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────

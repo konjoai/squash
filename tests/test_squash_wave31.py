@@ -23,7 +23,7 @@ import pytest
 try:
     from fastapi.testclient import TestClient
 
-    from squish.squash.api import app, _rate_window, _COUNTERS
+    from squash.api import app, _rate_window, _COUNTERS
 except ImportError:
     pytest.skip("fastapi not installed", allow_module_level=True)
 
@@ -167,7 +167,7 @@ class TestVexUpdateEndpoint:
 
     def test_default_url_falls_back_to_squash_feed(self, client, monkeypatch):
         """When no url in request and env var absent, DEFAULT_URL is used."""
-        from squish.squash.vex import VexCache as _RealVexCache  # noqa: PLC0415
+        from squash.vex import VexCache as _RealVexCache  # noqa: PLC0415
 
         monkeypatch.delenv("SQUASH_VEX_URL", raising=False)
         mock_instance = _update_feed_mock()

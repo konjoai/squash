@@ -173,14 +173,14 @@ class TestVexPublishHandler:
         return ns
 
     def test_returns_zero_on_success(self, tmp_path):
-        from squish.squash.cli import _cmd_vex_publish
+        from squash.cli import _cmd_vex_publish
 
         args = self._make_args(output=str(tmp_path / "out.json"), entries="[]", quiet=True)
         rc = _cmd_vex_publish(args, quiet=True)
         assert rc == 0
 
     def test_output_file_created(self, tmp_path):
-        from squish.squash.cli import _cmd_vex_publish
+        from squash.cli import _cmd_vex_publish
 
         out = tmp_path / "feed.json"
         args = self._make_args(output=str(out), entries="[]", quiet=True)
@@ -188,14 +188,14 @@ class TestVexPublishHandler:
         assert out.exists()
 
     def test_returns_one_on_invalid_json(self, tmp_path):
-        from squish.squash.cli import _cmd_vex_publish
+        from squash.cli import _cmd_vex_publish
 
         args = self._make_args(output=str(tmp_path / "f.json"), entries="not-json")
         rc = _cmd_vex_publish(args, quiet=True)
         assert rc == 1
 
     def test_mocked_generate_called(self, tmp_path):
-        from squish.squash.cli import _cmd_vex_publish
+        from squash.cli import _cmd_vex_publish
 
         out = tmp_path / "out.json"
         args = self._make_args(output=str(out), entries="[]", quiet=True)
@@ -215,7 +215,7 @@ class TestVexPublishHandler:
         assert rc == 0
 
     def test_validate_error_returns_one(self, tmp_path):
-        from squish.squash.cli import _cmd_vex_publish
+        from squash.cli import _cmd_vex_publish
 
         out = tmp_path / "out.json"
         args = self._make_args(output=str(out), entries="[]", quiet=True)
@@ -302,7 +302,7 @@ class TestAttestMlflowCli:
         assert "--fail-on-violation" in proc.stdout
 
     def test_handler_calls_attest_pipeline(self, tmp_path):
-        from squish.squash.cli import _cmd_attest_mlflow
+        from squash.cli import _cmd_attest_mlflow
         import argparse
 
         model_path = tmp_path / "model"
@@ -337,7 +337,7 @@ class TestAttestWandbCli:
         assert proc.returncode == 1
 
     def test_handler_calls_attest_pipeline(self, tmp_path):
-        from squish.squash.cli import _cmd_attest_wandb
+        from squash.cli import _cmd_attest_wandb
         import argparse
 
         model_path = tmp_path / "model"
@@ -356,7 +356,7 @@ class TestAttestWandbCli:
         assert rc == 0
 
     def test_failed_result_exits_1(self, tmp_path):
-        from squish.squash.cli import _cmd_attest_wandb
+        from squash.cli import _cmd_attest_wandb
         import argparse
 
         model_path = tmp_path / "model"
@@ -397,7 +397,7 @@ class TestAttestHuggingFaceCli:
 
     def test_offline_path_no_repo(self, tmp_path):
         """Without --repo-id, falls back to offline AttestPipeline.run."""
-        from squish.squash.cli import _cmd_attest_huggingface
+        from squash.cli import _cmd_attest_huggingface
         import argparse
 
         model_path = tmp_path / "model"
@@ -419,7 +419,7 @@ class TestAttestHuggingFaceCli:
 
     def test_hf_push_path_calls_hfsquash(self, tmp_path):
         """With --repo-id, delegates to HFSquash.attest_and_push."""
-        from squish.squash.cli import _cmd_attest_huggingface
+        from squash.cli import _cmd_attest_huggingface
         import argparse
 
         model_path = tmp_path / "model"
@@ -443,7 +443,7 @@ class TestAttestHuggingFaceCli:
         assert rc == 0
 
     def test_failed_hf_push_exits_1(self, tmp_path):
-        from squish.squash.cli import _cmd_attest_huggingface
+        from squash.cli import _cmd_attest_huggingface
         import argparse
 
         model_path = tmp_path / "model"
@@ -484,7 +484,7 @@ class TestAttestLangchainCli:
         assert proc.returncode == 1
 
     def test_handler_calls_attest_pipeline(self, tmp_path):
-        from squish.squash.cli import _cmd_attest_langchain
+        from squash.cli import _cmd_attest_langchain
         import argparse
 
         model_path = tmp_path / "model"
@@ -503,7 +503,7 @@ class TestAttestLangchainCli:
         assert rc == 0
 
     def test_failed_result_exits_1(self, tmp_path):
-        from squish.squash.cli import _cmd_attest_langchain
+        from squash.cli import _cmd_attest_langchain
         import argparse
 
         model_path = tmp_path / "model"
@@ -523,7 +523,7 @@ class TestAttestLangchainCli:
         assert rc == 1
 
     def test_pipeline_exception_exits_2(self, tmp_path):
-        from squish.squash.cli import _cmd_attest_langchain
+        from squash.cli import _cmd_attest_langchain
         import argparse
 
         model_path = tmp_path / "model"
@@ -547,9 +547,9 @@ class TestIntegrationShimHandlers:
     """Cross-shim: default-policy fall-back and output_dir defaulting."""
 
     def test_mlflow_defaults_enterprise_strict(self, tmp_path):
-        from squish.squash.cli import _cmd_attest_mlflow
+        from squash.cli import _cmd_attest_mlflow
         import argparse
-        from squish.squash.attest import AttestConfig
+        from squash.attest import AttestConfig
 
         model_path = tmp_path / "model"
         model_path.mkdir()
@@ -574,9 +574,9 @@ class TestIntegrationShimHandlers:
         assert captured_config[0].policies == ["enterprise-strict"]
 
     def test_wandb_output_dir_defaults_to_squash_subdir(self, tmp_path):
-        from squish.squash.cli import _cmd_attest_wandb
+        from squash.cli import _cmd_attest_wandb
         import argparse
-        from squish.squash.attest import AttestConfig
+        from squash.attest import AttestConfig
 
         model_path = tmp_path / "model"
         model_path.mkdir()
@@ -601,9 +601,9 @@ class TestIntegrationShimHandlers:
         assert captured_config[0].output_dir == model_path.parent / "squash"
 
     def test_langchain_passes_policies_through(self, tmp_path):
-        from squish.squash.cli import _cmd_attest_langchain
+        from squash.cli import _cmd_attest_langchain
         import argparse
-        from squish.squash.attest import AttestConfig
+        from squash.attest import AttestConfig
 
         model_path = tmp_path / "model"
         model_path.mkdir()

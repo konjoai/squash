@@ -23,8 +23,8 @@ from unittest import mock
 import pytest
 from fastapi.testclient import TestClient
 
-import squish.squash.api as _api_module
-from squish.squash.api import _PLAN_LIMITS, _get_plan_limits, app
+import squash.api as _api_module
+from squash.api import _PLAN_LIMITS, _get_plan_limits, app
 
 # ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -65,7 +65,7 @@ def _client(plan: str, today: datetime.date = _TODAY) -> TestClient:
     with (
         mock.patch.object(_api_module, "SQUASH_PLAN", plan),
         mock.patch(
-            "squish.squash.api.datetime",
+            "squash.api.datetime",
             **{"date.today.return_value": today,
                "date.fromisoformat.side_effect": datetime.date.fromisoformat,
                "datetime.fromisoformat.side_effect": datetime.datetime.fromisoformat,
@@ -119,10 +119,10 @@ class TestVexFeedCommunityPlan:
         with (
             mock.patch.object(_api_module, "SQUASH_PLAN", "community"),
             mock.patch(
-                "squish.squash.api._db_read_vex_feed", return_value=feed
+                "squash.api._db_read_vex_feed", return_value=feed
             ),
             mock.patch(
-                "squish.squash.api.datetime",
+                "squash.api.datetime",
                 **{
                     "date.today.return_value": _TODAY,
                     "date.fromisoformat.side_effect": datetime.date.fromisoformat,
@@ -198,9 +198,9 @@ class TestVexFeedPlanHeader:
         feed = _vex_feed(alerts)
         with (
             mock.patch.object(_api_module, "SQUASH_PLAN", plan),
-            mock.patch("squish.squash.api._db_read_vex_feed", return_value=feed),
+            mock.patch("squash.api._db_read_vex_feed", return_value=feed),
             mock.patch(
-                "squish.squash.api.datetime",
+                "squash.api.datetime",
                 **{
                     "date.today.return_value": _TODAY,
                     "date.fromisoformat.side_effect": datetime.date.fromisoformat,
@@ -245,9 +245,9 @@ class TestVexFeedProfessionalPlan:
         feed = _vex_feed(alerts)
         with (
             mock.patch.object(_api_module, "SQUASH_PLAN", "professional"),
-            mock.patch("squish.squash.api._db_read_vex_feed", return_value=feed),
+            mock.patch("squash.api._db_read_vex_feed", return_value=feed),
             mock.patch(
-                "squish.squash.api.datetime",
+                "squash.api.datetime",
                 **{
                     "date.today.return_value": _TODAY,
                     "date.fromisoformat.side_effect": datetime.date.fromisoformat,
@@ -290,7 +290,7 @@ class TestVexFeedEnterprisePlan:
         feed = _vex_feed(alerts)
         with (
             mock.patch.object(_api_module, "SQUASH_PLAN", "enterprise"),
-            mock.patch("squish.squash.api._db_read_vex_feed", return_value=feed),
+            mock.patch("squash.api._db_read_vex_feed", return_value=feed),
         ):
             return client.get("/cloud/vex-feed")
 

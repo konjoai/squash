@@ -26,7 +26,7 @@ import pytest
 try:
     from fastapi.testclient import TestClient
 
-    from squish.squash.api import app, _rate_window
+    from squash.api import app, _rate_window
 except ImportError:
     pytest.skip("fastapi not installed", allow_module_level=True)
 

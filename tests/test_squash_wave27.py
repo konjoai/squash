@@ -65,51 +65,51 @@ def _make_review(
 
 class TestWebhookConfig:
     def test_default_allow_is_true(self):
-        from squish.squash.integrations.kubernetes import WebhookConfig
+        from squash.integrations.kubernetes import WebhookConfig
 
         cfg = WebhookConfig()
         assert cfg.default_allow is True
 
     def test_default_policy_store_path_is_none(self):
-        from squish.squash.integrations.kubernetes import WebhookConfig
+        from squash.integrations.kubernetes import WebhookConfig
 
         cfg = WebhookConfig()
         assert cfg.policy_store_path is None
 
     def test_default_annotation_keys(self):
-        from squish.squash.integrations.kubernetes import WebhookConfig
+        from squash.integrations.kubernetes import WebhookConfig
 
         cfg = WebhookConfig()
         assert cfg.required_annotation == "squash.ai/attestation-required"
         assert cfg.bom_digest_annotation == "squash.ai/bom-digest"
 
     def test_default_policies_list(self):
-        from squish.squash.integrations.kubernetes import WebhookConfig
+        from squash.integrations.kubernetes import WebhookConfig
 
         cfg = WebhookConfig()
         assert "enterprise-strict" in cfg.policies
 
     def test_default_excluded_namespaces_contain_kube_system(self):
-        from squish.squash.integrations.kubernetes import WebhookConfig
+        from squash.integrations.kubernetes import WebhookConfig
 
         cfg = WebhookConfig()
         assert "kube-system" in cfg.namespaces_exclude
 
     def test_custom_policy_store_path(self, tmp_path):
-        from squish.squash.integrations.kubernetes import WebhookConfig
+        from squash.integrations.kubernetes import WebhookConfig
 
         p = tmp_path / "store.json"
         cfg = WebhookConfig(policy_store_path=p)
         assert cfg.policy_store_path == p
 
     def test_custom_default_deny(self):
-        from squish.squash.integrations.kubernetes import WebhookConfig
+        from squash.integrations.kubernetes import WebhookConfig
 
         cfg = WebhookConfig(default_allow=False)
         assert cfg.default_allow is False
 
     def test_custom_policies(self):
-        from squish.squash.integrations.kubernetes import WebhookConfig
+        from squash.integrations.kubernetes import WebhookConfig
 
         cfg = WebhookConfig(policies=["eu-ai-act", "custom"])
         assert cfg.policies == ["eu-ai-act", "custom"]
@@ -123,7 +123,7 @@ class TestWebhookConfig:
 class TestKubernetesWebhookHandlerBasic:
 
     def _handler(self, **kwargs):
-        from squish.squash.integrations.kubernetes import (
+        from squash.integrations.kubernetes import (
             KubernetesWebhookHandler,
             WebhookConfig,
         )
@@ -277,7 +277,7 @@ class TestKubernetesWebhookHandlerBasic:
 class TestPolicyStore:
 
     def _handler_with_store(self, store: dict, **kwargs):
-        from squish.squash.integrations.kubernetes import (
+        from squash.integrations.kubernetes import (
             KubernetesWebhookHandler,
             WebhookConfig,
         )
@@ -336,7 +336,7 @@ class TestPolicyStore:
         }
         store_path.write_text(json.dumps(store))
 
-        from squish.squash.integrations.kubernetes import (
+        from squash.integrations.kubernetes import (
             KubernetesWebhookHandler,
             WebhookConfig,
         )
@@ -371,7 +371,7 @@ class TestPolicyStore:
         store_path = tmp_path / "store.json"
         store_path.write_text(json.dumps({"d1": False}))
 
-        from squish.squash.integrations.kubernetes import (
+        from squash.integrations.kubernetes import (
             KubernetesWebhookHandler,
             WebhookConfig,
         )
@@ -394,7 +394,7 @@ class TestPolicyStore:
 
     def test_missing_store_file_allows_gracefully(self, tmp_path):
         """When the policy store file does not exist, handler allows pod."""
-        from squish.squash.integrations.kubernetes import (
+        from squash.integrations.kubernetes import (
             KubernetesWebhookHandler,
             WebhookConfig,
         )
@@ -416,7 +416,7 @@ class TestPolicyStore:
         store_path = tmp_path / "corrupt.json"
         store_path.write_text("{this is not json}")
 
-        from squish.squash.integrations.kubernetes import (
+        from squash.integrations.kubernetes import (
             KubernetesWebhookHandler,
             WebhookConfig,
         )
@@ -494,7 +494,7 @@ class TestIntegration:
         store_path = tmp_path / "store.json"
         store_path.write_text(json.dumps(store))
 
-        from squish.squash.integrations.kubernetes import (
+        from squash.integrations.kubernetes import (
             KubernetesWebhookHandler,
             WebhookConfig,
         )
@@ -516,7 +516,7 @@ class TestIntegration:
         store_path = tmp_path / "store.json"
         store_path.write_text(json.dumps(store))
 
-        from squish.squash.integrations.kubernetes import (
+        from squash.integrations.kubernetes import (
             KubernetesWebhookHandler,
             WebhookConfig,
         )
@@ -539,7 +539,7 @@ class TestIntegration:
         store_path = tmp_path / "store.json"
         store_path.write_text(json.dumps(store))
 
-        from squish.squash.integrations.kubernetes import (
+        from squash.integrations.kubernetes import (
             KubernetesWebhookHandler,
             WebhookConfig,
         )
@@ -562,19 +562,19 @@ class TestIntegration:
 
     def test_squash_top_level_exports_handler_and_config(self):
         """KubernetesWebhookHandler and WebhookConfig must be in squash.__all__."""
-        import squish.squash as squash_module
+        import squash as squash_module
 
         assert "KubernetesWebhookHandler" in squash_module.__all__
         assert "WebhookConfig" in squash_module.__all__
 
     def test_squash_top_level_import_works(self):
-        from squish.squash import KubernetesWebhookHandler, WebhookConfig
+        from squash import KubernetesWebhookHandler, WebhookConfig
 
         assert KubernetesWebhookHandler is not None
         assert WebhookConfig is not None
 
     def test_handler_default_allow_false_denies_unannotated_pods(self):
-        from squish.squash.integrations.kubernetes import (
+        from squash.integrations.kubernetes import (
             KubernetesWebhookHandler,
             WebhookConfig,
         )
@@ -664,14 +664,14 @@ class TestWebhookCli:
 class TestServeWebhookApi:
 
     def test_serve_webhook_is_importable(self):
-        from squish.squash.integrations.kubernetes import serve_webhook
+        from squash.integrations.kubernetes import serve_webhook
 
         assert callable(serve_webhook)
 
     def test_serve_webhook_signature_accepts_required_args(self):
         """serve_webhook must accept handler, port, tls_cert, tls_key parameters."""
         import inspect
-        from squish.squash.integrations.kubernetes import serve_webhook
+        from squash.integrations.kubernetes import serve_webhook
 
         sig = inspect.signature(serve_webhook)
         params = sig.parameters
@@ -682,14 +682,14 @@ class TestServeWebhookApi:
 
     def test_serve_webhook_port_default_is_8443(self):
         import inspect
-        from squish.squash.integrations.kubernetes import serve_webhook
+        from squash.integrations.kubernetes import serve_webhook
 
         sig = inspect.signature(serve_webhook)
         assert sig.parameters["port"].default == 8443
 
     def test_serve_webhook_tls_defaults_are_none(self):
         import inspect
-        from squish.squash.integrations.kubernetes import serve_webhook
+        from squash.integrations.kubernetes import serve_webhook
 
         sig = inspect.signature(serve_webhook)
         assert sig.parameters["tls_cert"].default is None
@@ -704,36 +704,36 @@ class TestServeWebhookApi:
 class TestTruthyHelper:
 
     def test_true_string(self):
-        from squish.squash.integrations.kubernetes import _truthy
+        from squash.integrations.kubernetes import _truthy
 
         assert _truthy("true") is True
 
     def test_true_string_uppercase(self):
-        from squish.squash.integrations.kubernetes import _truthy
+        from squash.integrations.kubernetes import _truthy
 
         assert _truthy("True") is True
 
     def test_false_string(self):
-        from squish.squash.integrations.kubernetes import _truthy
+        from squash.integrations.kubernetes import _truthy
 
         assert _truthy("false") is False
 
     def test_empty_string(self):
-        from squish.squash.integrations.kubernetes import _truthy
+        from squash.integrations.kubernetes import _truthy
 
         assert _truthy("") is False
 
     def test_bool_true(self):
-        from squish.squash.integrations.kubernetes import _truthy
+        from squash.integrations.kubernetes import _truthy
 
         assert _truthy(True) is True
 
     def test_bool_false(self):
-        from squish.squash.integrations.kubernetes import _truthy
+        from squash.integrations.kubernetes import _truthy
 
         assert _truthy(False) is False
 
     def test_none(self):
-        from squish.squash.integrations.kubernetes import _truthy
+        from squash.integrations.kubernetes import _truthy
 
         assert _truthy(None) is False
