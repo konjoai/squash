@@ -66,8 +66,15 @@ except ImportError as _e:
 from squash.attest import AttestConfig, AttestPipeline, AttestResult
 from squash.policy import AVAILABLE_POLICIES, PolicyEngine, PolicyRegistry
 from squash.scanner import ModelScanner
+from squash.auth import KeyRecord, KeyStore, get_key_store, extract_bearer
+from squash.rate_limiter import get_rate_limiter
+from squash.quota import QuotaEnforcer
+from squash.monitoring import build_health_report, setup_sentry, _squash_version
 
 log = logging.getLogger(__name__)
+
+# Initialise Sentry at module load (no-op if SQUASH_SENTRY_DSN not set)
+setup_sentry()
 
 # Thread-pool for blocking attestation work
 _executor = ThreadPoolExecutor(max_workers=int(os.getenv("SQUASH_WORKERS", "4")))
@@ -78,12 +85,18 @@ _SCAN_JOB_LIMIT = int(os.getenv("SQUASH_SCAN_JOB_LIMIT", "1000"))
 _scan_jobs: OrderedDict[str, dict[str, Any]] = OrderedDict()
 
 # ── Auth ──────────────────────────────────────────────────────────────────────
-# Set SQUASH_API_TOKEN in the environment to enable bearer token auth.
+# W137: DB-backed API key auth replaces the single SQUASH_API_TOKEN env var.
+# Legacy SQUASH_API_TOKEN still works as a master bypass (ops use only).
 # Paths listed here bypass auth (health probes, OpenAPI schema, metrics).
-_UNAUTHED_PATHS = frozenset({"/health", "/docs", "/redoc", "/openapi.json", "/metrics"})
+_UNAUTHED_PATHS = frozenset({
+    "/health", "/health/ping", "/health/detailed",
+    "/docs", "/redoc", "/openapi.json", "/metrics",
+    "/billing/webhook",  # Stripe verifies its own signature
+})
 
 # ── Rate limiter ──────────────────────────────────────────────────────────────
-# SQUASH_RATE_LIMIT requests per 60-second sliding window per client IP.
+# W138: Per-key plan-based rate limiter (replaces per-IP env-var limiter).
+# Legacy SQUASH_RATE_LIMIT still used as a global IP-level backstop.
 _RATE_LIMIT = int(os.environ.get("SQUASH_RATE_LIMIT", "60"))
 _rate_window: dict[str, deque] = defaultdict(deque)
 
@@ -675,34 +688,80 @@ app = FastAPI(
 
 
 @app.middleware("http")
-async def _security_middleware(request: Request, call_next):
-    """Bearer token auth and per-IP sliding-window rate limiter."""
+async def _security_middleware(request: Request, call_next):  # noqa: C901
+    """W137/W138: DB-backed API key auth + per-key plan-based rate limiter.
+
+    Auth priority:
+      1. Path in _UNAUTHED_PATHS → pass through
+      2. Legacy SQUASH_API_TOKEN matches → pass through (ops bypass)
+      3. Authorization: Bearer sq_live_* / sq_test_* → key store lookup
+      4. No valid auth → 401
+
+    Rate limiting (W138):
+      - Per-key sliding window using the plan's rate_per_min limit
+      - Falls back to per-IP limit (SQUASH_RATE_LIMIT) for unauthed paths
+    """
     path = request.url.path
 
-    # ── Rate limit (applied before auth) ──────────────────────────────────────
-    client_ip = request.client.host if request.client else "unknown"
-    now = time.monotonic()
-    window = _rate_window[client_ip]
-    cutoff = now - 60.0
-    while window and window[0] < cutoff:
-        window.popleft()
-    if len(window) >= _RATE_LIMIT:
-        retry_after = int(60 - (now - window[0])) + 1
+    # ── Unauthed paths: IP-level backstop only ────────────────────────────────
+    if path in _UNAUTHED_PATHS:
+        client_ip = request.client.host if request.client else "unknown"
+        now = time.monotonic()
+        window = _rate_window[client_ip]
+        cutoff = now - 60.0
+        while window and window[0] < cutoff:
+            window.popleft()
+        if len(window) >= _RATE_LIMIT:
+            return JSONResponse({"detail": "Rate limit exceeded"}, status_code=429)
+        window.append(now)
+        return await call_next(request)
+
+    auth_header = request.headers.get("Authorization", "")
+    raw_key = extract_bearer(auth_header)
+
+    # ── Legacy master token bypass (ops/admin use) ────────────────────────────
+    master_token = os.environ.get("SQUASH_API_TOKEN", "")
+    if master_token and auth_header == f"Bearer {master_token}":
+        return await call_next(request)
+
+    # ── DB-backed API key verification (W137) ─────────────────────────────────
+    key_record: KeyRecord | None = None
+    if raw_key:
+        key_record = get_key_store().verify(raw_key)
+
+    if key_record is None:
+        # Allow unauthenticated access when no auth is configured at all
+        # (dev mode: neither SQUASH_API_TOKEN nor any key store keys exist)
+        store = get_key_store()
+        if not master_token and len(store) == 0:
+            return await call_next(request)
+        return JSONResponse({"detail": "Unauthorized — provide a valid API key"}, status_code=401)
+
+    # ── Per-key rate limit (W138) ─────────────────────────────────────────────
+    rl = get_rate_limiter()
+    result = rl.check(key_record.key_id, key_record.plan)
+    if not result.allowed:
         return JSONResponse(
-            {"detail": "Rate limit exceeded"},
+            {"detail": "Rate limit exceeded", "retry_after": result.retry_after},
             status_code=429,
-            headers={"Retry-After": str(retry_after)},
+            headers={
+                "Retry-After": str(result.retry_after),
+                "X-RateLimit-Limit": str(result.window_limit),
+                "X-RateLimit-Remaining": "0",
+            },
         )
-    window.append(now)
 
-    # ── Bearer token auth ─────────────────────────────────────────────────────
-    token = os.environ.get("SQUASH_API_TOKEN", "")
-    if token and path not in _UNAUTHED_PATHS:
-        auth = request.headers.get("Authorization", "")
-        if auth != f"Bearer {token}":
-            return JSONResponse({"detail": "Unauthorized"}, status_code=401)
+    # Stamp last_used and attach record to request state for downstream handlers
+    get_key_store().update_last_used(key_record.key_id)
+    request.state.key_record = key_record
 
-    return await call_next(request)
+    response = await call_next(request)
+
+    # Attach rate-limit headers to every response
+    response.headers["X-RateLimit-Limit"] = str(result.window_limit)
+    response.headers["X-RateLimit-Remaining"] = str(result.window_limit - result.window_used)
+    response.headers["X-Key-Id"] = key_record.key_id
+    return response
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -953,8 +1012,109 @@ class DriftEventRequest(BaseModel):
 
 @app.get("/health")
 async def health() -> dict[str, str]:
-    """Liveness probe."""
+    """Liveness probe — used by Fly.io health checks and Better Uptime."""
     return {"status": "ok"}
+
+
+@app.get("/health/ping")
+async def health_ping() -> str:
+    """Ultra-light ping endpoint for Better Uptime / uptime monitors."""
+    return "pong"
+
+
+@app.get("/health/detailed")
+async def health_detailed() -> JSONResponse:
+    """W144 — Detailed health report with DB and component status."""
+    report = build_health_report(db=_db)
+    status_code = 200 if report["status"] == "ok" else 503
+    return JSONResponse(report, status_code=status_code)
+
+
+@app.post("/billing/webhook")
+async def billing_webhook(request: Request) -> JSONResponse:
+    """W141 — Stripe webhook endpoint.  Verifies signature and updates tenant plans."""
+    from squash.billing import StripeWebhookHandler
+    payload = await request.body()
+    sig = request.headers.get("Stripe-Signature", "")
+    secret = os.environ.get("SQUASH_STRIPE_WEBHOOK_SECRET", "")
+    handler = StripeWebhookHandler(get_key_store())
+    result = handler.handle(payload, stripe_signature=sig, webhook_secret=secret)
+    return JSONResponse(result.to_dict())
+
+
+@app.get("/account/status")
+async def account_status(request: Request) -> JSONResponse:
+    """W143 — Current plan, quota, and rate-limit status for the authenticated key."""
+    rec: KeyRecord | None = getattr(request.state, "key_record", None)
+    if rec is None:
+        raise HTTPException(status_code=401, detail="Valid API key required")
+    from squash.quota import QuotaEnforcer
+    quota = QuotaEnforcer(get_key_store()).check(rec)
+    return JSONResponse({
+        "key_id": rec.key_id,
+        "key_name": rec.name,
+        "tenant_id": rec.tenant_id,
+        "plan": rec.plan,
+        "billing_period_start": rec.billing_period_start,
+        "quota_used": quota.used,
+        "quota_limit": quota.limit,
+        "quota_remaining": quota.remaining,
+        "rate_limit_per_minute": rec.rate_per_min,
+        "last_used_at": rec.last_used_at,
+    })
+
+
+@app.get("/account/usage")
+async def account_usage(request: Request) -> JSONResponse:
+    """W143 — Attestation usage summary for the current billing period."""
+    rec: KeyRecord | None = getattr(request.state, "key_record", None)
+    if rec is None:
+        raise HTTPException(status_code=401, detail="Valid API key required")
+    return JSONResponse({
+        "key_id": rec.key_id,
+        "tenant_id": rec.tenant_id,
+        "period_start": rec.billing_period_start,
+        "total_attestations": rec.attestation_count,
+        "monthly_quota": rec.monthly_quota,
+        "quota_remaining": rec.quota_remaining,
+    })
+
+
+@app.post("/keys")
+async def create_api_key(request: Request) -> JSONResponse:
+    """W137 — Generate a new API key for the authenticated tenant."""
+    rec: KeyRecord | None = getattr(request.state, "key_record", None)
+    # Only allow if authenticated OR in dev mode (no keys configured)
+    store = get_key_store()
+    if rec is None and len(store) > 0:
+        raise HTTPException(status_code=401, detail="Valid API key required")
+    body = await request.json()
+    tenant_id = body.get("tenant_id") or (rec.tenant_id if rec else "default")
+    plan = body.get("plan", "free")
+    name = body.get("name", "")
+    live = not body.get("test", False)
+    try:
+        plaintext, new_rec = store.generate(tenant_id, plan=plan, name=name, live=live)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    resp = new_rec.to_dict()
+    resp["key"] = plaintext  # returned only once
+    return JSONResponse(resp, status_code=201)
+
+
+@app.delete("/keys/{key_id}")
+async def revoke_api_key(key_id: str, request: Request) -> JSONResponse:
+    """W137 — Revoke an API key."""
+    rec: KeyRecord | None = getattr(request.state, "key_record", None)
+    store = get_key_store()
+    target = store.get(key_id)
+    if target is None:
+        raise HTTPException(status_code=404, detail="Key not found")
+    # Only the key's own tenant may revoke it
+    if rec and rec.tenant_id != target.tenant_id:
+        raise HTTPException(status_code=403, detail="Cannot revoke a key belonging to another tenant")
+    store.revoke(key_id)
+    return JSONResponse({"key_id": key_id, "status": "revoked"})
 
 
 @app.get("/metrics")
@@ -974,7 +1134,7 @@ async def list_policies() -> dict[str, list[str]]:
 
 
 @app.post("/attest")
-async def attest(req: AttestRequest) -> JSONResponse:
+async def attest(req: AttestRequest, request: Request) -> JSONResponse:
     """Run the full attestation pipeline for a model artifact.
 
     This is the primary endpoint for CI/CD integrations.  The operation is
@@ -983,6 +1143,24 @@ async def attest(req: AttestRequest) -> JSONResponse:
     Returns the squash-attest.json master record plus paths to all generated
     artifacts.
     """
+    # W142: quota enforcement before any compute
+    key_rec: KeyRecord | None = getattr(request.state, "key_record", None)
+    if key_rec is not None:
+        from squash.quota import QuotaEnforcer
+        enforcer = QuotaEnforcer(get_key_store())
+        quota_result = enforcer.check(key_rec)
+        if not quota_result.allowed:
+            return JSONResponse(
+                {
+                    "detail": "Monthly attestation quota exceeded",
+                    "quota_used": quota_result.used,
+                    "quota_limit": quota_result.limit,
+                    "plan": key_rec.plan,
+                },
+                status_code=429,
+                headers=quota_result.headers,
+            )
+
     _require_path(req.model_path)
 
     # Merge spdx_datasets with training_dataset_ids (deduplicated, order preserved).
@@ -1030,6 +1208,11 @@ async def attest(req: AttestRequest) -> JSONResponse:
     master_data = _result_to_dict(result)
 
     _COUNTERS["squash_attest_total"] += 1
+
+    # W142: consume quota after a successful attestation
+    if key_rec is not None:
+        from squash.quota import QuotaEnforcer
+        QuotaEnforcer(get_key_store()).consume(key_rec.key_id)
 
     # ── Auto-register in cloud inventory when tenant_id is provided ───────────
     if req.tenant_id:
