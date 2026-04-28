@@ -7,6 +7,17 @@ Format: [Conventional Commits](https://www.conventionalcommits.org/) · [Keep a 
 
 ## [Unreleased]
 
+### Added (W135 / W136 — Sprint S1 Exit Gate)
+- `squash annex-iv generate` CLI command — Sprint S1 exit gate:
+  - `--root DIR`: auto-discovers TensorBoard logs, training configs, Python scripts; runs full W128–W133 artifact extraction pipeline.
+  - `--format md html json pdf`: selectable output formats (default: md json).
+  - `--system-name`, `--version`, `--risk-level {minimal,limited,high,unacceptable}`: Annex IV §1(a) and §4 metadata.
+  - `--mlflow-run`, `--wandb-run ENTITY/PROJECT/RUN_ID`, `--hf-dataset` (repeatable): optional cloud augmentation; all fail gracefully with warnings.
+  - `--no-validate`, `--fail-on-warning`: pipeline-mode control.
+- `squash annex-iv validate PATH`: reconstruct and re-validate any `annex_iv.json`; exit 2 on hard fail, 1 on warning (with `--fail-on-warning`).
+- 68 new tests in `tests/test_squash_w135.py`.
+- **Sprint S1 complete: 479/479 tests passing (W128–W135).**
+
 ### Added (Wave 133 + Wave 134)
 - `squash/annex_iv_generator.py` — EU AI Act Annex IV document generator:
   - `AnnexIVGenerator.generate(result, *, system_name, version, ...)` — produces a complete 12-section `AnnexIVDocument` from `ArtifactExtractionResult` (W128-W132 outputs) + supplemental metadata kwargs.

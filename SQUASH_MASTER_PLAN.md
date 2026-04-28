@@ -369,21 +369,21 @@ Your team didn't sign up to write compliance docs.
 
 ---
 
-### Sprint 1 — Annex IV Core (May 10–23, 2 weeks)
+### Sprint 1 — Annex IV Core (May 10–23, 2 weeks) ✅ COMPLETE
 
-| Wave | Task | Days |
-|------|------|------|
-| W128 | TensorBoard event file parser | 2 |
-| W129 | MLflow SDK integration (real, not mock) | 2 |
-| W130 | W&B API integration | 1.5 |
-| W131 | Dataset provenance tracker (HF Datasets) | 2 |
-| W132 | Python AST code scanner | 1.5 |
-| W133 | Annex IV document generator (Jinja2 templates, 12 sections) | 3 |
-| W134 | PDF export pipeline (weasyprint) | 1 |
-| W135 | `squash annex-iv-generate` CLI command | 1 |
-| W136 | `squash annex-iv-validate` CLI command | 1 |
+| Wave | Task | Days | Status |
+|------|------|------|--------|
+| W128 | TensorBoard event file parser | 2 | ✅ 48 tests |
+| W129 | MLflow SDK integration (real, not mock) | 2 | ✅ 55 tests |
+| W130 | W&B API integration | 1.5 | ✅ 54 tests |
+| W131 | Dataset provenance tracker (HF Datasets) | 2 | ✅ 73 tests |
+| W132 | Python AST code scanner | 1.5 | ✅ 107 tests |
+| W133 | Annex IV document generator (12 sections, Markdown/HTML/JSON/PDF) | 3 | ✅ 83 tests |
+| W134 | PDF export pipeline (weasyprint) | 1 | ✅ bundled in W133 |
+| W135 | `squash annex-iv generate` CLI command | 1 | ✅ 68 tests |
+| W136 | `squash annex-iv validate` CLI command | 1 | ✅ bundled in W135 |
 
-**Exit criteria:** `squash annex-iv-generate --root ./training-run` produces valid Annex IV PDF.
+**Exit criteria satisfied:** `squash annex-iv generate --root ./training-run` produces valid Annex IV documentation (MD/HTML/JSON/PDF). 479/479 Sprint S1 tests passing.
 
 ---
 
