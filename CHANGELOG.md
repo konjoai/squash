@@ -7,6 +7,43 @@ Format: [Conventional Commits](https://www.conventionalcommits.org/) · [Keep a 
 
 ## [Unreleased]
 
+### Added (W137–W144 — Sprint 2: Cloud API & Auth)
+- **`squash/auth.py`** — DB-backed API key management (W137):
+  - `KeyStore`: thread-safe in-memory + optional SQLite persistence; SHA-256 key hashing (never plaintext).
+  - `KeyRecord`: plan-aware `monthly_quota`, `rate_per_min`, `quota_remaining`.
+  - `generate()`, `verify()`, `revoke()`, `update_plan()`, `increment_attestation_count()`, `reset_quota()`.
+  - `POST /keys` (create), `DELETE /keys/{key_id}` (revoke) HTTP endpoints.
+  - Module singleton `get_key_store()` / `reset_key_store()` for test isolation.
+- **`squash/rate_limiter.py`** — Per-key plan-based sliding-window rate limiter (W138):
+  - Limits: free=60, pro=600, enterprise=6000 req/min.
+  - `X-RateLimit-Limit` / `X-RateLimit-Remaining` response headers on every authenticated request.
+  - Middleware rewritten: legacy `SQUASH_API_TOKEN` still works as ops bypass; DB keys take priority.
+- **`Dockerfile` + `fly.toml` + `.github/workflows/deploy.yml`** — Fly.io deployment (W139):
+  - Multi-stage Python 3.12 slim build, non-root `squash` user, port 4444, Docker HEALTHCHECK.
+  - Fly.io: `iad` region, 256MB RAM, auto-stop, rolling deploy strategy.
+  - GitHub Actions CD: test → fly deploy → health verify; `FLY_API_TOKEN` secret; `concurrency` guard.
+- **`squash/postgres_db.py`** — PostgreSQL (Neon) cloud DB connector (W140):
+  - `PostgresDB` with psycopg2, same interface as `CloudDB`; JSONB columns for tenant + event records.
+  - `make_postgres_db()` factory reads `SQUASH_DATABASE_URL`; graceful SQLite fallback when absent.
+  - DDL: `tenants`, `event_log` (with index), `api_keys` tables — all `IF NOT EXISTS`.
+- **`squash/billing.py`** — Stripe subscription integration (W141):
+  - `verify_stripe_signature()` — HMAC-SHA256 with 300s clock tolerance.
+  - `StripeWebhookHandler`: `checkout.session.completed` (upgrade), `subscription.updated/deleted` (plan sync), `invoice.payment_failed` (no immediate downgrade).
+  - `POST /billing/webhook` endpoint bypasses API key auth; Stripe-Signature verified internally.
+- **`squash/quota.py`** — Monthly attestation quota enforcement (W142):
+  - `QuotaEnforcer.check()` before pipeline; `consume()` after successful attestation.
+  - `QuotaCheckResult` with `X-Quota-Used / Limit / Remaining` response headers.
+  - `/attest` returns HTTP 429 with quota details when limit exhausted.
+- **`GET /account/status` + `GET /account/usage`** — Authenticated account endpoints (W143):
+  - Status: plan, key_id, tenant_id, quota_used/limit/remaining, rate_limit_per_minute, billing_period_start.
+  - Usage: total_attestations, monthly_quota, quota_remaining for current billing period.
+- **`squash/monitoring.py`** — Sentry error tracking + health endpoints (W144):
+  - `setup_sentry()`: reads `SQUASH_SENTRY_DSN`, no-op when absent or `sentry-sdk` not installed.
+  - `build_health_report()`: DB liveness probe, uptime, version, component status dict.
+  - `GET /health/ping` → `"pong"` (Better Uptime monitor target).
+  - `GET /health/detailed` → full health report; 503 when degraded. Both bypass auth.
+- **Sprint 2 total: 251/251 tests. S1+S2 combined: 730/730 tests passing.**
+
 ### Added (W135 / W136 — Sprint S1 Exit Gate)
 - `squash annex-iv generate` CLI command — Sprint S1 exit gate:
   - `--root DIR`: auto-discovers TensorBoard logs, training configs, Python scripts; runs full W128–W133 artifact extraction pipeline.

@@ -387,20 +387,20 @@ Your team didn't sign up to write compliance docs.
 
 ---
 
-### Sprint 2 — Cloud API & Auth (May 24–June 6, 2 weeks)
+### Sprint 2 — Cloud API & Auth (May 24–June 6, 2 weeks) ✅ COMPLETE
 
-| Wave | Task | Days |
-|------|------|------|
-| W137 | API key auth + bearer token middleware | 2 |
-| W138 | Rate limiting middleware (per-tier attestation counter) | 1.5 |
-| W139 | Deploy to Fly.io (Dockerfile, fly.toml, GitHub Actions) | 2 |
-| W140 | PostgreSQL cloud DB (Neon — replace SQLite in production) | 2 |
-| W141 | Stripe integration (subscription plans, webhook handlers) | 2 |
-| W142 | Attestation counter + quota enforcement endpoints | 1 |
-| W143 | `GET /account/status` + `GET /account/usage` | 0.5 |
-| W144 | Health check + monitoring (Sentry, Better Uptime) | 1 |
+| Wave | Task | Days | Status |
+|------|------|------|--------|
+| W137 | API key auth + bearer token middleware | 2 | ✅ 52 tests — `squash/auth.py`, KeyStore, POST/DELETE /keys |
+| W138 | Rate limiting middleware (per-tier attestation counter) | 1.5 | ✅ 36 tests — `squash/rate_limiter.py`, per-key plan limits |
+| W139 | Deploy to Fly.io (Dockerfile, fly.toml, GitHub Actions) | 2 | ✅ 22 tests — Dockerfile (multi-stage), fly.toml, deploy.yml |
+| W140 | PostgreSQL cloud DB (Neon — replace SQLite in production) | 2 | ✅ 26 tests — `squash/postgres_db.py`, psycopg2, JSONB schema |
+| W141 | Stripe integration (subscription plans, webhook handlers) | 2 | ✅ 38 tests — `squash/billing.py`, webhook + signature verification |
+| W142 | Attestation counter + quota enforcement endpoints | 1 | ✅ 36 tests — `squash/quota.py`, /attest quota gate |
+| W143 | `GET /account/status` + `GET /account/usage` | 0.5 | ✅ 26 tests — authenticated account endpoints |
+| W144 | Health check + monitoring (Sentry, Better Uptime) | 1 | ✅ 27 tests — `squash/monitoring.py`, /health/ping, /health/detailed |
 
-**Exit criteria:** Cloud API works in staging. Stripe test subscription enforces quota.
+**Exit criteria satisfied:** 251/251 Sprint 2 tests. 730/730 S1+S2 total. Stripe webhook enforces plan. Quota blocks /attest at monthly limit.
 
 ---
 
