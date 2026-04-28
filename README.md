@@ -215,4 +215,4 @@ Enterprise features (cloud API, multi-tenant dashboard, VEX feed subscription, o
 
 ---
 
-*Built by [Konjo AI](https://konjo.ai) · Make it konjo — build, ship, repeat.*
+*Built by [Konjo AI](https://konjo.ai) · Make it konjo — build, ship, rest, repeat.*
