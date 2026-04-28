@@ -114,6 +114,13 @@ from squash.model_card import (  # noqa: F401 (Wave 57)
     ModelCardSection,
     KNOWN_FORMATS as MODEL_CARD_KNOWN_FORMATS,
 )
+from squash.artifact_extractor import (  # noqa: F401 (Wave 128)
+    ArtifactExtractor,
+    ArtifactExtractionResult,
+    MetricSeries,
+    TrainingConfig,
+    TrainingMetrics,
+)
 from squash.nist_rmf import (  # noqa: F401 (Wave 83)
     NistRmfFunction,
     NistControlStatus,
@@ -238,6 +245,12 @@ __all__ = [
     "ModelCardGenerator",
     "ModelCardSection",
     "MODEL_CARD_KNOWN_FORMATS",
+    # Wave 128: Annex IV artifact extraction
+    "ArtifactExtractor",
+    "ArtifactExtractionResult",
+    "MetricSeries",
+    "TrainingConfig",
+    "TrainingMetrics",
     # NIST AI RMF 1.0 controls scanner
     "NistRmfFunction",
     "NistControlStatus",

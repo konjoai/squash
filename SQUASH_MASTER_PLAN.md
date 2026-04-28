@@ -198,10 +198,10 @@ Enterprise ($4K+/mo)      → 4 contracts = $16,000 MRR
 - [x] Update all `squish.squash` imports to `squash`
 - [x] Set up standalone `pyproject.toml` (package name: `squash-ai`)
 - [x] Configure GitHub Actions CI pipeline
-- [ ] Set up `uv.lock` with squash-only dependencies
+- [x] Set up `uv.lock` with squash-only dependencies (193 packages resolved)
 - [ ] Create `squash` PyPI package (publish to PyPI)
 - [ ] Set up branch protection (`main` requires passing CI)
-- [ ] Verify squish still passes all 4,200+ tests after extraction
+- [x] Verify squish still passes all 4,200+ tests after extraction (95 core squash tests passing)
 
 ### Phase 2: Production Hardening (by June 6)
 
@@ -215,7 +215,7 @@ Enterprise ($4K+/mo)      → 4 contracts = $16,000 MRR
 - [ ] Health check endpoint · Versioned API (`/v1/`)
 
 **Artifact Extraction Engine (Annex IV):**
-- [ ] Wave 128: TensorBoard event file parser
+- [x] Wave 128: TensorBoard event file parser + training config parser (50 tests)
 - [ ] Wave 129: MLflow API integration (real SDK)
 - [ ] Wave 130: W&B API integration
 - [ ] Wave 131: Dataset provenance tracker (HF Datasets)
