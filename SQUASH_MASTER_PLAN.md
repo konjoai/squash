@@ -220,8 +220,8 @@ Enterprise ($4K+/mo)      → 4 contracts = $16,000 MRR
 - [x] Wave 130: W&B API integration — from_wandb_run(), from_wandb_config(), from_wandb_run_full() — single-pass scan_history() streaming — 54 tests
 - [x] Wave 131: HF Datasets provenance — DatasetProvenance, completeness_score(), §2(a) rendering, multi-dataset list, bias detection — 73 tests
 - [x] Wave 132: Python AST code scanner — CodeScanner, CodeArtifacts, optimizer/loss/checkpoint/framework detection, zero-dep stdlib ast — 107 tests
-- [ ] Wave 133: Annex IV document generator (Jinja2 templates, 12 sections)
-- [ ] Wave 134: PDF export pipeline
+- [x] Wave 133: Annex IV document generator — 12 sections, weighted completeness scoring, Article-specific gaps, AnnexIVValidator — 83 tests
+- [x] Wave 134: PDF pipeline — to_pdf() via weasyprint, to_html() with embedded CSS, multi-format save() — included in W133 shipment
 - [ ] Wave 135: `squash annex-iv-generate` CLI command
 - [ ] Wave 136: `squash annex-iv-validate` CLI command
 

@@ -128,6 +128,14 @@ from squash.code_scanner_ast import (  # noqa: F401 (Wave 132)
     ImportRecord,
     OptimizerCall,
 )
+from squash.annex_iv_generator import (  # noqa: F401 (Wave 133-134)
+    AnnexIVDocument,
+    AnnexIVGenerator,
+    AnnexIVSection,
+    AnnexIVValidator,
+    ValidationFinding,
+    ValidationReport,
+)
 from squash.nist_rmf import (  # noqa: F401 (Wave 83)
     NistRmfFunction,
     NistControlStatus,
@@ -252,6 +260,13 @@ __all__ = [
     "ModelCardGenerator",
     "ModelCardSection",
     "MODEL_CARD_KNOWN_FORMATS",
+    # Wave 133-134: Annex IV document generator + PDF pipeline
+    "AnnexIVDocument",
+    "AnnexIVGenerator",
+    "AnnexIVSection",
+    "AnnexIVValidator",
+    "ValidationFinding",
+    "ValidationReport",
     # Wave 132: Python AST code scanner
     "CodeArtifacts",
     "CodeScanner",
