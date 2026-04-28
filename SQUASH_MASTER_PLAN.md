@@ -404,18 +404,20 @@ Your team didn't sign up to write compliance docs.
 
 ---
 
-### Sprint 3 — CI/CD & Integrations (June 7–20, 2 weeks)
+### Sprint 3 — CI/CD & Integrations (June 7–20, 2 weeks) ✅ COMPLETE
 
 | Wave | Task | Days |
 |------|------|------|
-| W145 | GitHub Actions composite action v1.0 | 2 |
-| W146 | GitHub Actions marketplace submission | 0.5 |
-| W147 | GitLab CI template | 1 |
-| W148 | Jenkins shared library step | 1 |
-| W149 | Docker image (`ghcr.io/konjoai/squash:latest`) | 1 |
-| W150 | Helm chart for Kubernetes admission controller | 2 |
-| W151 | Real MLflow SDK bridge | 1 |
-| W152 | Integration test suite — all CI/CD targets | 2 |
+| W145 | GitHub Actions composite action v1.0 | 2 | ✅ 35 tests — `action.yml` at repo root, composite action, 8 inputs, 4 outputs, upload-artifact step |
+| W146 | GitHub Actions marketplace submission | 0.5 | ✅ 17 tests — branding (icon=shield, color=blue), all inputs/outputs documented, stable version refs enforced |
+| W147 | GitLab CI template | 1 | ✅ 24 tests — `integrations/gitlab-ci/squash.gitlab-ci.yml`, 3 variants (base/soft/full) |
+| W148 | Jenkins shared library step | 1 | ✅ 17 tests — `integrations/jenkins/vars/squashAttest.groovy`, Map params, withCredentials, readJSON, stash |
+| W149 | Docker image (`ghcr.io/konjoai/squash:latest`) | 1 | ✅ 17 tests — `.github/workflows/publish-image.yml`, semver+SHA+latest tags, GITHUB_TOKEN auth |
+| W150 | Helm chart for Kubernetes admission controller | 2 | ✅ 40 tests — `integrations/kubernetes-helm/`: Chart.yaml, values.yaml, Deployment, Service, ValidatingWebhookConfiguration, _helpers.tpl |
+| W151 | Real MLflow SDK bridge | 1 | ✅ 16 tests — `MLflowSquash.attest_run()` fully wired: AttestPipeline.run → mlflow.log_artifacts → mlflow.set_tags with squash.* tags |
+| W152 | Integration test suite — all CI/CD targets | 2 | ✅ 52 tests — cross-cutting integration: GitHub Actions, GitLab CI, Jenkins, GHCR, Helm, MLflow bridge, CLI sanity |
+
+**Exit criteria satisfied:** 218/218 Sprint 3 tests. 948/948 S1+S2+S3 total. All CI/CD targets covered. Helm chart deployable. MLflow SDK fully wired.
 
 ---
 

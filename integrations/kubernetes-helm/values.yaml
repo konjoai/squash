@@ -1,0 +1,92 @@
+replicaCount: 2
+
+image:
+  repository: ghcr.io/konjoai/squash
+  pullPolicy: IfNotPresent
+  tag: ""  # Defaults to Chart.appVersion
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+service:
+  type: ClusterIP
+  port: 443
+  targetPort: 8443
+
+webhook:
+  port: 8443
+  failurePolicy: Ignore  # Ignore | Fail — Ignore prevents blocking admission on webhook outages
+  sideEffects: None
+  timeoutSeconds: 10
+  # Namespaces to exclude from webhook enforcement (always allowed)
+  excludeNamespaces:
+    - kube-system
+    - kube-public
+    - kube-node-lease
+  # Policies to enforce (passed to squash attest)
+  policies:
+    - eu-ai-act
+  # When true, pods without the attestation annotation are denied
+  defaultDeny: false
+
+tls:
+  # Set secretName to an existing TLS secret, or leave empty to auto-generate
+  # a self-signed certificate via cert-manager (requires certManager.enabled=true)
+  secretName: ""
+  # cert-manager ClusterIssuer/Issuer name (used when certManager.enabled=true)
+  certManagerIssuer: ""
+
+certManager:
+  enabled: false
+
+resources:
+  limits:
+    cpu: 200m
+    memory: 128Mi
+  requests:
+    cpu: 50m
+    memory: 64Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 2
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 80
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+rbac:
+  create: true
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "8080"
+  prometheus.io/path: "/metrics"
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+env: {}
+# SQUASH_API_TOKEN: ""  # Override via secret ref instead
+
+squashApiTokenSecret:
+  # Name of an existing secret containing SQUASH_API_TOKEN
+  name: ""
+  key: "api-token"

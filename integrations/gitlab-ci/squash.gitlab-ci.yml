@@ -1,0 +1,118 @@
+# squash.gitlab-ci.yml — EU AI Act compliance attestation template for GitLab CI
+#
+# Usage — include this template in your .gitlab-ci.yml:
+#
+#   include:
+#     - project: 'konjoai/squash'
+#       ref: main
+#       file: '/integrations/gitlab-ci/squash.gitlab-ci.yml'
+#
+#   squash-attest:
+#     extends: .squash_attest
+#     variables:
+#       SQUASH_MODEL_PATH: "./models/my-model"
+#       SQUASH_POLICIES: "eu-ai-act,nist-ai-rmf"
+#
+# Environment variables:
+#   SQUASH_API_KEY       — Squash Cloud API key (sq_live_* / sq_test_*)
+#   SQUASH_MODEL_PATH    — Path to the model directory or artifact (required)
+#   SQUASH_POLICIES      — Comma-separated policy list (default: eu-ai-act)
+#   SQUASH_SIGN          — "true" to enable Sigstore signing (default: false)
+#   SQUASH_FAIL_HARD     — "true" to fail on violation (default: true)
+#   SQUASH_OUTPUT_DIR    — Override artifact output directory
+#   SQUASH_ANNEX_IV      — "true" to generate Annex IV PDF/MD (default: false)
+#   SQUASH_VERSION       — Pin squash-ai version (default: latest)
+
+.squash_attest:
+  stage: test
+  image: python:3.11-slim
+  variables:
+    SQUASH_POLICIES: "eu-ai-act"
+    SQUASH_SIGN: "false"
+    SQUASH_FAIL_HARD: "true"
+    SQUASH_OUTPUT_DIR: ""
+    SQUASH_ANNEX_IV: "false"
+    SQUASH_VERSION: ""
+  before_script:
+    - |
+      if [ -n "$SQUASH_VERSION" ]; then
+        pip install "squash-ai==$SQUASH_VERSION" --quiet
+      else
+        pip install squash-ai --quiet
+      fi
+  script:
+    - |
+      set -euo pipefail
+
+      if [ -z "${SQUASH_MODEL_PATH:-}" ]; then
+        echo "[squash] ERROR: SQUASH_MODEL_PATH is required" >&2
+        exit 1
+      fi
+
+      EXTRA_FLAGS=""
+      if [ "$SQUASH_SIGN" = "true" ]; then
+        EXTRA_FLAGS="$EXTRA_FLAGS --sign"
+      fi
+      if [ "$SQUASH_FAIL_HARD" = "false" ]; then
+        EXTRA_FLAGS="$EXTRA_FLAGS --no-fail-on-violation"
+      fi
+      if [ -n "$SQUASH_OUTPUT_DIR" ]; then
+        EXTRA_FLAGS="$EXTRA_FLAGS --output-dir $SQUASH_OUTPUT_DIR"
+      fi
+
+      IFS=',' read -ra POLICIES <<< "$SQUASH_POLICIES"
+      for p in "${POLICIES[@]}"; do
+        EXTRA_FLAGS="$EXTRA_FLAGS --policy $(echo $p | xargs)"
+      done
+
+      squash attest "$SQUASH_MODEL_PATH" $EXTRA_FLAGS \
+        --output-json squash_result.json
+
+      if [ "$SQUASH_ANNEX_IV" = "true" ]; then
+        squash annex-iv generate \
+          --root "$SQUASH_MODEL_PATH" \
+          --format md json \
+          --no-validate || true
+      fi
+
+      echo "[squash] Attestation complete. Artifacts written."
+      if [ -f squash_result.json ]; then
+        python3 -c "
+      import json, sys
+      d = json.load(open('squash_result.json'))
+      print(f'  passed: {d.get(\"passed\", False)}')
+      print(f'  score:  {d.get(\"compliance_score\", 0)}')
+      "
+      fi
+  artifacts:
+    name: "squash-attestation-$CI_COMMIT_SHORT_SHA"
+    paths:
+      - squash_result.json
+      - "$SQUASH_MODEL_PATH/squash/**"
+      - "annex_iv*"
+    when: always
+    expire_in: 90 days
+    reports:
+      # If you have a JUnit adapter, point to it here:
+      # junit: squash-junit.xml
+  rules:
+    - when: always
+
+
+# ── Variant: fail-soft (warnings only, never block pipeline) ──────────────────
+
+.squash_attest_soft:
+  extends: .squash_attest
+  variables:
+    SQUASH_FAIL_HARD: "false"
+  allow_failure: true
+
+
+# ── Variant: full compliance (sign + Annex IV) ────────────────────────────────
+
+.squash_attest_full:
+  extends: .squash_attest
+  variables:
+    SQUASH_SIGN: "true"
+    SQUASH_ANNEX_IV: "true"
+    SQUASH_POLICIES: "eu-ai-act,nist-ai-rmf,enterprise-strict"

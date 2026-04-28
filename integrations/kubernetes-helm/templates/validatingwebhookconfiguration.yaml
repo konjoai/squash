@@ -1,0 +1,39 @@
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: {{ include "squash-webhook.fullname" . }}
+  labels:
+    {{- include "squash-webhook.labels" . | nindent 4 }}
+  {{- if .Values.certManager.enabled }}
+  annotations:
+    cert-manager.io/inject-ca-from: {{ .Release.Namespace }}/{{ include "squash-webhook.fullname" . }}-cert
+  {{- end }}
+webhooks:
+  - name: squash.konjoai.com
+    admissionReviewVersions: ["v1"]
+    sideEffects: {{ .Values.webhook.sideEffects }}
+    failurePolicy: {{ .Values.webhook.failurePolicy }}
+    timeoutSeconds: {{ .Values.webhook.timeoutSeconds }}
+    namespaceSelector:
+      matchExpressions:
+        {{- range .Values.webhook.excludeNamespaces }}
+        - key: kubernetes.io/metadata.name
+          operator: NotIn
+          values:
+            - {{ . }}
+        {{- end }}
+    rules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["pods"]
+        scope: "Namespaced"
+    clientConfig:
+      service:
+        name: {{ include "squash-webhook.fullname" . }}
+        namespace: {{ .Release.Namespace }}
+        path: "/validate"
+        port: {{ .Values.service.port }}
+      {{- if not .Values.certManager.enabled }}
+      caBundle: ""  # Replace with base64-encoded CA cert when not using cert-manager
+      {{- end }}

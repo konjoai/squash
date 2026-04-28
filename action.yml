@@ -1,0 +1,139 @@
+name: "Squash — Attest AI Model"
+description: "EU AI Act compliance attestation: CycloneDX ML-BOM, SPDX SBOM, policy checks, and Annex IV technical documentation."
+author: "Konjo AI"
+
+branding:
+  icon: "shield"
+  color: "blue"
+
+inputs:
+  model-path:
+    description: "Path to the model directory or artifact to attest."
+    required: true
+  policies:
+    description: "Comma-separated list of compliance policies (eu-ai-act, nist-ai-rmf, enterprise-strict)."
+    required: false
+    default: "eu-ai-act"
+  sign:
+    description: "Sign the CycloneDX BOM with Sigstore keyless signing."
+    required: false
+    default: "false"
+  fail-on-violation:
+    description: "Fail the step when any policy violation is detected."
+    required: false
+    default: "true"
+  api-key:
+    description: "Squash Cloud API key (sq_live_* or sq_test_*). When set, results are uploaded to the Squash dashboard."
+    required: false
+    default: ""
+  output-dir:
+    description: "Directory to write attestation artifacts. Defaults to <model-path>/squash."
+    required: false
+    default: ""
+  annex-iv:
+    description: "Generate EU AI Act Annex IV technical documentation alongside the attestation."
+    required: false
+    default: "false"
+  squash-version:
+    description: "Squash-AI package version to install (e.g. '0.9.14'). Defaults to latest."
+    required: false
+    default: ""
+
+outputs:
+  passed:
+    description: "Whether all policy checks passed ('true' or 'false')."
+    value: ${{ steps.attest.outputs.passed }}
+  score:
+    description: "Numeric compliance score (0-100)."
+    value: ${{ steps.attest.outputs.score }}
+  artifacts-dir:
+    description: "Absolute path to the directory containing all generated artifacts."
+    value: ${{ steps.attest.outputs.artifacts_dir }}
+  bom-digest:
+    description: "SHA-256 digest of the generated CycloneDX ML-BOM."
+    value: ${{ steps.attest.outputs.bom_digest }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.11"
+
+    - name: Install squash-ai
+      shell: bash
+      run: |
+        if [ -n "${{ inputs.squash-version }}" ]; then
+          pip install "squash-ai==${{ inputs.squash-version }}" --quiet
+        else
+          pip install squash-ai --quiet
+        fi
+
+    - name: Run squash attest
+      id: attest
+      shell: bash
+      env:
+        SQUASH_API_KEY: ${{ inputs.api-key }}
+      run: |
+        set -euo pipefail
+
+        EXTRA_FLAGS=""
+        if [ "${{ inputs.sign }}" = "true" ]; then
+          EXTRA_FLAGS="$EXTRA_FLAGS --sign"
+        fi
+        if [ "${{ inputs.fail-on-violation }}" = "false" ]; then
+          EXTRA_FLAGS="$EXTRA_FLAGS --no-fail-on-violation"
+        fi
+        if [ -n "${{ inputs.output-dir }}" ]; then
+          EXTRA_FLAGS="$EXTRA_FLAGS --output-dir '${{ inputs.output-dir }}'"
+        fi
+
+        # Build policy flags
+        IFS=',' read -ra POLICIES <<< "${{ inputs.policies }}"
+        for p in "${POLICIES[@]}"; do
+          EXTRA_FLAGS="$EXTRA_FLAGS --policy $(echo $p | xargs)"
+        done
+
+        squash attest "${{ inputs.model-path }}" $EXTRA_FLAGS \
+          --output-json /tmp/squash_result.json || ATTEST_EXIT=$?
+
+        # Parse result JSON for outputs
+        if [ -f /tmp/squash_result.json ]; then
+          PASSED=$(python3 -c "import json; d=json.load(open('/tmp/squash_result.json')); print(str(d.get('passed',False)).lower())")
+          SCORE=$(python3 -c "import json; d=json.load(open('/tmp/squash_result.json')); print(d.get('compliance_score',0))")
+          ARTIFACTS=$(python3 -c "import json; d=json.load(open('/tmp/squash_result.json')); print(d.get('output_dir',''))")
+          BOM_DIGEST=$(python3 -c "import json; d=json.load(open('/tmp/squash_result.json')); print(d.get('bom_digest',''))")
+        else
+          PASSED="false"
+          SCORE="0"
+          ARTIFACTS="${{ inputs.model-path }}/squash"
+          BOM_DIGEST=""
+        fi
+
+        echo "passed=$PASSED" >> "$GITHUB_OUTPUT"
+        echo "score=$SCORE" >> "$GITHUB_OUTPUT"
+        echo "artifacts_dir=$ARTIFACTS" >> "$GITHUB_OUTPUT"
+        echo "bom_digest=$BOM_DIGEST" >> "$GITHUB_OUTPUT"
+
+        echo "::notice title=Squash Attestation::passed=$PASSED score=$SCORE"
+
+    - name: Generate Annex IV documentation
+      if: inputs.annex-iv == 'true'
+      shell: bash
+      run: |
+        squash annex-iv generate \
+          --root "${{ inputs.model-path }}" \
+          --format md json \
+          --no-validate || true
+
+    - name: Upload attestation artifacts
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: squash-attestation
+        path: |
+          ${{ inputs.model-path }}/squash/**
+          ${{ inputs.output-dir }}/**
+        if-no-files-found: warn
+        retention-days: 90

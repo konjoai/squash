@@ -712,7 +712,12 @@ async def _security_middleware(request: Request, call_next):  # noqa: C901
         while window and window[0] < cutoff:
             window.popleft()
         if len(window) >= _RATE_LIMIT:
-            return JSONResponse({"detail": "Rate limit exceeded"}, status_code=429)
+            retry_after = int(60 - (now - window[0])) + 1
+            return JSONResponse(
+                {"detail": "Rate limit exceeded"},
+                status_code=429,
+                headers={"Retry-After": str(retry_after)},
+            )
         window.append(now)
         return await call_next(request)
 
@@ -2484,7 +2489,7 @@ async def pack_offline(req: PackOfflineRequest) -> JSONResponse:
 def _ts_now() -> str:
     """Return current UTC time as ISO-8601 string."""
     import datetime
-    return datetime.datetime.now(datetime.UTC).isoformat().replace("+00:00", "Z")
+    return datetime.datetime.now(datetime.timezone.utc).isoformat().replace("+00:00", "Z")
 
 
 # ── Tenant management ─────────────────────────────────────────────────────────

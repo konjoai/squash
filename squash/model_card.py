@@ -289,11 +289,11 @@ class ModelCardGenerator:
 
     @staticmethod
     def _iso_date() -> str:
-        return datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d")
+        return datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d")
 
     @staticmethod
     def _utc_now_iso() -> str:
-        return datetime.datetime.now(datetime.UTC).isoformat()
+        return datetime.datetime.now(datetime.timezone.utc).isoformat()
 
     # ── Format builders ───────────────────────────────────────────────────────
 

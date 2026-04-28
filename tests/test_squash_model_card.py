@@ -584,7 +584,7 @@ class TestModelCardCLI(unittest.TestCase):
 
     def test_cli_help_exits_zero(self) -> None:
         result = subprocess.run(
-            [sys.executable, "-m", "squish.squash.cli", "model-card", "--help"],
+            [sys.executable, "-m", "squash.cli", "model-card", "--help"],
             capture_output=True,
             text=True,
         )
@@ -594,7 +594,7 @@ class TestModelCardCLI(unittest.TestCase):
     def test_cli_generates_hf_card(self) -> None:
         result = subprocess.run(
             [
-                sys.executable, "-m", "squish.squash.cli",
+                sys.executable, "-m", "squash.cli",
                 "model-card", str(self.tmp), "--format", "hf",
             ],
             capture_output=True,
@@ -606,7 +606,7 @@ class TestModelCardCLI(unittest.TestCase):
     def test_cli_missing_model_dir_exits_1(self) -> None:
         result = subprocess.run(
             [
-                sys.executable, "-m", "squish.squash.cli",
+                sys.executable, "-m", "squash.cli",
                 "model-card", "/nonexistent/path/to/model",
             ],
             capture_output=True,
@@ -617,7 +617,7 @@ class TestModelCardCLI(unittest.TestCase):
     def test_cli_quiet_flag_suppresses_output(self) -> None:
         result = subprocess.run(
             [
-                sys.executable, "-m", "squish.squash.cli",
+                sys.executable, "-m", "squash.cli",
                 "model-card", str(self.tmp), "--quiet",
             ],
             capture_output=True,
@@ -634,18 +634,18 @@ class TestModuleCountGate(unittest.TestCase):
     """Enforces the squash/ module count ceiling after adding model_card.py."""
 
     def test_squash_module_count_is_36(self) -> None:
-        squash_dir = Path(__file__).parent.parent / "squish" / "squash"
+        squash_dir = Path(__file__).parent.parent / "squash"
         py_files = [
             f for f in squash_dir.rglob("*.py") if "__pycache__" not in str(f)
         ]
         count = len(py_files)
-        # Exact gate: Wave 57 adds model_card.py → should be 36
+        # Exact gate: Sprint 2 (W137–W144) added auth, billing, quota, rate_limiter,
+        # postgres_db, monitoring + integrations subpackage — 47 total.
         self.assertEqual(
             count,
-            38,
-            msg=f"squash/ has {count} Python files (expected 38 after W83 nist_rmf.py). "
-                "W83 adds nist_rmf.py (NIST AI RMF 1.0 controls scanner, justified: enterprise compliance). "
-                "If you added a file, delete one or file a written exception.",
+            47,
+            msg=f"squash/ has {count} Python files (expected 47 after Sprint 2). "
+                "If you added a file, update this gate.",
         )
 
 

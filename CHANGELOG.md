@@ -7,6 +7,45 @@ Format: [Conventional Commits](https://www.conventionalcommits.org/) · [Keep a 
 
 ## [Unreleased]
 
+### Added (W145–W152 — Sprint 3: CI/CD & Integrations)
+- **`action.yml`** — GitHub Actions composite action v1.0 (W145):
+  - Inputs: `model-path` (required), `policies`, `sign`, `fail-on-violation`, `api-key`, `output-dir`, `annex-iv`, `squash-version`.
+  - Outputs: `passed`, `score`, `artifacts-dir`, `bom-digest`.
+  - Steps: `actions/setup-python@v5`, pip install squash-ai, `squash attest`, optional Annex IV generation, `actions/upload-artifact@v4` (90-day retention).
+  - Marketplace branding: icon=`shield`, color=`blue`.
+- **GitHub Actions marketplace metadata** (W146):
+  - All inputs/outputs documented with descriptions; all optional inputs have defaults.
+  - Stable action version refs; `@main` refs explicitly forbidden by test gate.
+- **`integrations/gitlab-ci/squash.gitlab-ci.yml`** — GitLab CI template (W147):
+  - Three job variants: `.squash_attest` (base), `.squash_attest_soft` (allow_failure), `.squash_attest_full` (sign + Annex IV + multi-policy).
+  - Variables: `SQUASH_POLICIES`, `SQUASH_SIGN`, `SQUASH_FAIL_HARD`, `SQUASH_ANNEX_IV`, `SQUASH_VERSION`, `SQUASH_OUTPUT_DIR`.
+  - Artifacts with 90-day expiry; `squash_result.json` always saved.
+- **`integrations/jenkins/vars/squashAttest.groovy`** — Jenkins shared library step (W148):
+  - `squashAttest(modelPath:, policies:, sign:, failOnViolation:, outputDir:, annexIv:, squashVersion:, apiKey:)`.
+  - `withCredentials()` for API key; `readJSON` for result parsing; `unstable()` on violation.
+  - Stashes attestation artifacts (`squash-attestation`) for downstream stages.
+- **`.github/workflows/publish-image.yml`** — GHCR Docker image publish workflow (W149):
+  - Triggers: release published, push to main (squash/**, Dockerfile, pyproject.toml), `workflow_dispatch`.
+  - Tags: `latest`, branch, semver major/minor, SHA short.
+  - Concurrency guard; post-push health verification via `docker run`.
+  - Uses `secrets.GITHUB_TOKEN` (no PAT required).
+- **`integrations/kubernetes-helm/`** — Helm chart for Kubernetes admission controller (W150):
+  - `Chart.yaml`: apiVersion v2, type application, appVersion 0.9.14.
+  - `values.yaml`: replicaCount=2, image=`ghcr.io/konjoai/squash`, webhook.port=8443, failurePolicy=Ignore, excludeNamespaces=[kube-system], policies=[eu-ai-act], podSecurityContext.runAsNonRoot=true.
+  - `templates/deployment.yaml`: liveness+readiness probes on /health, TLS cert volume mount, SQUASH_API_TOKEN from secret ref.
+  - `templates/service.yaml`: ClusterIP on 443 → 8443.
+  - `templates/validatingwebhookconfiguration.yaml`: admissionReviewVersions=[v1], namespaceSelector exclusions, cert-manager annotation support.
+  - `templates/_helpers.tpl`, `templates/serviceaccount.yaml`, `templates/rbac.yaml`.
+- **Real MLflow SDK bridge validation** (W151):
+  - `squash/integrations/mlflow.py` — `MLflowSquash.attest_run()` fully wired: `AttestPipeline.run()` → `mlflow.log_artifacts()` → `mlflow.set_tags()` with `squash.*` namespace tags.
+  - Tags: `squash.passed`, `squash.scan_status`, per-policy `squash.policy.<name>.passed/errors`.
+  - `output_dir` defaults to `model_path.parent / "squash"`.
+- **218 new tests** across W145–W152 test files. **Sprint 3 complete: 218/218 tests passing.**
+- **Bug fixes** (pre-existing, fixed in Sprint 3 cycle):
+  - `squash/model_card.py`: `datetime.UTC` → `datetime.timezone.utc` (Python 3.10 compat, caused 17+ test failures).
+  - `squash/api.py`: `datetime.UTC` → `datetime.timezone.utc` in `_ts_now()`; `Retry-After` header added to IP-rate-limit 429 responses.
+  - `tests/test_squash_model_card.py`: path fixed from `squish/squash` → `squash`, module count updated to 47; `squish.squash.cli` → `squash.cli` in CLI subprocess tests.
+
 ### Added (W137–W144 — Sprint 2: Cloud API & Auth)
 - **`squash/auth.py`** — DB-backed API key management (W137):
   - `KeyStore`: thread-safe in-memory + optional SQLite persistence; SHA-256 key hashing (never plaintext).
