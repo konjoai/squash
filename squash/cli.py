@@ -1448,6 +1448,121 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Suppress non-error output",
     )
 
+    # ── W135 / W136 — Annex IV generate + validate ────────────────────────────
+    annex_iv_cmd = sub.add_parser(
+        "annex-iv",
+        help="EU AI Act Annex IV technical documentation (generate / validate)",
+        description=(
+            "Generate or validate EU AI Act Annex IV technical documentation.\n\n"
+            "Examples:\n"
+            "  squash annex-iv generate --root ./my-training-run --system-name \"BERT Classifier\"\n"
+            "  squash annex-iv generate --root . --format md html json pdf --output-dir ./docs\n"
+            "  squash annex-iv validate ./docs/annex_iv.json\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    annex_iv_sub = annex_iv_cmd.add_subparsers(dest="annex_iv_command", metavar="SUBCOMMAND")
+    annex_iv_sub.required = True
+
+    # squash annex-iv generate
+    aiv_gen = annex_iv_sub.add_parser(
+        "generate",
+        help="Generate Annex IV documentation from a training run directory",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    aiv_gen.add_argument(
+        "--root", "-r",
+        required=True,
+        metavar="DIR",
+        help="Training run directory to scan (TensorBoard logs, configs, .py files)",
+    )
+    aiv_gen.add_argument(
+        "--output-dir", "-o",
+        default=None,
+        metavar="DIR",
+        help="Directory to write Annex IV artifacts. Defaults to --root.",
+    )
+    aiv_gen.add_argument(
+        "--format", "-f",
+        dest="formats",
+        nargs="+",
+        default=["md", "json"],
+        choices=["md", "html", "json", "pdf"],
+        metavar="FMT",
+        help="Output formats: md html json pdf (default: md json)",
+    )
+    aiv_gen.add_argument("--system-name",    default="AI System",  help="Human-readable AI system name (§1(a))")
+    aiv_gen.add_argument("--version",        default="1.0.0",      help="System version string (§1(a))")
+    aiv_gen.add_argument("--intended-purpose", default=None,        help="§1(b) — what this system is designed to do")
+    aiv_gen.add_argument("--risk-level",     default=None,
+                         choices=["minimal", "limited", "high", "unacceptable"],
+                         help="EU AI Act risk classification (§4)")
+    aiv_gen.add_argument("--general-description", default=None,    help="§1(a) — free-text system overview")
+    aiv_gen.add_argument("--hardware",       dest="hardware_requirements", default=None,
+                         help="§1(a) — compute / hardware requirements")
+    aiv_gen.add_argument("--deployment-context", default=None,     help="§1(b) — production environment description")
+    aiv_gen.add_argument("--risk-management", default=None,        help="§4 — risk management system description")
+    aiv_gen.add_argument("--oversight",      dest="oversight_description", default=None,
+                         help="§5 — human oversight description")
+    aiv_gen.add_argument("--model-type",     default=None,         help="§3(a) — architecture family (e.g. transformer)")
+    aiv_gen.add_argument("--lifecycle-plan", default=None,         help="§7 — lifecycle management description")
+    aiv_gen.add_argument("--monitoring-plan", default=None,        help="§7 — post-deployment monitoring")
+    aiv_gen.add_argument(
+        "--mlflow-run",
+        default=None,
+        metavar="RUN_ID",
+        help="Augment with MLflow run metrics and params (requires mlflow)",
+    )
+    aiv_gen.add_argument(
+        "--mlflow-uri",
+        default="http://localhost:5000",
+        metavar="URI",
+        help="MLflow tracking URI (default: http://localhost:5000)",
+    )
+    aiv_gen.add_argument(
+        "--wandb-run",
+        default=None,
+        metavar="ENTITY/PROJECT/RUN_ID",
+        help="Augment with Weights & Biases run (requires wandb)",
+    )
+    aiv_gen.add_argument(
+        "--hf-dataset",
+        dest="hf_datasets",
+        action="append",
+        default=[],
+        metavar="DATASET_ID",
+        help="Augment with HuggingFace dataset provenance (repeatable)",
+    )
+    aiv_gen.add_argument(
+        "--hf-token",
+        default=None,
+        metavar="TOKEN",
+        help="HuggingFace API token for private datasets",
+    )
+    aiv_gen.add_argument(
+        "--stem",
+        default="annex_iv",
+        metavar="NAME",
+        help="Output filename stem (default: annex_iv → annex_iv.md, annex_iv.json, …)",
+    )
+    aiv_gen.add_argument("--no-validate", action="store_true", help="Skip post-generation validation report")
+    aiv_gen.add_argument("--fail-on-warning", action="store_true", help="Exit 1 if validation produces warnings")
+    aiv_gen.add_argument("--quiet", action="store_true", help="Suppress informational output")
+
+    # squash annex-iv validate
+    aiv_val = annex_iv_sub.add_parser(
+        "validate",
+        help="Validate an existing Annex IV JSON document against EU AI Act requirements",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    aiv_val.add_argument(
+        "document",
+        metavar="PATH",
+        help="Path to an annex_iv.json file produced by 'squash annex-iv generate'",
+    )
+    aiv_val.add_argument("--fail-on-warning", action="store_true", help="Exit 1 if validation produces warnings")
+    aiv_val.add_argument("--quiet", action="store_true", help="Suppress informational output")
+
     return parser
 
 
@@ -3833,6 +3948,216 @@ def _cmd_cloud_remediate(args: argparse.Namespace, quiet: bool) -> int:
     return 2 if critical_count > 0 else 0
 
 
+# ---------------------------------------------------------------------------
+# W135 / W136 — annex-iv generate + validate
+# ---------------------------------------------------------------------------
+
+def _cmd_annex_iv(args: argparse.Namespace, quiet: bool) -> int:  # noqa: C901
+    """Dispatch annex-iv subcommands (generate / validate)."""
+    subcmd = args.annex_iv_command
+
+    if subcmd == "generate":
+        return _cmd_annex_iv_generate(args, quiet)
+    elif subcmd == "validate":
+        return _cmd_annex_iv_validate(args, quiet)
+    else:
+        print("squash annex-iv: unknown subcommand", file=sys.stderr)
+        return 1
+
+
+def _cmd_annex_iv_generate(args: argparse.Namespace, quiet: bool) -> int:  # noqa: C901
+    """W135 — generate Annex IV documentation from a training run directory."""
+    from pathlib import Path as _Path
+
+    try:
+        from squash.artifact_extractor import ArtifactExtractor
+        from squash.annex_iv_generator import AnnexIVGenerator, AnnexIVValidator
+    except ImportError as exc:
+        print(f"squash modules not available: {exc}", file=sys.stderr)
+        return 2
+
+    root = _Path(args.root).expanduser().resolve()
+    if not root.exists():
+        print(f"error: --root directory not found: {root}", file=sys.stderr)
+        return 1
+
+    output_dir = _Path(args.output_dir).expanduser().resolve() if args.output_dir else root
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    if not quiet:
+        print(f"squash annex-iv generate | scanning {root}")
+
+    # ── Phase 1: extract artifacts from run directory ─────────────────────────
+    result = ArtifactExtractor.from_run_dir(root)
+
+    if result.warnings and not quiet:
+        for w in result.warnings:
+            print(f"  [warn] {w}")
+
+    # ── Phase 2: optional MLflow augmentation ─────────────────────────────────
+    if args.mlflow_run:
+        if not quiet:
+            print(f"  [mlflow] fetching run {args.mlflow_run} from {args.mlflow_uri}")
+        try:
+            full = ArtifactExtractor.from_mlflow_run_full(
+                args.mlflow_run, tracking_uri=args.mlflow_uri
+            )
+            if result.metrics is None:
+                result.metrics = full.metrics
+            if result.config is None:
+                result.config = full.config
+        except Exception as exc:
+            print(f"  [warn] mlflow augmentation failed: {exc}", file=sys.stderr)
+
+    # ── Phase 3: optional W&B augmentation ───────────────────────────────────
+    if args.wandb_run:
+        if not quiet:
+            print(f"  [wandb] fetching run {args.wandb_run}")
+        try:
+            parts = args.wandb_run.split("/")
+            run_id = parts[-1]
+            project = parts[-2] if len(parts) >= 2 else None
+            entity = parts[-3] if len(parts) >= 3 else None
+            full = ArtifactExtractor.from_wandb_run_full(
+                run_id, project=project, entity=entity
+            )
+            if result.metrics is None:
+                result.metrics = full.metrics
+            if result.config is None:
+                result.config = full.config
+        except Exception as exc:
+            print(f"  [warn] wandb augmentation failed: {exc}", file=sys.stderr)
+
+    # ── Phase 4: optional HuggingFace dataset provenance ─────────────────────
+    if args.hf_datasets:
+        if not quiet:
+            print(f"  [hf] fetching provenance for: {', '.join(args.hf_datasets)}")
+        try:
+            datasets = ArtifactExtractor.from_huggingface_dataset_list(
+                args.hf_datasets, token=args.hf_token
+            )
+            result.datasets.extend(datasets)
+        except Exception as exc:
+            print(f"  [warn] huggingface augmentation failed: {exc}", file=sys.stderr)
+
+    # ── Phase 5: generate Annex IV document ──────────────────────────────────
+    if not quiet:
+        print("  [generate] building Annex IV document …")
+
+    doc = AnnexIVGenerator().generate(
+        result,
+        system_name=args.system_name,
+        version=args.version,
+        intended_purpose=args.intended_purpose,
+        risk_level=args.risk_level,
+        general_description=args.general_description,
+        hardware_requirements=args.hardware_requirements,
+        deployment_context=args.deployment_context,
+        risk_management=args.risk_management,
+        oversight_description=args.oversight_description,
+        model_type=args.model_type,
+        lifecycle_plan=args.lifecycle_plan,
+        monitoring_plan=args.monitoring_plan,
+    )
+
+    # ── Phase 6: save to disk ─────────────────────────────────────────────────
+    written = doc.save(output_dir, formats=list(args.formats), stem=args.stem)
+
+    if not quiet:
+        score_icon = "✅" if doc.overall_score >= 80 else ("⚠️" if doc.overall_score >= 40 else "❌")
+        print(f"\n{score_icon}  Annex IV score: {doc.overall_score}/100 "
+              f"({len(doc.complete_sections)}/12 sections complete)")
+        for fmt, path in written.items():
+            print(f"  [{fmt}] {path}")
+
+    # ── Phase 7: validate ─────────────────────────────────────────────────────
+    if args.no_validate:
+        return 0
+
+    report = AnnexIVValidator().validate(doc)
+
+    if not quiet:
+        print(f"\n{'Hard fails' if report.hard_fails else 'No hard fails'} | "
+              f"{len(report.warnings)} warning(s) | "
+              f"{len(report.info)} info")
+        for f in report.hard_fails:
+            print(f"  [FAIL] {f.section}: {f.message}")
+        for w in report.warnings:
+            print(f"  [WARN] {w.section}: {w.message}")
+
+    if report.hard_fails:
+        return 2
+    if args.fail_on_warning and report.warnings:
+        return 1
+    return 0
+
+
+def _cmd_annex_iv_validate(args: argparse.Namespace, quiet: bool) -> int:
+    """W136 — validate an existing Annex IV JSON document."""
+    from pathlib import Path as _Path
+    import json as _json
+
+    try:
+        from squash.annex_iv_generator import AnnexIVDocument, AnnexIVValidator, AnnexIVSection
+    except ImportError as exc:
+        print(f"squash modules not available: {exc}", file=sys.stderr)
+        return 2
+
+    doc_path = _Path(args.document).expanduser().resolve()
+    if not doc_path.exists():
+        print(f"error: file not found: {doc_path}", file=sys.stderr)
+        return 1
+
+    try:
+        raw = _json.loads(doc_path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        print(f"error: could not parse JSON: {exc}", file=sys.stderr)
+        return 1
+
+    try:
+        # Reconstruct AnnexIVDocument from saved JSON
+        sections = []
+        for s in raw.get("sections", []):
+            sections.append(AnnexIVSection(
+                key=s["key"],
+                title=s["title"],
+                article=s.get("article", ""),
+                content=s.get("content", ""),
+                completeness=s.get("completeness", 0),
+                gaps=s.get("gaps", []),
+            ))
+        doc = AnnexIVDocument(
+            system_name=raw.get("system_name", ""),
+            version=raw.get("version", ""),
+            generated_at=raw.get("generated_at", ""),
+            sections=sections,
+            overall_score=raw.get("overall_score", 0),
+            metadata=raw.get("metadata", {}),
+        )
+    except Exception as exc:
+        print(f"error: could not reconstruct AnnexIVDocument: {exc}", file=sys.stderr)
+        return 1
+
+    report = AnnexIVValidator().validate(doc)
+
+    if not quiet:
+        score_icon = "✅" if doc.overall_score >= 80 else ("⚠️" if doc.overall_score >= 40 else "❌")
+        print(f"{score_icon}  {doc.system_name} v{doc.version} — score {doc.overall_score}/100")
+        print(f"   Hard fails: {len(report.hard_fails)}  Warnings: {len(report.warnings)}  Info: {len(report.info)}")
+        for f in report.hard_fails:
+            print(f"  [FAIL] {f.section}: {f.message}")
+        for w in report.warnings:
+            print(f"  [WARN] {w.section}: {w.message}")
+        for i in report.info:
+            print(f"  [INFO] {i.section}: {i.message}")
+
+    if report.hard_fails:
+        return 2
+    if args.fail_on_warning and report.warnings:
+        return 1
+    return 0
+
+
 def main() -> None:
     parser = _build_parser()
     args = parser.parse_args()
@@ -3933,6 +4258,8 @@ def main() -> None:
         sys.exit(_cmd_cloud_risk(args, quiet))
     elif args.command == "cloud-remediate":
         sys.exit(_cmd_cloud_remediate(args, quiet))
+    elif args.command == "annex-iv":
+        sys.exit(_cmd_annex_iv(args, quiet))
     else:
         parser.print_help()
         sys.exit(1)
