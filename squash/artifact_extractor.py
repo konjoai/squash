@@ -13,7 +13,10 @@ Wave 128: TensorBoard event file parser + training config parser (YAML/JSON).
   Zero-dependency native TFRecord reader — no tensorflow or tensorboard required.
   Fast path via tensorboard SDK if installed (guarded import).
 
-Wave 129: MLflow SDK integration (real params/metrics/artifacts API).
+Wave 129: MLflow SDK integration — real MlflowClient, full metric history,
+  param coercion, run metadata, experiment tags. Local file:// URI supported
+  (no server needed for CI).
+
 Wave 130: W&B API integration.
 Wave 131: HuggingFace Datasets provenance tracker.
 Wave 132: Python AST code scanner.
@@ -439,6 +442,28 @@ def _extract_training(raw: dict) -> dict[str, Any]:
     return tr
 
 
+def _coerce_mlflow_param(value: str) -> Any:
+    """Coerce an MLflow param string to a native Python type.
+
+    MLflow logs all params as str. We try int first, then float, then bool,
+    leaving strings that don't convert as-is.
+    """
+    if not isinstance(value, str):
+        return value
+    stripped = value.strip()
+    if stripped.lower() in ("true", "false"):
+        return stripped.lower() == "true"
+    try:
+        int_val = int(stripped)
+        return int_val
+    except ValueError:
+        pass
+    try:
+        return float(stripped)
+    except ValueError:
+        return value
+
+
 def _parse_config_dict(raw: dict, source_path: str | None = None) -> TrainingConfig:
     return TrainingConfig(
         source_path=source_path,
@@ -565,13 +590,169 @@ class ArtifactExtractor:
         return _parse_config_dict(raw, source_path=None)
 
     # ------------------------------------------------------------------
-    # W129 stub: MLflow SDK integration
+    # W129: MLflow SDK integration
     # ------------------------------------------------------------------
 
     @staticmethod
     def from_mlflow_run(run_id: str, tracking_uri: str = "http://localhost:5000") -> TrainingMetrics:
-        """Pull params + metrics from MLflow Tracking. (Wave 129)"""
-        raise NotImplementedError("Wave 129: MLflow SDK integration — not yet implemented")
+        """Pull full metric history from an MLflow run → TrainingMetrics.
+
+        Uses MlflowClient.get_metric_history() for each metric key so that
+        complete loss curves are captured, not just the final value. All
+        MLflow metric timestamps (milliseconds) are converted to seconds to
+        match the wall_times contract in MetricSeries.
+
+        Supports local file:// tracking URIs (no server required in CI):
+            tracking_uri="file:///path/to/mlruns"
+
+        Args:
+            run_id:       MLflow run UUID (shown in the MLflow UI or
+                          ``run.info.run_id``).
+            tracking_uri: MLflow tracking server URI or local file:// path.
+                          Defaults to the standard local server port.
+
+        Returns:
+            TrainingMetrics with one MetricSeries per logged metric.
+            Addresses Annex IV §3(b): training and validation methodology.
+
+        Raises:
+            ImportError: if mlflow is not installed.
+            mlflow.exceptions.MlflowException: if the run_id is not found.
+        """
+        try:
+            from mlflow.tracking import MlflowClient  # type: ignore
+        except ImportError as exc:
+            raise ImportError(
+                "mlflow is required for from_mlflow_run(). "
+                "Install with: pip install mlflow"
+            ) from exc
+
+        client = MlflowClient(tracking_uri=tracking_uri)
+        run = client.get_run(run_id)
+        metric_keys = list(run.data.metrics.keys())
+
+        series: dict[str, MetricSeries] = {}
+        for key in metric_keys:
+            history = client.get_metric_history(run_id, key)
+            history_sorted = sorted(history, key=lambda m: (m.step, m.timestamp))
+            series[key] = MetricSeries(
+                tag=key,
+                steps=[m.step for m in history_sorted],
+                values=[m.value for m in history_sorted],
+                wall_times=[m.timestamp / 1000.0 for m in history_sorted],  # ms → s
+            )
+
+        run_info = run.info
+        return TrainingMetrics(
+            source="mlflow",
+            run_id=run_id,
+            series=series,
+            metadata={
+                "tracking_uri": tracking_uri,
+                "experiment_id": run_info.experiment_id,
+                "run_name": getattr(run_info, "run_name", None),
+                "status": run_info.status,
+                "start_time_ms": run_info.start_time,
+                "end_time_ms": run_info.end_time,
+                "artifact_uri": run_info.artifact_uri,
+                "tags": dict(run.data.tags),
+            },
+        )
+
+    @staticmethod
+    def from_mlflow_params(run_id: str, tracking_uri: str = "http://localhost:5000") -> TrainingConfig:
+        """Pull run params from an MLflow run → TrainingConfig.
+
+        MLflow stores all params as strings. Numeric strings are coerced to
+        int or float so the downstream config extractors can apply proper
+        type comparisons and threshold logic.
+
+        Args:
+            run_id:       MLflow run UUID.
+            tracking_uri: MLflow tracking server URI or local file:// path.
+
+        Returns:
+            TrainingConfig with optimizer, scheduler, and training fields
+            populated from the run's logged params.
+            Addresses Annex IV §1(c): development hyperparameters.
+
+        Raises:
+            ImportError: if mlflow is not installed.
+        """
+        try:
+            from mlflow.tracking import MlflowClient  # type: ignore
+        except ImportError as exc:
+            raise ImportError(
+                "mlflow is required for from_mlflow_params(). "
+                "Install with: pip install mlflow"
+            ) from exc
+
+        client = MlflowClient(tracking_uri=tracking_uri)
+        run = client.get_run(run_id)
+        raw_params = dict(run.data.params)
+
+        # Coerce numeric strings — MLflow stores everything as str
+        coerced: dict[str, Any] = {}
+        for k, v in raw_params.items():
+            coerced[k] = _coerce_mlflow_param(v)
+
+        return _parse_config_dict(coerced, source_path=f"mlflow+run://{run_id}")
+
+    @staticmethod
+    def from_mlflow_run_full(
+        run_id: str, tracking_uri: str = "http://localhost:5000"
+    ) -> "ArtifactExtractionResult":
+        """Extract both metrics and params from one MLflow run.
+
+        Equivalent to calling from_mlflow_run() and from_mlflow_params()
+        together, with a single MlflowClient round-trip for metadata.
+
+        Returns:
+            ArtifactExtractionResult with .metrics (TrainingMetrics) and
+            .config (TrainingConfig) both populated.
+        """
+        try:
+            from mlflow.tracking import MlflowClient  # type: ignore
+        except ImportError as exc:
+            raise ImportError(
+                "mlflow is required for from_mlflow_run_full(). "
+                "Install with: pip install mlflow"
+            ) from exc
+
+        client = MlflowClient(tracking_uri=tracking_uri)
+        run = client.get_run(run_id)
+        metric_keys = list(run.data.metrics.keys())
+
+        series: dict[str, MetricSeries] = {}
+        for key in metric_keys:
+            history = client.get_metric_history(run_id, key)
+            history_sorted = sorted(history, key=lambda m: (m.step, m.timestamp))
+            series[key] = MetricSeries(
+                tag=key,
+                steps=[m.step for m in history_sorted],
+                values=[m.value for m in history_sorted],
+                wall_times=[m.timestamp / 1000.0 for m in history_sorted],
+            )
+
+        run_info = run.info
+        metrics = TrainingMetrics(
+            source="mlflow",
+            run_id=run_id,
+            series=series,
+            metadata={
+                "tracking_uri": tracking_uri,
+                "experiment_id": run_info.experiment_id,
+                "run_name": getattr(run_info, "run_name", None),
+                "status": run_info.status,
+                "artifact_uri": run_info.artifact_uri,
+                "tags": dict(run.data.tags),
+            },
+        )
+
+        coerced: dict[str, Any] = {k: _coerce_mlflow_param(v) for k, v in run.data.params.items()}
+        config = _parse_config_dict(coerced, source_path=f"mlflow+run://{run_id}")
+
+        return ArtifactExtractionResult(metrics=metrics, config=config)
 
     # ------------------------------------------------------------------
     # W130 stub: W&B API integration

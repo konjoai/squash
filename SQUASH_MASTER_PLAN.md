@@ -216,7 +216,7 @@ Enterprise ($4K+/mo)      → 4 contracts = $16,000 MRR
 
 **Artifact Extraction Engine (Annex IV):**
 - [x] Wave 128: TensorBoard event file parser + training config parser (50 tests)
-- [ ] Wave 129: MLflow API integration (real SDK)
+- [x] Wave 129: MLflow API integration — from_mlflow_run(), from_mlflow_params(), from_mlflow_run_full() — 55 tests
 - [ ] Wave 130: W&B API integration
 - [ ] Wave 131: Dataset provenance tracker (HF Datasets)
 - [ ] Wave 132: Python AST code scanner
