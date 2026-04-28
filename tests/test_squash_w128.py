@@ -512,6 +512,4 @@ class TestArtifactExtractionResult:
 # ---------------------------------------------------------------------------
 
 class TestStubMethods:
-    def test_from_huggingface_dataset_not_implemented(self):
-        with pytest.raises(NotImplementedError, match="Wave 131"):
-            ArtifactExtractor.from_huggingface_dataset("squad")
+    pass  # all stubs implemented — see W129, W130, W131 test files

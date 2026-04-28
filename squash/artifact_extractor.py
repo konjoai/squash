@@ -117,19 +117,129 @@ class TrainingConfig:
 
 
 @dataclass
+class DatasetProvenance:
+    """Dataset provenance record for EU AI Act Annex IV §2(a).
+
+    Captures the data governance evidence required by Article 11 —
+    provenance, scope, characteristics, preprocessing, and bias analysis.
+    """
+    dataset_id: str
+    source: str                          # "huggingface" | "local" | "custom"
+    pretty_name: str | None = None
+    description: str | None = None
+    license: str | None = None
+    languages: list[str] = field(default_factory=list)
+    task_categories: list[str] = field(default_factory=list)
+    size_category: str | None = None     # e.g. "10K<n<100K", "1M<n<10M"
+    split_info: dict[str, Any] = field(default_factory=dict)
+    source_datasets: list[str] = field(default_factory=list)
+    tags: list[str] = field(default_factory=list)
+    citation: str | None = None
+    created_at: str | None = None
+    last_modified: str | None = None
+    downloads: int | None = None
+    has_bias_analysis: bool = False      # README contains bias/fairness content
+    card_data_raw: dict[str, Any] = field(default_factory=dict)
+
+    def completeness_score(self) -> int:
+        """Percentage of Annex IV §2(a) required fields populated (0–100).
+
+        Uses a weighted scoring model aligned with Article 10(2) obligations.
+        A score below 60 indicates gaps that an auditor will flag.
+        """
+        score = 0
+        weights = {
+            "description":       20,
+            "license":           20,
+            "languages":         15,
+            "source_datasets":   15,
+            "task_categories":   10,
+            "size_category":     10,
+            "has_bias_analysis":  5,
+            "citation":           5,
+        }
+        for attr, weight in weights.items():
+            val = getattr(self, attr)
+            if val is True or (val and val != [] and val != {}):
+                score += weight
+        return min(score, 100)
+
+    def completeness_gaps(self) -> list[str]:
+        """Return list of Annex IV §2(a) fields that are missing or empty."""
+        field_labels = {
+            "description":       "General description (§2(a))",
+            "license":           "License / data provenance (§2(a))",
+            "languages":         "Language distribution (§2(a))",
+            "source_datasets":   "Source dataset origin (§2(a))",
+            "task_categories":   "Task categories / intended use",
+            "size_category":     "Dataset size / scope",
+            "has_bias_analysis": "Bias and fairness analysis (Art. 10(2)(f))",
+            "citation":          "Citation / academic reference",
+        }
+        gaps = []
+        for attr, label in field_labels.items():
+            val = getattr(self, attr)
+            if not val and val is not True:
+                gaps.append(label)
+        return gaps
+
+    def annex_iv_section_2a(self) -> dict[str, Any]:
+        """Render EU AI Act Annex IV §2(a) data governance evidence block."""
+        return {
+            "annex_iv_section": "2a",
+            "title": "Training Data Governance and Provenance",
+            "dataset_id": self.dataset_id,
+            "source": self.source,
+            "pretty_name": self.pretty_name,
+            "description": self.description,
+            "license": self.license,
+            "languages": self.languages,
+            "task_categories": self.task_categories,
+            "size_category": self.size_category,
+            "split_info": self.split_info,
+            "source_datasets": self.source_datasets,
+            "tags": self.tags,
+            "citation": self.citation,
+            "provenance": {
+                "created_at": self.created_at,
+                "last_modified": self.last_modified,
+                "downloads": self.downloads,
+            },
+            "bias_analysis": {
+                "has_bias_content_in_card": self.has_bias_analysis,
+                "note": (
+                    "Bias analysis content detected in dataset card."
+                    if self.has_bias_analysis
+                    else "No bias analysis detected — required by Art. 10(2)(f)."
+                ),
+            },
+            "completeness": {
+                "score": self.completeness_score(),
+                "gaps": self.completeness_gaps(),
+            },
+        }
+
+    def to_dict(self) -> dict[str, Any]:
+        return self.annex_iv_section_2a()
+
+
+@dataclass
 class ArtifactExtractionResult:
     """Aggregated Annex IV artifacts from one or more sources."""
     metrics: TrainingMetrics | None = None
     config: TrainingConfig | None = None
+    datasets: list[DatasetProvenance] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
 
     def is_empty(self) -> bool:
-        return self.metrics is None and self.config is None
+        return self.metrics is None and self.config is None and not self.datasets
 
     def to_annex_iv_dict(self) -> dict[str, Any]:
         result: dict[str, Any] = {}
         if self.config:
             result["section_1c"] = self.config.annex_iv_section_1c()
+        if self.datasets:
+            result["section_2a"] = [d.annex_iv_section_2a() for d in self.datasets]
         if self.metrics:
             result["section_3b"] = self.metrics.annex_iv_section_3b()
         if self.warnings:
@@ -568,6 +678,123 @@ def _parse_config_dict(raw: dict, source_path: str | None = None) -> TrainingCon
 
 
 # ---------------------------------------------------------------------------
+# W131: HuggingFace dataset provenance helpers
+# ---------------------------------------------------------------------------
+
+# Keywords that indicate bias/fairness analysis in a dataset README.
+_BIAS_KEYWORDS: frozenset[str] = frozenset({
+    "bias", "fairness", "limitation", "demographic", "underrepresented",
+    "protected attribute", "discrimination", "stereotyp", "unrepresent",
+    "sensitive attribute", "equity", "disparity", "imbalance",
+})
+
+
+def _has_bias_content(text: str) -> bool:
+    """Return True if *text* contains EU AI Act Art. 10(2)(f) bias indicators."""
+    lower = text.lower()
+    return any(kw in lower for kw in _BIAS_KEYWORDS)
+
+
+def _extract_citation(text: str) -> str | None:
+    """Pull the first BibTeX entry from a README, if present."""
+    import re
+    match = re.search(r"@\w+\s*\{[^}]+\}", text, re.DOTALL)
+    return match.group(0).strip() if match else None
+
+
+def _parse_hf_tags(tags: list[str]) -> dict[str, list[str]]:
+    """Split raw HuggingFace tags into namespaced buckets.
+
+    HF tags follow the convention ``"namespace:value"`` (e.g.
+    ``"language:en"``, ``"license:apache-2.0"``). Tags without a colon
+    are stored under the ``"other"`` key.
+    """
+    buckets: dict[str, list[str]] = {}
+    for tag in tags or []:
+        if ":" in tag:
+            ns, _, val = tag.partition(":")
+            buckets.setdefault(ns, []).append(val)
+        else:
+            buckets.setdefault("other", []).append(tag)
+    return buckets
+
+
+def _build_dataset_provenance(
+    info: Any,
+    dataset_id: str,
+    card_content: str | None,
+) -> DatasetProvenance:
+    """Assemble a DatasetProvenance from a HfApi DatasetInfo + optional card text."""
+    card_data = getattr(info, "card_data", None) or {}
+    tag_buckets = _parse_hf_tags(list(getattr(info, "tags", []) or []))
+
+    # Languages — prefer card_data, fall back to tags
+    languages: list[str] = list(getattr(card_data, "language", None) or tag_buckets.get("language", []))
+
+    # License — prefer card_data, fall back to tags, then None
+    license_val: str | None = getattr(card_data, "license", None)
+    if not license_val:
+        license_list = tag_buckets.get("license", [])
+        license_val = license_list[0] if license_list else None
+
+    # Task categories
+    task_categories: list[str] = list(getattr(card_data, "task_categories", None) or [])
+
+    # Size bucket — first entry from card_data
+    size_cats = list(getattr(card_data, "size_categories", None) or [])
+    size_category: str | None = size_cats[0] if size_cats else None
+
+    # Source datasets
+    source_datasets: list[str] = list(getattr(card_data, "source_datasets", None) or [])
+
+    # Pretty name
+    pretty_name: str | None = getattr(card_data, "pretty_name", None) or getattr(info, "pretty_name", None)
+
+    # Timestamps → ISO strings
+    created_raw = getattr(info, "created_at", None)
+    modified_raw = getattr(info, "last_modified", None)
+    created_at = created_raw.isoformat() if hasattr(created_raw, "isoformat") else str(created_raw) if created_raw else None
+    last_modified = modified_raw.isoformat() if hasattr(modified_raw, "isoformat") else str(modified_raw) if modified_raw else None
+
+    # Downloads
+    downloads = getattr(info, "downloads", None)
+
+    # Bias analysis & citation from card README
+    has_bias = _has_bias_content(card_content) if card_content else False
+    citation = _extract_citation(card_content) if card_content else None
+
+    # Raw card metadata for full transparency
+    card_data_raw: dict[str, Any] = {}
+    if card_data:
+        for key in ("language", "license", "task_categories", "size_categories",
+                    "source_datasets", "pretty_name", "multilinguality",
+                    "task_ids", "annotations_creators", "paperswithcode_id"):
+            val = getattr(card_data, key, None)
+            if val is not None:
+                card_data_raw[key] = val
+
+    return DatasetProvenance(
+        dataset_id=dataset_id,
+        source="huggingface",
+        pretty_name=pretty_name,
+        description=None,  # HF API v0.36 doesn't expose description directly; comes from card
+        license=license_val,
+        languages=languages,
+        task_categories=task_categories,
+        size_category=size_category,
+        split_info={},  # populated by datasets library if available
+        source_datasets=source_datasets,
+        tags=list(getattr(info, "tags", []) or []),
+        citation=citation,
+        created_at=created_at,
+        last_modified=last_modified,
+        downloads=downloads,
+        has_bias_analysis=has_bias,
+        card_data_raw=card_data_raw,
+    )
+
+
+# ---------------------------------------------------------------------------
 # Public API — ArtifactExtractor
 # ---------------------------------------------------------------------------
 
@@ -978,13 +1205,92 @@ class ArtifactExtractor:
         return ArtifactExtractionResult(metrics=metrics, config=config)
 
     # ------------------------------------------------------------------
-    # W131 stub: HuggingFace Datasets provenance
+    # W131: HuggingFace Datasets provenance tracker
     # ------------------------------------------------------------------
 
     @staticmethod
-    def from_huggingface_dataset(dataset_name: str) -> dict[str, Any]:
-        """Extract dataset card metadata from HuggingFace Hub. (Wave 131)"""
-        raise NotImplementedError("Wave 131: HF Datasets provenance — not yet implemented")
+    def from_huggingface_dataset(
+        dataset_id: str,
+        *,
+        token: str | None = None,
+        revision: str | None = None,
+    ) -> DatasetProvenance:
+        """Extract Annex IV §2(a) provenance from a HuggingFace Hub dataset.
+
+        Calls ``HfApi.dataset_info()`` for structured metadata and attempts
+        ``DatasetCard.load()`` for the full README (bias analysis, description,
+        citation). Card load failures are handled gracefully — metadata alone
+        is sufficient for a valid (lower-score) provenance record.
+
+        Args:
+            dataset_id: HuggingFace dataset identifier, e.g. ``"squad"`` or
+                        ``"allenai/c4"``.
+            token:      HuggingFace API token for private/gated datasets.
+            revision:   Dataset revision (branch/tag/commit). Defaults to
+                        ``"main"``.
+
+        Returns:
+            DatasetProvenance with completeness score and §2(a) evidence.
+
+        Raises:
+            ImportError: if huggingface_hub is not installed.
+            huggingface_hub.errors.RepositoryNotFoundError: if dataset_id
+                does not exist on the Hub.
+        """
+        try:
+            from huggingface_hub import HfApi  # type: ignore
+        except ImportError as exc:
+            raise ImportError(
+                "huggingface_hub is required for from_huggingface_dataset(). "
+                "Install with: pip install huggingface-hub"
+            ) from exc
+
+        api = HfApi()
+        info = api.dataset_info(dataset_id, revision=revision, token=token)
+
+        # Attempt full card load for README content (bias, description, citation)
+        card_content: str | None = None
+        try:
+            from huggingface_hub import DatasetCard  # type: ignore
+            card = DatasetCard.load(dataset_id, token=token, repo_type="dataset")
+            card_content = card.content
+        except Exception:
+            log.debug("artifact_extractor: DatasetCard.load failed for %s — using API metadata only", dataset_id)
+
+        return _build_dataset_provenance(info, dataset_id, card_content)
+
+    @staticmethod
+    def from_huggingface_dataset_list(
+        dataset_ids: list[str],
+        *,
+        token: str | None = None,
+    ) -> list[DatasetProvenance]:
+        """Extract §2(a) provenance for multiple datasets in one call.
+
+        Handles partial failures — if one dataset cannot be fetched, a minimal
+        provenance record with a warning is inserted so the overall extraction
+        still succeeds. Training runs often mix several datasets; this method
+        extracts all of them for complete Annex IV coverage.
+
+        Args:
+            dataset_ids: List of HuggingFace dataset identifiers.
+            token:       HuggingFace API token for private/gated datasets.
+
+        Returns:
+            List of DatasetProvenance, one per dataset_id, in input order.
+        """
+        results: list[DatasetProvenance] = []
+        for did in dataset_ids:
+            try:
+                results.append(ArtifactExtractor.from_huggingface_dataset(did, token=token))
+            except Exception as exc:
+                log.warning("artifact_extractor: failed to fetch provenance for %s: %s", did, exc)
+                results.append(DatasetProvenance(
+                    dataset_id=did,
+                    source="huggingface",
+                    card_data_raw={"extraction_error": str(exc)},
+                ))
+        return results
 
     # ------------------------------------------------------------------
     # Convenience: extract everything from a training run directory

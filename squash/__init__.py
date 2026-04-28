@@ -114,9 +114,10 @@ from squash.model_card import (  # noqa: F401 (Wave 57)
     ModelCardSection,
     KNOWN_FORMATS as MODEL_CARD_KNOWN_FORMATS,
 )
-from squash.artifact_extractor import (  # noqa: F401 (Wave 128)
+from squash.artifact_extractor import (  # noqa: F401 (Wave 128-131)
     ArtifactExtractor,
     ArtifactExtractionResult,
+    DatasetProvenance,
     MetricSeries,
     TrainingConfig,
     TrainingMetrics,
@@ -245,9 +246,10 @@ __all__ = [
     "ModelCardGenerator",
     "ModelCardSection",
     "MODEL_CARD_KNOWN_FORMATS",
-    # Wave 128: Annex IV artifact extraction
+    # Wave 128–131: Annex IV artifact extraction
     "ArtifactExtractor",
     "ArtifactExtractionResult",
+    "DatasetProvenance",
     "MetricSeries",
     "TrainingConfig",
     "TrainingMetrics",
