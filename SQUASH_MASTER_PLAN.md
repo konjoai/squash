@@ -219,7 +219,7 @@ Enterprise ($4K+/mo)      → 4 contracts = $16,000 MRR
 - [x] Wave 129: MLflow API integration — from_mlflow_run(), from_mlflow_params(), from_mlflow_run_full() — 55 tests
 - [x] Wave 130: W&B API integration — from_wandb_run(), from_wandb_config(), from_wandb_run_full() — single-pass scan_history() streaming — 54 tests
 - [x] Wave 131: HF Datasets provenance — DatasetProvenance, completeness_score(), §2(a) rendering, multi-dataset list, bias detection — 73 tests
-- [ ] Wave 132: Python AST code scanner
+- [x] Wave 132: Python AST code scanner — CodeScanner, CodeArtifacts, optimizer/loss/checkpoint/framework detection, zero-dep stdlib ast — 107 tests
 - [ ] Wave 133: Annex IV document generator (Jinja2 templates, 12 sections)
 - [ ] Wave 134: PDF export pipeline
 - [ ] Wave 135: `squash annex-iv-generate` CLI command

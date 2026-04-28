@@ -225,18 +225,34 @@ class DatasetProvenance:
 
 @dataclass
 class ArtifactExtractionResult:
-    """Aggregated Annex IV artifacts from one or more sources."""
+    """Aggregated Annex IV artifacts from one or more sources.
+
+    Covers all four extractable Annex IV sections:
+      section_1c — TrainingConfig (hyperparams) or CodeArtifacts (software)
+      section_2a — DatasetProvenance list (data governance)
+      section_3b — TrainingMetrics (training methodology)
+    """
     metrics: TrainingMetrics | None = None
     config: TrainingConfig | None = None
-    datasets: list[DatasetProvenance] = field(default_factory=list)
+    datasets: list["DatasetProvenance"] = field(default_factory=list)
+    code: "CodeArtifacts | None" = None
     warnings: list[str] = field(default_factory=list)
 
     def is_empty(self) -> bool:
-        return self.metrics is None and self.config is None and not self.datasets
+        return (
+            self.metrics is None
+            and self.config is None
+            and not self.datasets
+            and self.code is None
+        )
 
     def to_annex_iv_dict(self) -> dict[str, Any]:
         result: dict[str, Any] = {}
-        if self.config:
+        # §1(c): prefer code artifacts when available (richer software evidence),
+        # fall back to config (hyperparameters from training config file)
+        if self.code:
+            result["section_1c"] = self.code.annex_iv_section_1c()
+        elif self.config:
             result["section_1c"] = self.config.annex_iv_section_1c()
         if self.datasets:
             result["section_2a"] = [d.annex_iv_section_2a() for d in self.datasets]
@@ -1293,6 +1309,53 @@ class ArtifactExtractor:
         return results
 
     # ------------------------------------------------------------------
+    # W132: Python AST code scanner wrappers
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def from_training_script(script_path: str | Path) -> "CodeArtifacts":
+        """Scan a single Python training script → CodeArtifacts.
+
+        Extracts ML framework, optimizer calls with hyperparameter kwargs,
+        loss functions, model classes, data loaders, checkpoint operations,
+        and training loop patterns using the stdlib ``ast`` module.
+
+        No external dependencies — runs on any Python ≥ 3.10 without
+        additional packages.
+
+        Args:
+            script_path: Path to a ``.py`` training script.
+
+        Returns:
+            CodeArtifacts with Annex IV §1(c) software evidence.
+        """
+        from squash.code_scanner_ast import CodeScanner  # noqa: PLC0415
+        return CodeScanner.scan_file(Path(script_path))
+
+    @staticmethod
+    def from_training_directory(
+        root: str | Path,
+        pattern: str = "*.py",
+    ) -> "CodeArtifacts":
+        """Scan all Python files in a training directory → merged CodeArtifacts.
+
+        Recursively discovers ``.py`` files matching *pattern*, scans each
+        one, merges the results into a single artifact deduplicating imports
+        by module, and auto-discovers requirements files
+        (``requirements.txt``, ``pyproject.toml``) for the full training-time
+        dependency BOM.
+
+        Args:
+            root:    Root directory to search.
+            pattern: Glob pattern for Python files. Defaults to ``"*.py"``.
+
+        Returns:
+            Merged CodeArtifacts covering the full training codebase.
+        """
+        from squash.code_scanner_ast import CodeScanner  # noqa: PLC0415
+        return CodeScanner.scan_training_run(Path(root))
+
+    # ------------------------------------------------------------------
     # Convenience: extract everything from a training run directory
     # ------------------------------------------------------------------
 
@@ -1331,6 +1394,14 @@ class ArtifactExtractor:
                     break
                 except Exception as exc:
                     result.warnings.append(f"config parse failed ({pattern}): {exc}")
+
+        # Python training scripts — AST scan (W132)
+        py_files = list(run_dir.rglob("*.py"))
+        if py_files:
+            try:
+                result.code = ArtifactExtractor.from_training_directory(run_dir)
+            except Exception as exc:
+                result.warnings.append(f"AST scan failed: {exc}")
 
         if result.is_empty():
             result.warnings.append(f"no recognized artifacts found in {run_dir}")

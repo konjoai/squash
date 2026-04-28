@@ -122,6 +122,12 @@ from squash.artifact_extractor import (  # noqa: F401 (Wave 128-131)
     TrainingConfig,
     TrainingMetrics,
 )
+from squash.code_scanner_ast import (  # noqa: F401 (Wave 132)
+    CodeArtifacts,
+    CodeScanner,
+    ImportRecord,
+    OptimizerCall,
+)
 from squash.nist_rmf import (  # noqa: F401 (Wave 83)
     NistRmfFunction,
     NistControlStatus,
@@ -246,6 +252,11 @@ __all__ = [
     "ModelCardGenerator",
     "ModelCardSection",
     "MODEL_CARD_KNOWN_FORMATS",
+    # Wave 132: Python AST code scanner
+    "CodeArtifacts",
+    "CodeScanner",
+    "ImportRecord",
+    "OptimizerCall",
     # Wave 128–131: Annex IV artifact extraction
     "ArtifactExtractor",
     "ArtifactExtractionResult",

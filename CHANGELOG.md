@@ -7,6 +7,30 @@ Format: [Conventional Commits](https://www.conventionalcommits.org/) · [Keep a 
 
 ## [Unreleased]
 
+### Added (Wave 132)
+- `squash/code_scanner_ast.py` — new module (zero external deps, stdlib `ast` only):
+  - `CodeArtifacts` dataclass — §1(c) evidence: imports, framework, optimizers, loss functions, model classes, data loaders, checkpoint ops, training loop patterns, requirements.
+  - `ImportRecord` — per-import record with module, names, alias, purpose classification, line number.
+  - `OptimizerCall` — optimizer instantiation with short_name, framework, extracted constant kwargs (lr, weight_decay, etc.), line number.
+  - `CodeScanner.scan_source(source, path)` — scan Python source string; handles SyntaxError gracefully.
+  - `CodeScanner.scan_file(path)` — scan a single `.py` file; handles missing files gracefully.
+  - `CodeScanner.scan_directory(root, pattern)` — recursive directory scan.
+  - `CodeScanner.merge(artifacts)` — merge multiple per-file artifacts, deduplicating imports by module, setting framework from merged import list.
+  - `CodeScanner.scan_requirements(path)` — parse `requirements.txt` / `pyproject.toml` → package spec list.
+  - `CodeScanner.scan_training_run(root)` — end-to-end: scan all `.py` files + auto-discover requirements files.
+  - Framework detection: PyTorch, TensorFlow, JAX, MLX — priority-ordered from import list.
+  - Optimizer detection: 19 optimizer names, constant kwarg extraction (lr, weight_decay, momentum, etc.).
+  - Loss function detection: 25 loss patterns across PyTorch `nn`, `F`, Keras, and generic names — all underscore-normalized for uniform matching.
+  - Checkpoint operation detection: `torch.save`, `save_pretrained`, `save_model`, `save_weights`, `model.save()`, `pickle.dump`, etc.
+  - Data loader detection: `DataLoader`, `load_dataset`, `DataPipe`, `ImageFolder`, etc.
+  - Training pattern detection: `model.fit`, `trainer.train`, `for epoch in range(...)` loop.
+  - Model class detection: `from_pretrained()` calls + `model = SomeClass(...)` assignment heuristic.
+- `ArtifactExtractor.from_training_script(path)` → `CodeArtifacts` wrapper.
+- `ArtifactExtractor.from_training_directory(root)` → merged `CodeArtifacts` wrapper.
+- `ArtifactExtractionResult.code: CodeArtifacts | None` field added; `is_empty()` updated; `to_annex_iv_dict()` emits `section_1c` from code when present (preferred over `TrainingConfig`).
+- `from_run_dir()` updated to auto-discover `.py` files and populate `result.code`.
+- `tests/test_squash_w132.py`: 107 tests — AST helper units, pattern matchers, full script scans (PyTorch/TF/HuggingFace/JAX/MLX), edge cases, file/dir/merge/requirements scanning, Annex IV §1(c) structure, wrapper integration. Zero mocking, zero network, zero external deps.
+
 ### Added (Wave 131)
 - `DatasetProvenance` dataclass — structured EU AI Act Annex IV §2(a) evidence: license, languages, task categories, size, source datasets, split info, bias analysis flag, citation, provenance timestamps.
 - `DatasetProvenance.completeness_score()` — weighted 0–100 scoring aligned with Article 10(2) obligations. Weights: description (20), license (20), languages (15), source_datasets (15), task_categories (10), size_category (10), bias_analysis (5), citation (5).
