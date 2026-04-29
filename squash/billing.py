@@ -45,16 +45,27 @@ log = logging.getLogger(__name__)
 
 def _price_to_plan() -> dict[str, str]:
     mapping: dict[str, str] = {}
-    pro_price = os.environ.get("SQUASH_STRIPE_PRICE_PRO", "")
-    ent_price = os.environ.get("SQUASH_STRIPE_PRICE_ENTERPRISE", "")
-    if pro_price:
-        mapping[pro_price] = "pro"
-    if ent_price:
-        mapping[ent_price] = "enterprise"
+    for env_var, plan_name in [
+        ("SQUASH_STRIPE_PRICE_PRO", "pro"),
+        ("SQUASH_STRIPE_PRICE_STARTUP", "startup"),
+        ("SQUASH_STRIPE_PRICE_TEAM", "team"),
+        ("SQUASH_STRIPE_PRICE_ENTERPRISE", "enterprise"),
+    ]:
+        price_id = os.environ.get(env_var, "")
+        if price_id:
+            mapping[price_id] = plan_name
     return mapping
 
 
 STRIPE_PLAN_MAP: dict[str, str] = _price_to_plan()
+
+# Stripe price ID → plan slug (for checkout session creation)
+_PLAN_PRICE_MAP: dict[str, str] = {
+    "pro": os.environ.get("SQUASH_STRIPE_PRICE_PRO", ""),
+    "startup": os.environ.get("SQUASH_STRIPE_PRICE_STARTUP", ""),
+    "team": os.environ.get("SQUASH_STRIPE_PRICE_TEAM", ""),
+    "enterprise": os.environ.get("SQUASH_STRIPE_PRICE_ENTERPRISE", ""),
+}
 
 # Stripe subscription statuses that mean the subscription is active
 _ACTIVE_STATUSES = frozenset({"active", "trialing"})

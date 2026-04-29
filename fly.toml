@@ -1,52 +1,66 @@
-# fly.toml — Squash API deployment on Fly.io
-# Deploy: fly deploy --config fly.toml
-# Docs:   https://fly.io/docs/reference/configuration/
+# fly.toml — Squash API production deployment on Fly.io
+# Deploy:  fly deploy --config fly.toml
+# Secrets: fly secrets set SQUASH_API_KEY=... SQUASH_STRIPE_SECRET_KEY=... etc.
+# Docs:    https://fly.io/docs/reference/configuration/
 
-app = "squash-api"
-primary_region = "iad"
-kill_signal = "SIGINT"
-kill_timeout = "5s"
+app            = "squash-api"
+primary_region = "iad"    # US East (Washington DC) — low latency to EU via CDN
+kill_signal    = "SIGINT"
+kill_timeout   = "10s"
 
 [build]
   dockerfile = "Dockerfile"
 
 [env]
-  PORT            = "4444"
-  SQUASH_LOG_LEVEL = "INFO"
+  PORT              = "4444"
+  SQUASH_LOG_LEVEL  = "INFO"
+  SQUASH_BASE_URL   = "https://getsquash.dev"
+  # Secrets (set via `fly secrets set`):
+  # SQUASH_STRIPE_SECRET_KEY
+  # SQUASH_STRIPE_WEBHOOK_SECRET
+  # SQUASH_STRIPE_PRICE_PRO
+  # SQUASH_STRIPE_PRICE_STARTUP
+  # SQUASH_STRIPE_PRICE_TEAM
+  # SQUASH_STRIPE_PRICE_ENTERPRISE
+  # DATABASE_URL (Fly Postgres)
+  # SENTRY_DSN
 
 [http_service]
-  internal_port       = 4444
-  force_https         = true
-  auto_stop_machines  = true
-  auto_start_machines = true
-  min_machines_running = 0
-  processes           = ["app"]
+  internal_port        = 4444
+  force_https          = true
+  auto_stop_machines   = true
+  auto_start_machines  = true
+  min_machines_running = 1    # Keep at least 1 warm for cold-start latency
+  processes            = ["app"]
 
   [http_service.concurrency]
-    type       = "connections"
-    hard_limit = 500
-    soft_limit = 400
+    type       = "requests"
+    hard_limit = 250
+    soft_limit = 200
 
-[[vm]]
-  memory = "256mb"
-  cpu_kind = "shared"
-  cpus = 1
-
-[checks]
-  [checks.health]
-    grace_period = "10s"
-    interval     = "30s"
+  [[http_service.checks]]
+    grace_period = "15s"
+    interval     = "20s"
     method       = "GET"
-    path         = "/health"
+    path         = "/health/ping"
     port         = 4444
     timeout      = "5s"
-    type         = "http"
     tls_skip_verify = false
 
+[[vm]]
+  memory   = "512mb"
+  cpu_kind = "shared"
+  cpus     = 2
+
 [[mounts]]
-  source      = "squash_data"
-  destination = "/data"
-  initial_size = "1gb"
+  source       = "squash_data"
+  destination  = "/data"
+  initial_size = "5gb"
 
 [deploy]
   strategy = "rolling"
+  max_unavailable = 0.25
+
+[[metrics]]
+  port = 4444
+  path = "/metrics"

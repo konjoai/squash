@@ -466,21 +466,33 @@ Your team didn't sign up to write compliance docs.
 
 ---
 
-### Sprint 4A — Critical Path to Launch (June 21–July 4, 2 weeks)
+### Sprint 4A — Critical Path to Launch (June 21–July 4, 2 weeks) ✅ ENGINEERED — Pending Deploy
 
-**The non-negotiables before anything else ships.**
+**All code shipped 2026-04-28. Awaiting external actions (domain, PyPI publish, Fly.io deploy, Stripe account).**
 
-| Wave | Task | Days |
-|------|------|------|
-| W153 | Domain acquisition (`squash.ai` or `getsquash.dev`) + DNS + Fly.io production deploy | 1 |
-| W154 | PyPI publication (`pip install squash-ai` from registry, not source) | 0.5 |
-| W155 | Stripe checkout links live (Professional + Startup + Team tiers) | 1 |
-| W156 | Landing page live (Next.js + Tailwind, Vercel) — EU countdown clock mandatory | 4 |
-| W157 | GitHub README overhaul — brand line, demo GIF placeholder, quick-start, badges | 1 |
-| W158 | HN post draft + Dev.to article draft | 1 |
-| W159 | Design partner outreach — 1 named company locked in closed beta | ongoing |
+| Wave | Task | Days | Status |
+|------|------|------|--------|
+| W153 | Domain + DNS + Fly.io production deploy | 1 | ✅ `fly.toml` + `Dockerfile` hardened · **ACTION: `fly deploy`** |
+| W154 | PyPI publication (`pip install squash-ai` v1.0.0) | 0.5 | ✅ `pyproject.toml` v1.0.0, `publish.yml` ready · **ACTION: create GitHub Release** |
+| W155 | Stripe checkout endpoint live | 1 | ✅ `POST /billing/checkout` implemented · **ACTION: set Stripe env vars in Fly.io** |
+| W156 | Landing page live (Next.js + Tailwind, Vercel) | 4 | ✅ `website/` built · **ACTION: `vercel deploy`** |
+| W157 | GitHub README overhaul | 1 | ✅ COMPLETE — tagline, demo, Sprint 4B features, Startup tier |
+| W158 | HN post draft + Dev.to article draft | 1 | ✅ COMPLETE — `docs/launch/` |
+| W159 | Design partner outreach | ongoing | ✅ Templates, pitch script, target list in `docs/launch/design-partner-outreach.md` |
 
-**Exit criteria:** `pip install squash-ai` works from PyPI. Fly.io production live. Stripe checkout live. Landing page live. One design partner using squash.
+**Pending human actions to reach full launch state:**
+1. `fly deploy --config fly.toml` (requires `FLY_API_TOKEN`)
+2. `fly secrets set SQUASH_STRIPE_SECRET_KEY=... SQUASH_STRIPE_PRICE_PRO=... SQUASH_STRIPE_PRICE_STARTUP=... SQUASH_STRIPE_PRICE_TEAM=...`
+3. Create GitHub Release `v1.0.0` → triggers `publish.yml` → PyPI publish
+4. `cd website && vercel deploy --prod` (requires Vercel account linked to `getsquash.dev`)
+5. Set Vercel env vars: `NEXT_PUBLIC_API_URL=https://api.getsquash.dev`
+
+**Exit criteria tracking:**
+- `pip install squash-ai` from PyPI: ⏳ pending Release v1.0.0
+- Fly.io production live: ⏳ pending `fly deploy`
+- Stripe checkout live: ✅ code complete; ⏳ pending env var secrets
+- Landing page: ✅ code complete; ⏳ pending `vercel deploy`
+- Design partner: ⏳ pending outreach (templates ready)
 
 ---
 

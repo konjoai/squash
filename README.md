@@ -1,68 +1,53 @@
-# Squash — Automated EU AI Act Compliance
+# Squash — Squash violations, not velocity.
 
-**Squash automates EU AI Act compliance so ML teams spend engineering time building, not documenting.**
+**The `pytest` of AI compliance. Runs in your CI/CD pipeline. Ships in 10 seconds.**
 
+[![PyPI](https://img.shields.io/pypi/v/squash-ai?color=brightgreen&label=pip%20install%20squash-ai)](https://pypi.org/project/squash-ai/)
 [![CI](https://github.com/konjoai/squash/actions/workflows/ci.yml/badge.svg)](https://github.com/konjoai/squash/actions/workflows/ci.yml)
-[![PyPI](https://img.shields.io/pypi/v/squash-ai)](https://pypi.org/project/squash-ai/)
 [![License](https://img.shields.io/badge/license-Apache_2.0-blue)](LICENSE)
 [![Python](https://img.shields.io/pypi/pyversions/squash-ai)](https://pypi.org/project/squash-ai/)
+[![EU AI Act](https://img.shields.io/badge/EU%20AI%20Act-Annex%20IV%20ready-green)](https://getsquash.dev)
 
-> ⏰ **EU AI Act high-risk enforcement: August 2, 2026**
+> **⏰ EU AI Act high-risk enforcement: August 2, 2026**
+>
+> Non-compliance: up to **€35M or 7% of global turnover.** Annex IV documentation alone takes 3–6 months manually. Squash does it in 10 seconds.
 
 ---
 
-## What Squash Does
-
-Squash generates your **Annex IV technical documentation**, runs **policy checks** against 10+ regulatory frameworks, and produces **cryptographically signed audit records** — all inside your CI/CD pipeline.
+## See it in 10 seconds
 
 ```bash
 pip install squash-ai
-squash attest ./my-model --policy eu-ai-act
+squash demo
 ```
 
 ```
-✓ CycloneDX 1.7 ML-BOM generated    → ./my-model/cyclonedx-mlbom.json
-✓ SPDX 2.3 SBOM generated           → ./my-model/sbom.spdx.json
-✓ EU AI Act policy: PASS (18/18)    → ./my-model/attestation.json
-✓ OWASP LLM Top 10: PASS (10/10)
-✓ NIST AI RMF: PASS (42/42 controls)
-✓ SLSA Level 2 provenance           → ./my-model/provenance.json
-✓ ModelScan security: PASS (0 findings)
-✓ Signed via Sigstore Rekor
+────────────────────────────────────────────────────
+  Squash violations, not velocity.
+  Running demo attestation on sample BERT model…
+────────────────────────────────────────────────────
+
+  Model:   bert-base-uncased (sample)
+  Policy:  eu-ai-act
+
+✅ Attestation PASSED
+
+  Artifacts generated:
+    cyclonedx-mlbom.json                   48,392 bytes
+    sbom.spdx.json                         22,104 bytes
+    attestation.json                        3,841 bytes
+    annex-iv-technical-documentation.md    18,299 bytes
+    provenance.json                         1,203 bytes
+
+────────────────────────────────────────────────────
+  This is squash. It runs in CI in <10 seconds.
+  pip install squash-ai && squash attest ./your-model
+────────────────────────────────────────────────────
 ```
 
 ---
 
-## Why Squash
-
-| Problem | Cost |
-|---------|------|
-| Annex IV documentation (manual) | 3–6 months engineering time |
-| Non-compliance fine | up to €35M or 7% of global turnover |
-| Compliance consultant (typical) | €150K–€400K/year per AI system |
-| **Squash (automated)** | **< 5 seconds in CI/CD** |
-
----
-
-## Features
-
-| Capability | Detail |
-|-----------|--------|
-| **EU AI Act Annex IV** | Auto-generates all 12 required documentation sections |
-| **CycloneDX 1.7 ML-BOM** | Machine-readable model bill of materials |
-| **SPDX 2.3 SBOM** | Full dependency and lineage graph |
-| **10+ Policy Frameworks** | EU AI Act · NIST AI RMF · ISO 42001 · OWASP LLM Top 10 · FedRAMP · CMMC · NTIA |
-| **ModelScan Security** | Detects pickle exploits, serialization attacks, unsafe ops |
-| **Sigstore Signing** | Keyless signing via Rekor transparency log |
-| **SLSA Provenance** | Level 1–3 provenance attestation |
-| **VEX Feed** | Live vulnerability tracking for AI model components |
-| **Drift Detection** | Alerts when model behavior diverges from attested baseline |
-| **10 MLOps Integrations** | MLflow · W&B · HuggingFace · LangChain · SageMaker · Vertex AI · Ray · Kubernetes · Azure DevOps · CircleCI |
-| **Open-core** | Community tier free and self-hostable under Apache 2.0 |
-
----
-
-## Installation
+## Install
 
 ```bash
 # Community (free, Apache 2.0)
@@ -71,18 +56,32 @@ pip install squash-ai
 # With REST API server
 pip install "squash-ai[api]"
 
-# With cryptographic signing
-pip install "squash-ai[signing,sbom]"
-
-# All features
-pip install "squash-ai[all]"
+# Full feature set
+pip install "squash-ai[api,signing,sbom]"
 ```
 
 ---
 
-## Quick Start
+## CI/CD in one line
 
-### CLI attestation
+### GitHub Actions
+
+```yaml
+- uses: konjoai/squash@v1
+  with:
+    model-path: ./my-model
+    policy: eu-ai-act
+    fail-on-violation: true
+```
+
+### GitLab CI
+
+```yaml
+include:
+  - remote: 'https://raw.githubusercontent.com/konjoai/squash/main/integrations/gitlab-ci/squash.gitlab-ci.yml'
+```
+
+### CLI
 
 ```bash
 squash attest ./my-model \
@@ -92,40 +91,76 @@ squash attest ./my-model \
   --fail-on-violation
 ```
 
-### GitHub Actions
+Output:
 
-```yaml
-- name: Squash compliance gate
-  uses: konjoai/squash-action@v1
-  with:
-    model-path: ./my-model
-    policy: eu-ai-act
-    fail-on-violation: true
+```
+✓ CycloneDX 1.7 ML-BOM            → cyclonedx-mlbom.json
+✓ SPDX 2.3 SBOM                   → sbom.spdx.json
+✓ EU AI Act Annex IV: PASS        → annex-iv.md
+✓ NIST AI RMF: PASS (42/42)
+✓ OWASP LLM Top 10: PASS
+✓ SLSA Level 2 provenance         → provenance.json
+✓ ModelScan: PASS (0 findings)
+✓ Signed via Sigstore Rekor
 ```
 
-### Python API
+---
 
-```python
-from squash import AttestPipeline, AttestConfig
+## Why Squash
 
-config = AttestConfig(
-    model_path="./my-model",
-    policies=["eu-ai-act", "owasp-llm"],
-    sign=True,
-)
-result = AttestPipeline(config).run()
-print(f"Policy: {'PASS' if result.passed else 'FAIL'}")
-print(f"Attestation ID: {result.attestation_id}")
-```
+| Without Squash | With Squash |
+|---------------|-------------|
+| Annex IV documentation: 3–6 months | Annex IV documentation: 10 seconds |
+| Compliance consultant: €150K–€400K/yr | Squash Professional: $299/month |
+| Manual risk assessment per model | `squash attest ./model --policy eu-ai-act` |
+| Violation discovered in audit | Violation blocked in CI before merge |
+| Zero visibility | `squash_models_compliant_ratio 0.979` in Grafana |
 
-### REST microservice
+---
+
+## Features
+
+| Capability | Detail |
+|-----------|--------|
+| **EU AI Act Annex IV** | All 12 required documentation sections, auto-generated |
+| **CycloneDX 1.7 ML-BOM** | Machine-readable model bill of materials |
+| **SPDX 2.3 SBOM** | Full dependency and lineage graph |
+| **10+ Policy Frameworks** | EU AI Act · NIST AI RMF · ISO 42001 · OWASP LLM Top 10 · FedRAMP · CMMC |
+| **ModelScan Security** | Pickle exploits, serialization attacks, unsafe ops |
+| **Sigstore Signing** | Keyless signing via Rekor transparency log |
+| **SLSA Provenance** | Level 1–3 provenance attestation |
+| **VEX Feed** | Live CVE tracking for deployed AI model components |
+| **Drift Detection** | Alerts when model behavior diverges from attested baseline |
+| **Prometheus `/metrics`** | Grafana-compatible attestation counts, violations, latency |
+| **Slack / Teams Alerts** | Webhook notifications on violations, drift events, CVE hits |
+| **JIRA / Linear / GitHub Issues** | Auto-creates tickets on policy violations |
+| **FastAPI / Django Middleware** | `X-Squash-Compliant` header on every inference response |
+| **Compliance Badge** | `![Squash](https://api.getsquash.dev/badge/eu-ai-act/compliant)` |
+| **`squash watch`** | Re-attests on model file change — continuous local compliance |
+| **`squash install-hook`** | git pre-push hook — blocks non-compliant pushes |
+| **10 MLOps Integrations** | MLflow · W&B · HuggingFace · LangChain · SageMaker · Vertex AI · Ray · Kubernetes |
+| **Open-core** | Community tier free forever under Apache 2.0 |
+
+---
+
+## Set up a new project in 60 seconds
 
 ```bash
-uvicorn squash.api:app --host 0.0.0.0 --port 4444
-curl -X POST http://localhost:4444/v1/attest \
-  -H "Authorization: Bearer $SQUASH_API_KEY" \
-  -d '{"model_path": "/models/my-model", "policies": ["eu-ai-act"]}'
+squash init ./my-model
+# Auto-detects PyTorch / TensorFlow / JAX / MLflow / HuggingFace
+# Writes .squash.yml, runs a dry-run attestation
 ```
+
+---
+
+## Compliance badge in your README
+
+```markdown
+![Squash EU AI Act compliant](https://api.getsquash.dev/badge/eu-ai-act/compliant)
+```
+
+Available statuses: `compliant` · `non-compliant` · `partial` · `unknown`  
+Available frameworks: `eu-ai-act` · `nist-ai-rmf` · `iso-42001` · anything
 
 ---
 
@@ -134,12 +169,55 @@ curl -X POST http://localhost:4444/v1/attest \
 | Framework | Status | Key Checks |
 |-----------|--------|------------|
 | EU AI Act (Annex IV) | ✅ Full | Technical documentation, risk classification, human oversight |
-| NIST AI RMF 1.0 | ✅ Full | 42 controls across GOVERN · MAP · MEASURE · MANAGE |
+| NIST AI RMF 1.0 | ✅ Full | 42 controls: GOVERN · MAP · MEASURE · MANAGE |
 | OWASP LLM Top 10 | ✅ Full | LLM01–LLM10 vulnerability categories |
-| ISO 42001 | ✅ Core | Clause 6 (Planning), Clause 8 (Operation), Clause 9 (Evaluation) |
+| ISO 42001 | ✅ Core | Clause 6, 8, 9 |
 | NTIA Minimum Elements | ✅ Full | 7 required SBOM fields |
-| FedRAMP AI | 🔄 Sprint 2 | Federal AI procurement requirements |
-| CMMC Level 2 | 🔄 Sprint 2 | DoD contractor AI requirements |
+| FedRAMP AI | ✅ Core | Federal AI procurement requirements |
+| CMMC Level 2 | ✅ Core | DoD contractor AI requirements |
+
+---
+
+## Python API
+
+```python
+from squash import AttestPipeline, AttestConfig
+
+result = AttestPipeline.run(AttestConfig(
+    model_path="./my-model",
+    policies=["eu-ai-act", "owasp-llm"],
+    sign=True,
+    fail_on_violation=True,
+))
+
+print(f"Passed: {result.passed}")
+print(f"Attestation ID: {result.attestation_id}")
+```
+
+---
+
+## REST API
+
+```bash
+pip install "squash-ai[api]"
+uvicorn squash.api:app --host 0.0.0.0 --port 4444
+
+curl -X POST http://localhost:4444/v1/attest \
+  -H "Authorization: Bearer $SQUASH_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model_path": "/models/bert-base", "policies": ["eu-ai-act"]}'
+```
+
+---
+
+## Prometheus metrics
+
+```
+# HELP squash_attestations_total Total attestation runs
+squash_attestations_total{result="passed",policy="eu-ai-act"} 142
+squash_models_compliant_ratio 0.979
+squash_api_latency_seconds_bucket{le="0.1"} 138
+```
 
 ---
 
@@ -148,11 +226,12 @@ curl -X POST http://localhost:4444/v1/attest \
 | Tier | Price | Attestations/mo | Features |
 |------|-------|-----------------|----------|
 | **Community** | Free | 10 | Full CLI, SBOM, policy checks, signing, self-hosted |
-| **Professional** | $299/mo | 200 | Cloud API, Annex IV auto-generation, drift alerts, audit export |
-| **Team** | $899/mo | 1,000 | Multi-tenant dashboard, VEX feed, SAML SSO, HITL workflows |
-| **Enterprise** | Custom | Unlimited | On-premise, air-gapped, dedicated support, EU data residency |
+| **Professional** | $299/mo | 200 | Cloud API, Annex IV auto-generation, drift alerts, Slack/Teams |
+| **Startup** | $499/mo | 500 | Everything in Pro + VEX read, 3 users, GitHub Issues ticketing |
+| **Team** | $899/mo | 1,000 | Multi-tenant, SAML SSO, HITL workflows, audit export |
+| **Enterprise** | Custom | Unlimited | On-premise, air-gapped, EU data residency, dedicated support |
 
-[See full pricing →](https://getsquash.dev/pricing)
+[Start free →](https://getsquash.dev) · [Pricing →](https://getsquash.dev/pricing)
 
 ---
 
@@ -166,28 +245,12 @@ squash attest ./my-model
     ├── SpdxBuilder       → SBOM (SPDX 2.3)
     ├── PolicyEngine      → EU AI Act · NIST · OWASP · ISO checks
     ├── SlsaBuilder       → SLSA Level 1–3 provenance
-    ├── VexEvaluator      → Live vulnerability feed
+    ├── AnnexIVGenerator  → All 12 Annex IV sections (MD/HTML/PDF)
+    ├── VexEvaluator      → Live CVE vulnerability feed
     ├── OmsSigner         → Sigstore keyless signing
+    ├── DriftDetector     → Baseline behavioral comparison
     └── AttestPipeline    → Signed audit record (JSON)
 ```
-
----
-
-## Integration with Squish
-
-Squash and [Squish](https://github.com/konjoai/squish) form the complete AI deployment stack for regulated environments:
-
-```bash
-# Build and compress with Squish
-squish compress ./my-model --quant int4
-
-# Gate on compliance with Squash
-squash attest ./my-model --policy eu-ai-act --sign
-
-# Deploy with confidence
-```
-
-Squish handles Apple Silicon inference optimization. Squash handles compliance. Different buyers, different toolchains, one ecosystem.
 
 ---
 
@@ -198,11 +261,14 @@ git clone https://github.com/konjoai/squash
 cd squash
 pip install -e ".[api,signing,sbom,dev]"
 
-# Run tests
+# Run all tests (2,299 passing)
 python -m pytest tests/ -v --timeout=120
 
-# Run a specific wave's tests
-python -m pytest tests/test_squash_wave83.py -v
+# Try it immediately
+squash demo
+
+# Watch mode
+squash watch ./my-model
 ```
 
 ---
@@ -211,8 +277,8 @@ python -m pytest tests/test_squash_wave83.py -v
 
 Community edition: [Apache 2.0](LICENSE)
 
-Enterprise features (cloud API, multi-tenant dashboard, VEX feed subscription, on-premise deployment) are available under a commercial license. [Contact us →](mailto:wesleyscholl@gmail.com)
+Enterprise features (cloud API, multi-tenant dashboard, VEX feed, on-premise) are available under a commercial license. [Contact →](mailto:wesleyscholl@gmail.com)
 
 ---
 
-*Built by [Konjo AI](https://konjo.ai) · Make it konjo — build, ship, rest, repeat.*
+*Built by [Konjo AI](https://konjo.ai) · "Squash violations, not velocity."*

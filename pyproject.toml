@@ -4,20 +4,22 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "squash-ai"
-version = "0.9.14"
-description = "Automated EU AI Act compliance for ML teams — CI/CD-native, open-core, developer-first"
+version = "1.0.0"
+description = "Squash violations, not velocity. Automated EU AI Act compliance for ML teams — CI/CD-native, open-core, developer-first."
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "Apache-2.0"}
 keywords = [
     "eu-ai-act", "ai-compliance", "sbom", "mlbom", "cyclonedx", "spdx",
     "slsa", "sigstore", "model-signing", "ai-governance", "mlops",
-    "annex-iv", "nist-ai-rmf", "policy-as-code",
+    "annex-iv", "nist-ai-rmf", "policy-as-code", "owasp-llm",
+    "compliance-automation", "model-attestation",
 ]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
+    "Intended Audience :: Information Technology",
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
@@ -26,6 +28,10 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Topic :: Security",
     "Topic :: Software Development :: Quality Assurance",
+    "Topic :: Software Development :: Testing",
+    "Environment :: Console",
+    "Environment :: Web Environment",
+    "Operating System :: OS Independent",
 ]
 dependencies = [
     "starlette>=0.37",
@@ -35,24 +41,27 @@ dependencies = [
 api = [
     "fastapi>=0.111",
     "uvicorn[standard]>=0.29",
+    "httpx>=0.27",
 ]
 signing = [
-    # Ed25519 offline signing + air-gapped mode
     "cryptography>=42.0",
-    # Optional: keyless Sigstore signing via Rekor transparency log
-    # pip install sigstore
 ]
 sbom = [
-    # CycloneDX 1.7 ML-BOM generation + schema validation
     "cyclonedx-python-lib>=7.0",
+]
+notifications = [
+    # No hard deps — urllib.request is stdlib; Slack/Teams via HTTP
+]
+billing = [
+    "stripe>=8.0",
 ]
 integrations = [
     "mlflow>=2.0",
     "wandb>=0.16",
     "huggingface-hub>=0.23",
     "langchain-core>=0.1",
-    "boto3>=1.34",         # SageMaker
-    "google-cloud-aiplatform>=1.50",  # Vertex AI
+    "boto3>=1.34",
+    "google-cloud-aiplatform>=1.50",
     "ray[serve]>=2.0",
     "kubernetes>=29.0",
 ]
@@ -65,7 +74,7 @@ dev = [
     "httpx>=0.27",
 ]
 all = [
-    "squash-ai[api,signing,sbom,integrations]",
+    "squash-ai[api,signing,sbom,billing,integrations]",
 ]
 
 [project.scripts]
@@ -83,7 +92,12 @@ where = ["."]
 include = ["squash*"]
 
 [tool.setuptools.package-data]
-squash = ["data/*.json", "integrations/circleci/*.yml", "integrations/kubernetes_helm/**/*"]
+squash = [
+    "data/*.json",
+    "integrations/circleci/*.yml",
+    "integrations/kubernetes_helm/**/*",
+    "py.typed",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

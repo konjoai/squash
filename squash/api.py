@@ -1051,6 +1051,60 @@ async def billing_webhook(request: Request) -> JSONResponse:
     return JSONResponse(result.to_dict())
 
 
+class _CheckoutRequest(BaseModel):
+    plan: str
+    tenant_id: str = ""
+    customer_email: str = ""
+    success_url: str = ""
+    cancel_url: str = ""
+
+
+@app.post("/billing/checkout")
+async def billing_checkout(body: _CheckoutRequest, request: Request) -> JSONResponse:
+    """W155 — Create a Stripe Checkout session for plan upgrade.
+
+    Returns a ``checkout_url`` to redirect the user to Stripe's hosted payment page.
+    Requires ``SQUASH_STRIPE_SECRET_KEY`` and the matching
+    ``SQUASH_STRIPE_PRICE_{PLAN}`` env var to be set.
+
+    Plans: ``pro`` ($299/mo) · ``startup`` ($499/mo) · ``team`` ($899/mo) · ``enterprise``
+    """
+    from squash.billing import create_checkout_session
+
+    valid_plans = {"pro", "startup", "team", "enterprise"}
+    if body.plan not in valid_plans:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Invalid plan {body.plan!r}. Must be one of: {sorted(valid_plans)}",
+        )
+
+    base = os.environ.get("SQUASH_BASE_URL", "https://getsquash.dev")
+    success_url = body.success_url or f"{base}/billing/success?plan={body.plan}"
+    cancel_url = body.cancel_url or f"{base}/pricing"
+
+    tenant_id = body.tenant_id
+    if not tenant_id:
+        rec: KeyRecord | None = getattr(request.state, "key_record", None)
+        if rec:
+            tenant_id = rec.tenant_id
+
+    try:
+        result = create_checkout_session(
+            tenant_id=tenant_id or "anonymous",
+            plan=body.plan,
+            success_url=success_url,
+            cancel_url=cancel_url,
+            customer_email=body.customer_email,
+        )
+        return JSONResponse({
+            "checkout_url": result.url,
+            "session_id": result.session_id,
+            "plan": result.plan,
+        }, status_code=201)
+    except (ImportError, RuntimeError, ValueError) as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
 @app.get("/account/status")
 async def account_status(request: Request) -> JSONResponse:
     """W143 — Current plan, quota, and rate-limit status for the authenticated key."""

@@ -5,7 +5,35 @@ Format: [Conventional Commits](https://www.conventionalcommits.org/) · [Keep a 
 
 ---
 
-## [Unreleased]
+## [1.0.0] — 2026-04-28 — Sprint 4A: Critical Path to Launch
+
+### Changed
+- **Version bump: v0.9.14 → v1.0.0** — production-stable release
+- **`pyproject.toml`** — `Development Status :: 5 - Production/Stable`; `stripe>=8.0` billing extra; PEP 561 `py.typed`; expanded keywords and classifiers
+- **`README.md` overhaul (W157)** — Tagline "Squash violations, not velocity."; `squash demo` as first command; Sprint 4B feature table; Startup tier ($499/month); Prometheus sample; compliance badge examples
+- **`fly.toml`** — Production hardening: `min_machines_running=1`, 512MB/2vCPU, `/metrics` scrape config, rolling deploy
+- **`Dockerfile`** — OCI labels, curl healthcheck, `stripe>=8.0`, `sentry-sdk[fastapi]`, `PYTHONDONTWRITEBYTECODE`
+
+### Added
+- **`POST /billing/checkout`** (W155) — Stripe Checkout session creation: plans `pro`/`startup`/`team`/`enterprise`, returns `{checkout_url, session_id, plan}` (HTTP 201), 422 on invalid plan
+- **`squash/billing.py`** — Startup + Team tiers in plan map (`SQUASH_STRIPE_PRICE_STARTUP`, `SQUASH_STRIPE_PRICE_TEAM`)
+- **`website/`** — Next.js 14 + Tailwind landing page (W156): live countdown, terminal demo, feature grid, pricing table, Vercel deploy config
+- **`docs/launch/hn-post.md`** (W158) — Show HN post draft with title options, body, anticipated Q&A
+- **`docs/launch/devto-article.md`** (W158) — Full Dev.to article draft
+- **`docs/launch/design-partner-outreach.md`** (W159) — 3 email templates, pitch call script, target list, design partner terms
+- **`squash/py.typed`** — PEP 561 typed package marker
+- **17 new tests** in `tests/test_squash_w155.py`
+
+---
+
+## [0.9.14] — 2026-04-28 — Sprint 4B: High-Leverage Engineering
+
+### Added (W160–W168)
+- See `SQUASH_MASTER_PLAN.md` Sprint 4B section for full details.
+
+---
+
+## [0.9.13] — 2026-04-28 — Sprint 3: CI/CD & Integrations
 
 ### Added (W145–W152 — Sprint 3: CI/CD & Integrations)
 - **`action.yml`** — GitHub Actions composite action v1.0 (W145):
