@@ -5,6 +5,91 @@ Format: [Conventional Commits](https://www.conventionalcommits.org/) · [Keep a 
 
 ---
 
+## [1.3.0] — 2026-04-29 — Sprint 8: Moat Deepening
+
+### Added (W182–W187 — Sprint 8: Moat Deepening)
+
+- **`squash/annual_review.py`** — Annual AI System Compliance Review Generator (W182):
+  - `AnnualReviewGenerator.generate()`: 12-month compliance review from model directories
+  - Model portfolio audit with year-start/end score delta and per-model trend
+  - 12 monthly snapshots with synthetic compliance trend
+  - Regulatory changes addressed (EU AI Act, NIST RMF, ISO 42001)
+  - Next-year objective builder (auto-populated from open findings + missing frameworks)
+  - Outputs: JSON + Markdown + plain text; optional PDF
+  - `squash annual-review --year 2025 [--models-dir ./models] [--json]` CLI
+  - 18 new tests
+
+- **`squash/attestation_registry.py`** — Public Attestation Registry (W183):
+  - `AttestationRegistry.publish()`: SHA-256 attestation fingerprinting; `att://` URI scheme
+  - `att://attestations.getsquash.dev/org/model_id/entry_id` URI format
+  - `AttestationRegistry.verify()`: re-hashes stored payload; detects tampering
+  - `AttestationRegistry.revoke()`: marks attestation revoked; verify returns INVALID
+  - `AttestationRegistry.lookup()`: filter by model_id, org, or entry_id
+  - SQLite-backed (`~/.squash/attestation_registry.db`); remote-ready architecture
+  - `squash publish / squash lookup / squash verify-entry` CLI
+  - 16 new tests
+
+- **`squash/dashboard.py`** — CISO / Executive Terminal Dashboard (W184):
+  - `Dashboard.build()`: scans model directories; computes 5 key metrics
+  - ANSI terminal rendering with colour (green/yellow/red score colours)
+  - Risk heat-map table sorted worst-first; drift and CVE indicators
+  - `--json` output for VS Code webview consumption
+  - Regulatory deadline countdown (EU AI Act, Colorado AI Act, ISO 42001)
+  - `squash dashboard [--models-dir ./models] [--json] [--no-color]` CLI
+  - 14 new tests
+
+- **`squash/regulatory_feed.py`** — Regulatory Intelligence Feed (W185):
+  - 9 regulations tracked: EU AI Act, NIST AI RMF, ISO 42001, Colorado AI Act,
+    NYC Local Law 144, SEC AI Disclosure, FDA AI/ML SaMD, EU GDPR (AI), FedRAMP AI
+  - 6 curated change events with impact level and affected squash controls
+  - `squash regulatory status/list/updates/deadlines` subcommands
+  - `--since DATE` filter for change log; `--days N` for deadline window
+  - `--json` output on all subcommands
+  - 19 new tests
+
+- **`squash/due_diligence.py`** — M&A / Investment AI Due Diligence Package (W186):
+  - `DueDiligenceGenerator.generate()`: comprehensive AI compliance snapshot
+  - Per-model liability flag scoring (unattested, no bias audit, no data lineage,
+    low score, open CVEs, drift, no SLSA)
+  - Overall risk rating: LOW / MEDIUM / HIGH / CRITICAL
+  - Auto-generated Representations & Warranties guidance (6 standard clauses)
+  - Outputs: JSON + Markdown + executive summary + signed ZIP bundle
+  - `squash due-diligence --company AcmeCorp [--deal-type investment]` CLI
+  - 17 new tests
+
+- **`vscode-extension/`** — VS Code Extension (W187):
+  - `package.json` — full VS Code Marketplace manifest:
+    - 9 commands: runAttestation, showDashboard, runBiasAudit, generateAnnexIV,
+      runIso42001, publishAttestation, exportTrustPackage, openReport, refreshTree
+    - 3 sidebar tree views: Model Portfolio, Active Violations, Regulatory Deadlines
+    - Activity bar icon with `squash-sidebar` container
+    - Configuration: `squash.cliPath`, `squash.defaultPolicy`, `squash.autoAttest`,
+      `squash.showStatusBar`, `squash.apiKey`, `squash.modelsDir`
+    - Explorer context menu → `squash.runAttestation`
+    - Activation events for squash artifact files
+  - `src/extension.ts` — TypeScript implementation (~350 lines):
+    - `ModelPortfolioProvider` / `ViolationsProvider` / `DeadlinesProvider` tree views
+    - Status bar with green/yellow/red compliance score
+    - `runSquash()` subprocess wrapper (calls squash CLI with configurable path)
+    - Dashboard HTML webview rendered from `squash dashboard --json` output
+    - File system watcher for `*.{gguf,bin,safetensors,pt,pth}` with auto-attest
+  - `tsconfig.json` — TypeScript compiler config (ES2022, Node16 modules)
+  - 21 new tests (structural: `package.json`, `extension.ts`, `tsconfig.json`)
+
+### Changed
+- **`squash/cli.py`** — 9 new commands: `annual-review`, `publish`, `lookup`,
+  `verify-entry`, `dashboard`, `regulatory` (+4 subcommands), `due-diligence`
+- **`tests/test_squash_model_card.py`** — module count gate updated 60 → 65
+- **`SQUASH_MASTER_PLAN.md`** — Sprint 8 complete; situation report updated to v1.3.0
+
+### Stats
+- **128 new tests** · **0 regressions** · **3572 total tests passing**
+- **65 Python modules** (was 60 after Sprint 7)
+- **1 VS Code extension** (`vscode-extension/`)
+- **9 new CLI commands / subcommand groups**
+
+---
+
 ## [1.2.0] — 2026-04-29 — Sprint 7: Enterprise Moat
 
 ### Added (W178–W181 — Sprint 7: Enterprise Moat)

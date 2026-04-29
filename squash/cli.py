@@ -1571,6 +1571,137 @@ def _build_parser() -> argparse.ArgumentParser:
     board_report_cmd.add_argument("--json", dest="output_json", action="store_true",
                                   help="Print JSON summary to stdout")
 
+    # ── W182 — Annual Review ──────────────────────────────────────────────────
+    annual_review_cmd = sub.add_parser(
+        "annual-review",
+        help="Generate annual AI system compliance review",
+        description=(
+            "Generate a full annual AI compliance review: model portfolio audit, "
+            "compliance score trend, incident log, regulatory changes, and next-year objectives.\n\n"
+            "Examples:\n"
+            "  squash annual-review --year 2025 --models-dir ./models\n"
+            "  squash annual-review --model ./my-model --output-dir ./annual-review-2025\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    annual_review_cmd.add_argument("--year", type=int, default=None, help="Review year (default: last year)")
+    annual_review_cmd.add_argument("--models-dir", default=None, dest="models_dir")
+    annual_review_cmd.add_argument("--model", default=None, dest="model_path")
+    annual_review_cmd.add_argument("--output-dir", default=None, dest="output_dir")
+    annual_review_cmd.add_argument("--json", dest="output_json", action="store_true")
+
+    # ── W183 — Attestation Registry ───────────────────────────────────────────
+    pub_cmd = sub.add_parser(
+        "publish",
+        help="Publish attestation to the squash public registry",
+        description=(
+            "Publish a signed attestation to the squash attestation registry "
+            "(att://attestations.getsquash.dev). Buyers can verify your compliance posture "
+            "in <10 seconds without questionnaires.\n\n"
+            "Examples:\n"
+            "  squash publish ./my-model --org acme-corp\n"
+            "  squash publish ./my-model --org acme-corp --private\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    pub_cmd.add_argument("model_path", help="Path to model directory with squash artifacts")
+    pub_cmd.add_argument("--org", default="default", help="Organization name")
+    pub_cmd.add_argument("--model-id", default=None, dest="model_id")
+    pub_cmd.add_argument("--private", action="store_true", help="Publish as private (not queryable)")
+    pub_cmd.add_argument("--db", default=None)
+
+    lookup_cmd = sub.add_parser(
+        "lookup",
+        help="Query the squash attestation registry",
+        description="Look up published attestations by model ID or organization.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    lookup_cmd.add_argument("--model-id", default=None, dest="model_id")
+    lookup_cmd.add_argument("--org", default=None)
+    lookup_cmd.add_argument("--entry-id", default=None, dest="entry_id")
+    lookup_cmd.add_argument("--json", dest="output_json", action="store_true")
+    lookup_cmd.add_argument("--db", default=None)
+
+    reg_verify_cmd = sub.add_parser(
+        "verify-entry",
+        help="Verify integrity of a published registry entry",
+    )
+    reg_verify_cmd.add_argument("entry_id", help="Registry entry ID")
+    reg_verify_cmd.add_argument("--db", default=None)
+
+    # ── W184 — CISO Dashboard ─────────────────────────────────────────────────
+    dashboard_cmd = sub.add_parser(
+        "dashboard",
+        help="CISO/Executive AI compliance dashboard",
+        description=(
+            "Render a terminal compliance dashboard: portfolio score, violations, CVEs, "
+            "regulatory deadline countdown, and model risk heat-map.\n\n"
+            "Examples:\n"
+            "  squash dashboard --models-dir ./models\n"
+            "  squash dashboard --model ./my-model --json\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    dashboard_cmd.add_argument("--models-dir", default=None, dest="models_dir")
+    dashboard_cmd.add_argument("--model", default=None, dest="model_path")
+    dashboard_cmd.add_argument("--json", dest="output_json", action="store_true")
+    dashboard_cmd.add_argument("--no-color", action="store_true", dest="no_color")
+
+    # ── W185 — Regulatory Intelligence Feed ───────────────────────────────────
+    regulatory_cmd = sub.add_parser(
+        "regulatory",
+        help="Regulatory intelligence feed — AI regulation tracking and deadline monitoring",
+        description=(
+            "Track AI regulations across all major jurisdictions, monitor enforcement deadlines, "
+            "and check which regulations affect your AI portfolio.\n\n"
+            "Examples:\n"
+            "  squash regulatory status\n"
+            "  squash regulatory list --jurisdiction eu\n"
+            "  squash regulatory updates --since 2026-01-01\n"
+            "  squash regulatory deadlines --days 180\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    reg_sub = regulatory_cmd.add_subparsers(dest="regulatory_command", metavar="SUBCOMMAND")
+
+    reg_status = reg_sub.add_parser("status", help="Overall regulatory status summary")
+    reg_status.add_argument("--json", dest="output_json", action="store_true")
+
+    reg_list = reg_sub.add_parser("list", help="List all tracked regulations")
+    reg_list.add_argument("--jurisdiction", default=None, help="Filter by jurisdiction (eu, us_federal, us_state, global)")
+    reg_list.add_argument("--industry", default=None, help="Filter by industry")
+    reg_list.add_argument("--json", dest="output_json", action="store_true")
+
+    reg_updates = reg_sub.add_parser("updates", help="Show regulatory changes since a date")
+    reg_updates.add_argument("--since", default=None, help="ISO date filter, e.g. 2026-01-01")
+    reg_updates.add_argument("--json", dest="output_json", action="store_true")
+
+    reg_deadlines = reg_sub.add_parser("deadlines", help="Upcoming enforcement deadlines")
+    reg_deadlines.add_argument("--days", type=int, default=365, help="Look-ahead window in days")
+    reg_deadlines.add_argument("--json", dest="output_json", action="store_true")
+
+    # ── W186 — M&A Due Diligence ──────────────────────────────────────────────
+    dd_cmd = sub.add_parser(
+        "due-diligence",
+        help="M&A / investment AI due diligence package",
+        description=(
+            "Generate a comprehensive AI compliance package for M&A review: model inventory, "
+            "security exposure, regulatory compliance matrix, training data provenance, "
+            "bias audit results, liability flags, and R&W guidance.\n\n"
+            "Examples:\n"
+            "  squash due-diligence --models-dir ./models --company AcmeCorp\n"
+            "  squash due-diligence --model ./my-model --deal-type investment\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    dd_cmd.add_argument("--models-dir", default=None, dest="models_dir")
+    dd_cmd.add_argument("--model", default=None, dest="model_path")
+    dd_cmd.add_argument("--company", default="Target Company", help="Target company name")
+    dd_cmd.add_argument("--deal-type", default="acquisition", dest="deal_type",
+                        choices=["acquisition", "investment", "partnership"])
+    dd_cmd.add_argument("--output-dir", default=None, dest="output_dir")
+    dd_cmd.add_argument("--json", dest="output_json", action="store_true")
+
     # ── W178 — AI Vendor Risk Register ───────────────────────────────────────
     vendor_cmd = sub.add_parser(
         "vendor",
@@ -5194,6 +5325,197 @@ def _cmd_incident(args: argparse.Namespace, quiet: bool) -> int:
     return 0
 
 
+def _cmd_annual_review(args: argparse.Namespace, quiet: bool) -> int:
+    """W182 — Annual review generator."""
+    from squash.annual_review import AnnualReviewGenerator
+    model_paths = [Path(args.model_path)] if getattr(args, "model_path", None) else None
+    models_dir = Path(args.models_dir) if getattr(args, "models_dir", None) else None
+    review = AnnualReviewGenerator.generate(
+        year=getattr(args, "year", None),
+        models_dir=models_dir,
+        model_paths=model_paths,
+    )
+    if getattr(args, "output_json", False):
+        print(json.dumps(review.to_dict(), indent=2))
+        return 0
+    if not quiet:
+        print(review.executive_summary())
+    output_dir = Path(args.output_dir) if getattr(args, "output_dir", None) else Path(f"annual-review-{review.year}")
+    written = review.save(output_dir)
+    if not quiet:
+        print(f"\n[squash annual-review] Written to {output_dir}/")
+        for f in written:
+            print(f"  {f}")
+    return 0
+
+
+def _cmd_publish(args: argparse.Namespace, quiet: bool) -> int:
+    """W183 — Publish attestation to registry."""
+    from squash.attestation_registry import AttestationRegistry
+    model_path = Path(args.model_path)
+    db = Path(args.db) if getattr(args, "db", None) else None
+    attest_path = None
+    for candidate in [
+        model_path / "squash_attestation.json",
+        model_path / "squash-attest.json",
+    ]:
+        if candidate.exists():
+            attest_path = candidate
+            break
+    with AttestationRegistry(db) as reg:
+        entry = reg.publish(
+            model_id=getattr(args, "model_id", None) or model_path.name,
+            attestation_path=attest_path,
+            org=args.org,
+            is_public=not getattr(args, "private", False),
+        )
+    if not quiet:
+        print(f"[squash publish] Published: {entry.uri}")
+        print(f"  Verify: {entry.verify_url}")
+        print(f"  Entry ID: {entry.entry_id}")
+    return 0
+
+
+def _cmd_lookup(args: argparse.Namespace, quiet: bool) -> int:
+    """W183 — Lookup attestation registry."""
+    from squash.attestation_registry import AttestationRegistry
+    db = Path(args.db) if getattr(args, "db", None) else None
+    with AttestationRegistry(db) as reg:
+        entries = reg.lookup(
+            model_id=getattr(args, "model_id", None),
+            org=getattr(args, "org", None),
+            entry_id=getattr(args, "entry_id", None),
+        )
+    if getattr(args, "output_json", False):
+        print(json.dumps([e.to_dict() for e in entries], indent=2))
+    else:
+        if not entries:
+            print("[squash lookup] No entries found.")
+        for e in entries:
+            print(f"  {e.uri}  score={e.compliance_score}  published={e.published_at[:10]}")
+    return 0
+
+
+def _cmd_verify_entry(args: argparse.Namespace, quiet: bool) -> int:
+    """W183 — Verify registry entry."""
+    from squash.attestation_registry import AttestationRegistry
+    db = Path(args.db) if getattr(args, "db", None) else None
+    with AttestationRegistry(db) as reg:
+        result = reg.verify(args.entry_id)
+    status = "VALID" if result.valid else "INVALID"
+    if not quiet:
+        print(f"[squash verify-entry] {status}  {args.entry_id}")
+        if result.error:
+            print(f"  Error: {result.error}")
+    return 0 if result.valid else 2
+
+
+def _cmd_dashboard(args: argparse.Namespace, quiet: bool) -> int:
+    """W184 — CISO dashboard."""
+    from squash.dashboard import Dashboard
+    model_paths = [Path(args.model_path)] if getattr(args, "model_path", None) else None
+    models_dir = Path(args.models_dir) if getattr(args, "models_dir", None) else None
+    d = Dashboard.build(models_dir=models_dir, model_paths=model_paths)
+    if getattr(args, "output_json", False):
+        print(json.dumps(d.to_dict(), indent=2))
+    else:
+        print(d.render_text(color=not getattr(args, "no_color", False)))
+    return 0
+
+
+def _cmd_regulatory(args: argparse.Namespace, quiet: bool) -> int:  # noqa: C901
+    """W185 — Regulatory intelligence feed."""
+    from squash.regulatory_feed import RegulatoryFeed
+    feed = RegulatoryFeed()
+    cmd = getattr(args, "regulatory_command", None)
+
+    if cmd == "status" or cmd is None:
+        s = feed.status()
+        if getattr(args, "output_json", False):
+            print(json.dumps({
+                "total": s.total_regulations, "active": s.active_enforcement,
+                "pending": s.pending_enforcement, "nearest_deadline": s.nearest_deadline,
+                "days": s.nearest_deadline_days, "squash_coverage": s.squash_coverage,
+            }, indent=2))
+        else:
+            print(s.compliance_impact_summary())
+        return 0
+
+    elif cmd == "list":
+        jurisdiction = getattr(args, "jurisdiction", None)
+        industry = getattr(args, "industry", None)
+        if jurisdiction:
+            regs = feed.regulations_by_jurisdiction(jurisdiction)
+        elif industry:
+            regs = feed.regulations_affecting_industry(industry)
+        else:
+            regs = feed.all_regulations()
+        if getattr(args, "output_json", False):
+            print(json.dumps(feed.export(), indent=2))
+        else:
+            for r in regs:
+                print(r.summary())
+        return 0
+
+    elif cmd == "updates":
+        since = getattr(args, "since", None)
+        updates = feed.check_updates(since=since)
+        if getattr(args, "output_json", False):
+            print(json.dumps([{
+                "reg_id": u.reg_id, "change_date": u.change_date,
+                "impact": u.impact_level, "summary": u.change_summary,
+            } for u in updates], indent=2))
+        else:
+            for u in updates:
+                print(u.summary())
+                print()
+        return 0
+
+    elif cmd == "deadlines":
+        days = getattr(args, "days", 365)
+        deadlines = feed.upcoming_deadlines(days=days)
+        if getattr(args, "output_json", False):
+            print(json.dumps([{
+                "regulation": r.short_name, "deadline": r.enforcement_date,
+                "days_remaining": d,
+            } for r, d in deadlines], indent=2))
+        else:
+            if not deadlines:
+                print(f"[squash regulatory] No enforcement deadlines in next {days} days.")
+            for r, d in deadlines:
+                print(f"  {d:4d} days — {r.short_name} ({r.enforcement_date})")
+        return 0
+
+    else:
+        print(f"[squash regulatory] Unknown subcommand: {cmd}")
+        return 1
+
+
+def _cmd_due_diligence(args: argparse.Namespace, quiet: bool) -> int:
+    """W186 — M&A due diligence package."""
+    from squash.due_diligence import DueDiligenceGenerator
+    model_paths = [Path(args.model_path)] if getattr(args, "model_path", None) else None
+    models_dir = Path(args.models_dir) if getattr(args, "models_dir", None) else None
+    pkg = DueDiligenceGenerator.generate(
+        company_name=args.company,
+        deal_type=args.deal_type,
+        models_dir=models_dir,
+        model_paths=model_paths,
+    )
+    if getattr(args, "output_json", False):
+        print(json.dumps(pkg.to_dict(), indent=2))
+        return 0
+    if not quiet:
+        print(pkg.executive_risk_summary())
+    output_dir = Path(args.output_dir) if getattr(args, "output_dir", None) else Path(f"dd-{pkg.package_id}")
+    written = pkg.save(output_dir)
+    if not quiet:
+        print(f"\n[squash due-diligence] Package written to {output_dir}/")
+        for f in written:
+            print(f"  {f}")
+    return 0
+
+
 def _cmd_vendor(args: argparse.Namespace, quiet: bool) -> int:  # noqa: C901
     """W178 — AI Vendor Risk Register."""
     from squash.vendor_registry import VendorRegistry
@@ -5556,6 +5878,20 @@ def main() -> None:
         sys.exit(_cmd_watch(args, quiet))
     elif args.command == "install-hook":
         sys.exit(_cmd_install_hook(args, quiet))
+    elif args.command == "annual-review":
+        sys.exit(_cmd_annual_review(args, quiet))
+    elif args.command == "publish":
+        sys.exit(_cmd_publish(args, quiet))
+    elif args.command == "lookup":
+        sys.exit(_cmd_lookup(args, quiet))
+    elif args.command == "verify-entry":
+        sys.exit(_cmd_verify_entry(args, quiet))
+    elif args.command == "dashboard":
+        sys.exit(_cmd_dashboard(args, quiet))
+    elif args.command == "regulatory":
+        sys.exit(_cmd_regulatory(args, quiet))
+    elif args.command == "due-diligence":
+        sys.exit(_cmd_due_diligence(args, quiet))
     elif args.command == "vendor":
         sys.exit(_cmd_vendor(args, quiet))
     elif args.command == "registry":

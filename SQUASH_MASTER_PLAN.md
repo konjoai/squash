@@ -41,8 +41,8 @@ That's the moat. Credo AI and OneTrust are form-filling tools. Squash is a pipel
 | Metric | Value |
 |--------|-------|
 | **EU AI Act enforcement deadline** | August 2, 2026 — **95 days** |
-| **Squash code maturity** | v1.2.0 · Sprint 7 complete · 3444+ tests passing |
-| **Python modules** | 60 standalone modules · 95+ git commits |
+| **Squash code maturity** | v1.3.0 · Sprint 8 complete · 3572+ tests passing |
+| **Python modules** | 65 standalone modules + VS Code extension · 100+ git commits |
 | **Annex IV coverage** | ✅ 100% — 12-section generator, completeness scoring, PDF export |
 | **ISO 42001 coverage** | ✅ — 38-control readiness assessment, gap analysis, remediation roadmap |
 | **Trust Package** | ✅ — Signed vendor attestation bundle, `squash verify-trust-package` CLI |
@@ -52,7 +52,13 @@ That's the moat. Credo AI and OneTrust are form-filling tools. Squash is a pipel
 | **Vendor Risk Register** | ✅ NEW — AI vendor register, risk tiering, questionnaire generator, Trust Package import |
 | **AI Asset Registry** | ✅ NEW — Model inventory, auto-sync from CI, shadow AI flagging, drift/CVE tracking |
 | **Data Lineage Certificate** | ✅ NEW — Training dataset tracing, SPDX license check, PII risk, GDPR assessment |
-| **Bias Audit** | ✅ NEW — DPD/DIR/EOD/PED; NYC Local Law 144; EU AI Act Annex III; ECOA 4/5ths |
+| **Bias Audit** | ✅ — DPD/DIR/EOD/PED; NYC Local Law 144; EU AI Act Annex III; ECOA 4/5ths |
+| **Annual Review** | ✅ NEW — Full annual review: attestation history, trend, regulatory changes, next-year objectives |
+| **Attestation Registry** | ✅ NEW — `att://` URI scheme; SHA-256 integrity; revocation; org-scoped lookup |
+| **CISO Dashboard** | ✅ NEW — 5-metric panel; risk heat-map; ANSI terminal + JSON for VS Code webview |
+| **Regulatory Feed** | ✅ NEW — 9 regulations tracked; enforcement deadlines; change log; squash control mapping |
+| **M&A Due Diligence** | ✅ NEW — Complete AI DD package; R&W guidance; liability flag scoring; ZIP bundle |
+| **VS Code Extension** | ✅ NEW — Full TypeScript scaffold; 9 commands; sidebar tree; status bar; dashboard webview |
 | **Repo status** | ✅ Separated from `konjoai/squish` — standalone Apache 2.0 repo |
 | **Production status** | Dockerfile + fly.toml written; **not yet deployed** |
 | **PyPI status** | `pyproject.toml` ready; **not yet published** |
@@ -638,16 +644,26 @@ Value/effort matrix drove this sprint: highest-value features with existing modu
 
 ---
 
-### Sprint 8 — Moat Deepening (Planned)
+### Sprint 8 — Moat Deepening (April 29, 2026) ✅ COMPLETE
 
-| Wave | Task | Strategic Value |
-|------|------|-----------------|
-| W182 | Annual Review Generator (`squash annual-review`) | Automates week-long compliance exercise |
-| W183 | Public Attestation Registry (`attestations.getsquash.dev`) | Strategic moat; SSL CA equivalent for AI compliance |
-| W184 | CISO/Executive Dashboard | Board-level visibility; Credo AI displaces at 1/10th price |
-| W185 | Regulatory Intelligence Feed | Always-on regulatory change monitoring; weekly login reason |
-| W186 | M&A Due Diligence Package (`squash due-diligence`) | High-value enterprise use case; PE firm channel |
-| W187 | VS Code Extension | Daily compliance status without CLI; bottom-up enterprise growth |
+**All code shipped 2026-04-29. 6 waves, 128 new tests, 0 regressions.**
+
+| Wave | Module / Asset | What It Delivers | Status |
+|------|----------------|-----------------|--------|
+| W182 | `annual_review.py` | Annual review generator: 12-month attestation history, compliance trend, model portfolio audit, regulatory changes addressed, next-year objectives | ✅ |
+| W183 | `attestation_registry.py` | Public attestation registry: `att://` URIs, SHA-256 integrity, revocation, org lookup, verify-in-10-seconds (`squash publish` / `squash lookup` / `squash verify-entry`) | ✅ |
+| W184 | `dashboard.py` | CISO terminal dashboard: 5-metric panel, risk heat-map, portfolio sort, ANSI colour, `--json` for VS Code webview | ✅ |
+| W185 | `regulatory_feed.py` | Regulatory intelligence feed: 9 regulations (EU AI Act, NIST RMF, ISO 42001, Colorado, NYC LL144, SEC, FDA, GDPR, FedRAMP), 6 recent change events, deadline countdown | ✅ |
+| W186 | `due_diligence.py` | M&A/investment AI due diligence package: model inventory, liability flag scoring, R&W guidance, ZIP bundle (`squash due-diligence`) | ✅ |
+| W187 | `vscode-extension/` | Full VS Code extension scaffold: TypeScript, 9 commands, 3 sidebar tree views, status bar, dashboard webview, `package.json` with Marketplace metadata | ✅ |
+
+**Sprint 8 exit criteria: ALL MET**
+- `squash annual-review --year 2025` produces JSON + Markdown + summary ✅
+- `squash publish / lookup / verify-entry` operate against SQLite registry ✅
+- `squash dashboard` renders ANSI terminal; `--json` returns structured data ✅
+- `squash regulatory status/list/updates/deadlines` covers 9 regulations ✅
+- `squash due-diligence` generates ZIP bundle with R&W guidance ✅
+- VS Code extension `package.json` + `extension.ts` passes 21 structural tests ✅
 
 ---
 

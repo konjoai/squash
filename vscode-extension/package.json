@@ -1,0 +1,175 @@
+{
+  "name": "squash-ai",
+  "displayName": "Squash AI Compliance",
+  "description": "AI compliance status, policy violations, and attestation management for ML teams — squash in your editor.",
+  "version": "1.2.0",
+  "publisher": "konjoai",
+  "license": "Apache-2.0",
+  "icon": "media/squash-icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/konjoai/squash"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other",
+    "Linters",
+    "Machine Learning"
+  ],
+  "keywords": [
+    "ai compliance",
+    "eu ai act",
+    "mlops",
+    "machine learning",
+    "sbom",
+    "policy",
+    "annex iv",
+    "nist ai rmf"
+  ],
+  "activationEvents": [
+    "onStartupFinished",
+    "workspaceContains:**/squash_attestation.json",
+    "workspaceContains:**/.squash.yml"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "squash.runAttestation",
+        "title": "Squash: Run Attestation",
+        "icon": "$(shield)"
+      },
+      {
+        "command": "squash.showDashboard",
+        "title": "Squash: Show Compliance Dashboard",
+        "icon": "$(graph)"
+      },
+      {
+        "command": "squash.openReport",
+        "title": "Squash: Open Last Attestation Report"
+      },
+      {
+        "command": "squash.runBiasAudit",
+        "title": "Squash: Run Bias Audit"
+      },
+      {
+        "command": "squash.generateAnnexIV",
+        "title": "Squash: Generate Annex IV Documentation"
+      },
+      {
+        "command": "squash.runIso42001",
+        "title": "Squash: ISO 42001 Readiness Assessment"
+      },
+      {
+        "command": "squash.refreshTree",
+        "title": "Squash: Refresh",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "squash.publishAttestation",
+        "title": "Squash: Publish Attestation to Registry"
+      },
+      {
+        "command": "squash.exportTrustPackage",
+        "title": "Squash: Export Trust Package"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "squash-sidebar",
+          "title": "Squash AI Compliance",
+          "icon": "$(shield)"
+        }
+      ]
+    },
+    "views": {
+      "squash-sidebar": [
+        {
+          "id": "squash.modelPortfolio",
+          "name": "Model Portfolio",
+          "icon": "$(database)"
+        },
+        {
+          "id": "squash.violations",
+          "name": "Active Violations",
+          "icon": "$(warning)"
+        },
+        {
+          "id": "squash.deadlines",
+          "name": "Regulatory Deadlines",
+          "icon": "$(calendar)"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "squash.refreshTree",
+          "when": "view == squash.modelPortfolio",
+          "group": "navigation"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "squash.runAttestation",
+          "when": "explorerResourceIsFolder",
+          "group": "squash"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Squash AI Compliance",
+      "properties": {
+        "squash.cliPath": {
+          "type": "string",
+          "default": "squash",
+          "description": "Path to the squash CLI binary"
+        },
+        "squash.defaultPolicy": {
+          "type": "string",
+          "default": "eu-ai-act",
+          "enum": ["eu-ai-act", "nist-ai-rmf", "enterprise-strict", "owasp-llm-top10", "iso-42001"],
+          "description": "Default policy to run during attestation"
+        },
+        "squash.autoAttest": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatically run attestation when model files change"
+        },
+        "squash.showStatusBar": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show compliance status in the status bar"
+        },
+        "squash.apiKey": {
+          "type": "string",
+          "default": "",
+          "description": "Squash cloud API key (stored in VS Code secret storage)"
+        },
+        "squash.modelsDir": {
+          "type": "string",
+          "default": "",
+          "description": "Root directory containing model subdirectories (auto-detected if empty)"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js"
+  },
+  "devDependencies": {
+    "@types/node": "20.x",
+    "@types/vscode": "^1.85.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.0.0",
+    "typescript": "^5.0.0"
+  }
+}
