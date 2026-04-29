@@ -39,7 +39,7 @@ from squash.vex import (
 def _squash(*args: str) -> subprocess.CompletedProcess[str]:
     """Run a squash CLI command and return the completed process."""
     return subprocess.run(
-        [sys.executable, "-m", "squish.squash.cli", *args],
+        [sys.executable, "-m", "squash.cli", *args],
         capture_output=True,
         text=True,
     )
@@ -147,7 +147,7 @@ class TestVexFeedFromUrlApiKey(unittest.TestCase):
 
     def test_explicit_api_key_sets_authorization_header(self):
         opener, captured = self._fake_opener(self._minimal_vex_bytes())
-        with patch("squish.squash.vex.urllib.request.build_opener", return_value=opener):
+        with patch("squash.vex.urllib.request.build_opener", return_value=opener):
             VexFeed.from_url("https://example.com/feed.json", api_key="test-secret-key")
         req = captured["req"]
         auth = req.get_header("Authorization")
@@ -156,7 +156,7 @@ class TestVexFeedFromUrlApiKey(unittest.TestCase):
 
     def test_env_var_fallback_sets_authorization_header(self):
         opener, captured = self._fake_opener(self._minimal_vex_bytes())
-        with patch("squish.squash.vex.urllib.request.build_opener", return_value=opener), \
+        with patch("squash.vex.urllib.request.build_opener", return_value=opener), \
              patch.dict(os.environ, {"SQUASH_VEX_API_KEY": "env-driven-key"}):
             VexFeed.from_url("https://example.com/feed.json")
         req = captured["req"]
@@ -167,7 +167,7 @@ class TestVexFeedFromUrlApiKey(unittest.TestCase):
     def test_no_api_key_no_authorization_header(self):
         opener, captured = self._fake_opener(self._minimal_vex_bytes())
         env_without_key = {k: v for k, v in os.environ.items() if k != "SQUASH_VEX_API_KEY"}
-        with patch("squish.squash.vex.urllib.request.build_opener", return_value=opener), \
+        with patch("squash.vex.urllib.request.build_opener", return_value=opener), \
              patch.dict(os.environ, env_without_key, clear=True):
             VexFeed.from_url("https://example.com/feed.json")
         req = captured["req"]
@@ -193,7 +193,7 @@ class TestVexCacheApiKey(unittest.TestCase):
             resp.__exit__ = MagicMock(return_value=False)
             return resp
 
-        with patch("squish.squash.vex.urllib.request.urlopen", fake_urlopen):
+        with patch("squash.vex.urllib.request.urlopen", fake_urlopen):
             cache = VexCache.__new__(VexCache)
             with tempfile.TemporaryDirectory() as tmp:
                 dest = Path(tmp) / "feed.json"
@@ -226,7 +226,7 @@ class TestVexCacheApiKey(unittest.TestCase):
             resp.__exit__ = MagicMock(return_value=False)
             return resp
 
-        with patch("squish.squash.vex.urllib.request.urlopen", fake_urlopen):
+        with patch("squash.vex.urllib.request.urlopen", fake_urlopen):
             cache = VexCache.__new__(VexCache)
             env_without_key = {k: v for k, v in os.environ.items() if k != "SQUASH_VEX_API_KEY"}
             with tempfile.TemporaryDirectory() as tmp, \
@@ -457,14 +457,14 @@ class TestCliVexSubscribe(unittest.TestCase):
         """subscribe adds a subscription; unsubscribe removes it."""
         url = "https://example.invalid/vex-wave52-test.json"
         sub_result = subprocess.run(
-            [sys.executable, "-m", "squish.squash.cli", "vex", "subscribe", url,
+            [sys.executable, "-m", "squash.cli", "vex", "subscribe", url,
              "--alias", "wave52-test"],
             capture_output=True, text=True,
         )
         self.assertEqual(sub_result.returncode, 0, sub_result.stderr)
 
         unsub_result = subprocess.run(
-            [sys.executable, "-m", "squish.squash.cli", "vex", "unsubscribe", url],
+            [sys.executable, "-m", "squash.cli", "vex", "unsubscribe", url],
             capture_output=True, text=True,
         )
         self.assertEqual(unsub_result.returncode, 0, unsub_result.stderr)
@@ -512,7 +512,7 @@ class TestCommunityVexFeed25Statements(unittest.TestCase):
     """Bundled community VEX feed satisfies the 25-statement expansion gate."""
 
     def _load_feed(self) -> dict:
-        data_dir = Path(__file__).parent.parent / "squish" / "squash" / "data"
+        data_dir = Path(__file__).parent.parent / "squash" / "data"
         feed_path = data_dir / "community_vex_feed.openvex.json"
         self.assertTrue(feed_path.exists(), f"community feed not found: {feed_path}")
         return json.loads(feed_path.read_text(encoding="utf-8"))
@@ -579,7 +579,7 @@ class TestCommunityVexFeed25Statements(unittest.TestCase):
 
     def test_vex_feed_loads_via_api(self):
         """VexFeed.from_directory should be able to load the bundled feed directory."""
-        data_dir = Path(__file__).parent.parent / "squish" / "squash" / "data"
+        data_dir = Path(__file__).parent.parent / "squash" / "data"
         if not (data_dir / "community_vex_feed.openvex.json").exists():
             self.skipTest("community feed not present")
         # from_directory expects a dir with .json VEX files
@@ -595,14 +595,14 @@ class TestModuleCount(unittest.TestCase):
     """squish/ must not exceed 125 Python modules."""
 
     def test_python_file_count_is_exactly_125(self):
-        squish_root = Path(__file__).parent.parent / "squish"
+        squish_root = Path(__file__).parent.parent / "squash"
         py_files = list(squish_root.rglob("*.py"))
         count = len(py_files)
         self.assertEqual(
-            count, 134,
-            f"Module count is {count}, expected exactly 134. "
-            f"W54-56 adds remediate.py, evaluator.py, edge_formats.py, chat.py; "
-            f"W57 adds model_card.py + cloud_db.py (SQLite persistence, justified). "
-            f"W83 adds nist_rmf.py (NIST AI RMF 1.0 controls scanner, justified). "
+            count, 65,
+            f"Module count is {count}, expected exactly 65. "
+            f"Sprint 5-8 added iso42001, trust_package, agent_audit, incident, board_report, "
+            f"vendor_registry, asset_registry, data_lineage, bias_audit, annual_review, "
+            f"attestation_registry, dashboard, regulatory_feed, due_diligence + integrations. "
             f"Any new module requires a corresponding deletion or written justification.",
         )

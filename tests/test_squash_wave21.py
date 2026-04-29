@@ -81,22 +81,22 @@ def test_l1_materials_populated(tmp_path):
 
 def test_l2_calls_oms_signer(tmp_path):
     model_dir = _model_dir_with_bom(tmp_path)
-    with patch("squish.squash.slsa.SlsaProvenanceBuilder._sign") as mock_sign:
+    with patch("squash.slsa.SlsaProvenanceBuilder._sign") as mock_sign:
         SlsaProvenanceBuilder.build(model_dir, level=SlsaLevel.L2)
     mock_sign.assert_called_once()
 
 
 def test_l3_calls_oms_verifier(tmp_path):
     model_dir = _model_dir_with_bom(tmp_path)
-    with patch("squish.squash.slsa.SlsaProvenanceBuilder._sign"), \
-         patch("squish.squash.slsa.SlsaProvenanceBuilder._verify") as mock_verify:
+    with patch("squash.slsa.SlsaProvenanceBuilder._sign"), \
+         patch("squash.slsa.SlsaProvenanceBuilder._verify") as mock_verify:
         SlsaProvenanceBuilder.build(model_dir, level=SlsaLevel.L3)
     mock_verify.assert_called_once()
 
 
 def test_l1_does_not_call_signer(tmp_path):
     model_dir = _model_dir_with_bom(tmp_path)
-    with patch("squish.squash.slsa.SlsaProvenanceBuilder._sign") as mock_sign:
+    with patch("squash.slsa.SlsaProvenanceBuilder._sign") as mock_sign:
         SlsaProvenanceBuilder.build(model_dir, level=SlsaLevel.L1)
     mock_sign.assert_not_called()
 
@@ -151,7 +151,7 @@ def test_level_stored_on_attestation(tmp_path):
 def test_sign_error_does_not_propagate(tmp_path):
     """_sign errors must be swallowed (best-effort signing)."""
     model_dir = _model_dir_with_bom(tmp_path)
-    with patch("squish.squash.slsa.SlsaProvenanceBuilder._sign",
+    with patch("squash.slsa.SlsaProvenanceBuilder._sign",
                side_effect=RuntimeError("signer unavailable")):
         # No exception expected
         attest = SlsaProvenanceBuilder.build(model_dir, level=SlsaLevel.L2)

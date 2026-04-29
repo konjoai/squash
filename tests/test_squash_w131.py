@@ -30,6 +30,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+import huggingface_hub  # ensure real module is in sys.modules before any test stubs it
+
 from squash.artifact_extractor import (
     ArtifactExtractor,
     ArtifactExtractionResult,

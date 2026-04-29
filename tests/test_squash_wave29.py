@@ -28,7 +28,7 @@ import pytest
 
 # ─── helpers ─────────────────────────────────────────────────────────────────
 
-CLI_MODULE = "squish.squash.cli"
+CLI_MODULE = "squash.cli"
 
 
 def _run_cli(*args) -> subprocess.CompletedProcess:
@@ -209,8 +209,8 @@ class TestVexPublishHandler:
             "timestamp": "2024-01-01T00:00:00Z",
             "statements": [],
         }
-        with patch("squish.squash.vex.VexFeedManifest.generate", return_value=fake_doc):
-            with patch("squish.squash.vex.VexFeedManifest.validate", return_value=[]):
+        with patch("squash.vex.VexFeedManifest.generate", return_value=fake_doc):
+            with patch("squash.vex.VexFeedManifest.validate", return_value=[]):
                 rc = _cmd_vex_publish(args, quiet=True)
         assert rc == 0
 
@@ -220,9 +220,9 @@ class TestVexPublishHandler:
         out = tmp_path / "out.json"
         args = self._make_args(output=str(out), entries="[]", quiet=True)
 
-        with patch("squish.squash.vex.VexFeedManifest.generate", return_value={}):
+        with patch("squash.vex.VexFeedManifest.generate", return_value={}):
             with patch(
-                "squish.squash.vex.VexFeedManifest.validate",
+                "squash.vex.VexFeedManifest.validate",
                 return_value=["missing @context"],
             ):
                 rc = _cmd_vex_publish(args, quiet=True)
@@ -316,7 +316,7 @@ class TestAttestMlflowCli:
             quiet=True,
         )
         fake_result = _FakeResult()
-        with patch("squish.squash.attest.AttestPipeline.run", return_value=fake_result):
+        with patch("squash.attest.AttestPipeline.run", return_value=fake_result):
             rc = _cmd_attest_mlflow(args, quiet=True)
         assert rc == 0
 
@@ -351,7 +351,7 @@ class TestAttestWandbCli:
             quiet=True,
         )
         fake_result = _FakeResult()
-        with patch("squish.squash.attest.AttestPipeline.run", return_value=fake_result):
+        with patch("squash.attest.AttestPipeline.run", return_value=fake_result):
             rc = _cmd_attest_wandb(args, quiet=True)
         assert rc == 0
 
@@ -371,7 +371,7 @@ class TestAttestWandbCli:
         )
         fake_result = _FakeResult()
         fake_result.passed = False
-        with patch("squish.squash.attest.AttestPipeline.run", return_value=fake_result):
+        with patch("squash.attest.AttestPipeline.run", return_value=fake_result):
             rc = _cmd_attest_wandb(args, quiet=True)
         assert rc == 1
 
@@ -413,7 +413,7 @@ class TestAttestHuggingFaceCli:
             quiet=True,
         )
         fake_result = _FakeResult()
-        with patch("squish.squash.attest.AttestPipeline.run", return_value=fake_result):
+        with patch("squash.attest.AttestPipeline.run", return_value=fake_result):
             rc = _cmd_attest_huggingface(args, quiet=True)
         assert rc == 0
 
@@ -436,7 +436,7 @@ class TestAttestHuggingFaceCli:
         )
         fake_result = _FakeResult()
         with patch(
-            "squish.squash.integrations.huggingface.HFSquash.attest_and_push",
+            "squash.integrations.huggingface.HFSquash.attest_and_push",
             return_value=fake_result,
         ):
             rc = _cmd_attest_huggingface(args, quiet=True)
@@ -461,7 +461,7 @@ class TestAttestHuggingFaceCli:
         fake_result = _FakeResult()
         fake_result.passed = False
         with patch(
-            "squish.squash.integrations.huggingface.HFSquash.attest_and_push",
+            "squash.integrations.huggingface.HFSquash.attest_and_push",
             return_value=fake_result,
         ):
             rc = _cmd_attest_huggingface(args, quiet=True)
@@ -498,7 +498,7 @@ class TestAttestLangchainCli:
             quiet=True,
         )
         fake_result = _FakeResult()
-        with patch("squish.squash.attest.AttestPipeline.run", return_value=fake_result):
+        with patch("squash.attest.AttestPipeline.run", return_value=fake_result):
             rc = _cmd_attest_langchain(args, quiet=True)
         assert rc == 0
 
@@ -518,7 +518,7 @@ class TestAttestLangchainCli:
         )
         fake_result = _FakeResult()
         fake_result.passed = False
-        with patch("squish.squash.attest.AttestPipeline.run", return_value=fake_result):
+        with patch("squash.attest.AttestPipeline.run", return_value=fake_result):
             rc = _cmd_attest_langchain(args, quiet=True)
         assert rc == 1
 
@@ -536,7 +536,7 @@ class TestAttestLangchainCli:
             fail_on_violation=False,
             quiet=True,
         )
-        with patch("squish.squash.attest.AttestPipeline.run", side_effect=RuntimeError("boom")):
+        with patch("squash.attest.AttestPipeline.run", side_effect=RuntimeError("boom")):
             rc = _cmd_attest_langchain(args, quiet=True)
         assert rc == 2
 
@@ -568,7 +568,7 @@ class TestIntegrationShimHandlers:
             captured_config.append(config)
             return fake_result
 
-        with patch("squish.squash.attest.AttestPipeline.run", side_effect=_capture):
+        with patch("squash.attest.AttestPipeline.run", side_effect=_capture):
             _cmd_attest_mlflow(args, quiet=True)
 
         assert captured_config[0].policies == ["enterprise-strict"]
@@ -595,7 +595,7 @@ class TestIntegrationShimHandlers:
             captured_config.append(config)
             return fake_result
 
-        with patch("squish.squash.attest.AttestPipeline.run", side_effect=_capture):
+        with patch("squash.attest.AttestPipeline.run", side_effect=_capture):
             _cmd_attest_wandb(args, quiet=True)
 
         assert captured_config[0].output_dir == model_path.parent / "squash"
@@ -618,7 +618,7 @@ class TestIntegrationShimHandlers:
         fake_result = _FakeResult()
         captured: list[AttestConfig] = []
 
-        with patch("squish.squash.attest.AttestPipeline.run", side_effect=lambda c: (captured.append(c), fake_result)[1]):
+        with patch("squash.attest.AttestPipeline.run", side_effect=lambda c: (captured.append(c), fake_result)[1]):
             _cmd_attest_langchain(args, quiet=True)
 
         assert captured[0].policies == ["custom-policy"]
@@ -629,7 +629,7 @@ class TestIntegrationShimHandlers:
 class TestModuleCount:
     def test_no_new_python_modules_added(self):
         """Wave 29 adds only CLI functions to cli.py — no new .py modules."""
-        squash_root = Path(__file__).parent.parent / "squish" / "squash"
+        squash_root = Path(__file__).parent.parent / "squash"
         py_files = [
             p for p in squash_root.rglob("*.py")
             if "experimental" not in str(p)

@@ -506,7 +506,7 @@ class TestCloudAudit:
         mock_logger = MagicMock()
         mock_logger.read_tail.return_value = []
         mock_logger.path = "/tmp/audit.jsonl"
-        with patch("squish.squash.governor.AgentAuditLogger", return_value=mock_logger):
+        with patch("squash.governor.AgentAuditLogger", return_value=mock_logger):
             r = client.get("/cloud/audit", headers={"X-Tenant-ID": "acme"})
         assert r.status_code == 200
         body = r.json()
@@ -522,7 +522,7 @@ class TestCloudAudit:
         mock_logger = MagicMock()
         mock_logger.read_tail.return_value = entries
         mock_logger.path = "/tmp/audit.jsonl"
-        with patch("squish.squash.governor.AgentAuditLogger", return_value=mock_logger):
+        with patch("squash.governor.AgentAuditLogger", return_value=mock_logger):
             r = client.get("/cloud/audit", headers={"X-Tenant-ID": "acme"})
         body = r.json()
         assert body["count"] == 1
@@ -534,7 +534,7 @@ class TestCloudAudit:
         mock_logger = MagicMock()
         mock_logger.read_tail.return_value = entries
         mock_logger.path = "/tmp/audit.jsonl"
-        with patch("squish.squash.governor.AgentAuditLogger", return_value=mock_logger):
+        with patch("squash.governor.AgentAuditLogger", return_value=mock_logger):
             r = client.get("/cloud/audit")
         # No tenant → no filter, both entries returned
         assert r.json()["count"] == 2
@@ -675,11 +675,12 @@ class TestModuleCount:
     def test_module_count_is_125(self):
         """squish/ has 131 Python files after W54-56 adds remediate.py, evaluator.py, edge_formats.py, chat.py."""
         import subprocess, pathlib
-        root = pathlib.Path(__file__).parent.parent / "squish"
+        root = pathlib.Path(__file__).parent.parent / "squash"
         count = len(list(root.rglob("*.py")))
-        assert count == 134, (
-            f"Module count should be 134, got {count}. "
-            "W57 adds model_card.py + cloud_db.py (SQLite persistence, justified). "
-            "W83 adds nist_rmf.py (NIST AI RMF 1.0 controls scanner, justified). "
+        assert count == 65, (
+            f"Module count should be 65, got {count}. "
+            "Sprint 5-8 added iso42001, trust_package, agent_audit, incident, board_report, "
+            "vendor_registry, asset_registry, data_lineage, bias_audit, annual_review, "
+            "attestation_registry, dashboard, regulatory_feed, due_diligence + integrations. "
             "New modules require deletion or written justification."
         )

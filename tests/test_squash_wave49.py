@@ -666,12 +666,12 @@ class TestApiPackOffline:
 class TestModuleCount:
     def test_squish_module_count_unchanged(self):
         """squish/ must still have exactly 125 Python files (W51 adds drift.py — new security domain)."""
-        squish_dir = Path(__file__).parent.parent / "squish"
+        squish_dir = Path(__file__).parent.parent / "squash"
         count = len(list(squish_dir.rglob("*.py")))
-        assert count == 134, (
-            f"Module count changed: expected 134, got {count}. "
-            "W49-52 added oms_signer.py + 1; W54-56 added remediate.py, evaluator.py, edge_formats.py, chat.py; "
-            "W57 added model_card.py + cloud_db.py (SQLite persistence, justified). "
-            "W83 added nist_rmf.py (NIST AI RMF 1.0 controls scanner, justified). "
-            "Check squish/ for unexpected additions or deletions."
+        assert count == 65, (
+            f"Module count changed: expected 65, got {count}. "
+            "Sprint 5-8 added: iso42001, trust_package, agent_audit, incident, board_report, "
+            "vendor_registry, asset_registry, data_lineage, bias_audit, annual_review, "
+            "attestation_registry, dashboard, regulatory_feed, due_diligence + integrations. "
+            "New modules require written justification."
         )

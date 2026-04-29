@@ -8,10 +8,13 @@ Tests cover:
 """
 from __future__ import annotations
 
+import importlib.util
 import json
 import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 from fastapi.testclient import TestClient
 
@@ -180,6 +183,10 @@ class TestCloudAPIReads(unittest.TestCase):
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.skipif(
+    not __import__("importlib").util.find_spec("squish"),
+    reason="squish package not installed — AQLM tests are squish-specific",
+)
 class TestAQLMLoader(unittest.TestCase):
     """Verify the AQLM loader branch is taken when AQLM index/codebook files present.
 

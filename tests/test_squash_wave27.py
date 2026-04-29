@@ -596,7 +596,7 @@ class TestWebhookCli:
 
     def test_webhook_help_exits_zero(self):
         result = subprocess.run(
-            [sys.executable, "-m", "squish.squash.cli", "webhook", "--help"],
+            [sys.executable, "-m", "squash.cli", "webhook", "--help"],
             capture_output=True,
             text=True,
             cwd=str(_REPO_ROOT),
@@ -606,7 +606,7 @@ class TestWebhookCli:
 
     def test_squash_webhook_help_via_entrypoint(self):
         result = subprocess.run(
-            [sys.executable, "-m", "squish.squash.cli", "webhook", "--help"],
+            [sys.executable, "-m", "squash.cli", "webhook", "--help"],
             capture_output=True,
             text=True,
             cwd=str(_REPO_ROOT),
@@ -618,7 +618,7 @@ class TestWebhookCli:
 
     def test_squash_help_includes_webhook(self):
         result = subprocess.run(
-            [sys.executable, "-m", "squish.squash.cli", "--help"],
+            [sys.executable, "-m", "squash.cli", "--help"],
             capture_output=True,
             text=True,
             cwd=str(_REPO_ROOT),
@@ -629,13 +629,13 @@ class TestWebhookCli:
     def test_module_count_script_passes(self):
         """Module count enforcement gate — must stay ≤ 105.
 
-        Counts Python files in squish/squash/ (non-experimental) directly.
+        Counts Python files in squash/ (non-experimental) directly.
         Skips if the check_module_count.py script is not present.
         """
         check_script = _REPO_ROOT / "scripts" / "check_module_count.py"
         if not check_script.exists():
-            # Enforce inline: count .py files under squish/squash/ excluding experimental/
-            squash_dir = _REPO_ROOT / "squish" / "squash"
+            # Enforce inline: count .py files under squash/ excluding experimental/
+            squash_dir = _REPO_ROOT / "squash"
             py_files = [
                 p for p in squash_dir.rglob("*.py")
                 if "experimental" not in p.parts

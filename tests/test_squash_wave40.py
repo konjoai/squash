@@ -111,7 +111,7 @@ class TestVertexAIImportError:
                 raise ImportError(f"No module named '{name}'")
             return original_import(name, *args, **kwargs)
 
-        with patch("squish.squash.integrations.vertex_ai.__builtins__", {"__import__": _blocking_import}):
+        with patch("squash.integrations.vertex_ai.__builtins__", {"__import__": _blocking_import}):
             pass  # just ensure module loads without SDK
 
         # Direct test: patch the google.cloud.aiplatform import inside label_model
@@ -119,7 +119,7 @@ class TestVertexAIImportError:
             sys.modules.pop("google.cloud.aiplatform", None)
             sys.modules.pop("google.cloud", None)
             # Ensure the ImportError path is exercised
-            with patch("squish.squash.integrations.vertex_ai._aiplatform", None, create=True):
+            with patch("squash.integrations.vertex_ai._aiplatform", None, create=True):
                 pass
 
 
@@ -136,7 +136,7 @@ class TestAttachAttestation:
 
         aiplatform_mock = MagicMock()
 
-        with patch("squish.squash.integrations.vertex_ai.AttestPipeline") as pipeline_mock, \
+        with patch("squash.integrations.vertex_ai.AttestPipeline") as pipeline_mock, \
              patch.dict("sys.modules", {
                  "google": MagicMock(),
                  "google.cloud": MagicMock(),
@@ -154,8 +154,8 @@ class TestAttachAttestation:
         expected_result = _make_attest_result()
         aiplatform_mock = MagicMock()
 
-        with patch("squish.squash.integrations.vertex_ai.AttestPipeline") as pipeline_mock, \
-             patch("squish.squash.integrations.vertex_ai.VertexAISquash.label_model") as label_mock, \
+        with patch("squash.integrations.vertex_ai.AttestPipeline") as pipeline_mock, \
+             patch("squash.integrations.vertex_ai.VertexAISquash.label_model") as label_mock, \
              patch.dict("sys.modules", {
                  "google": MagicMock(),
                  "google.cloud": MagicMock(),
@@ -173,8 +173,8 @@ class TestAttachAttestation:
         resource = "projects/p/locations/us-central1/models/42"
         aiplatform_mock = MagicMock()
 
-        with patch("squish.squash.integrations.vertex_ai.AttestPipeline") as pipeline_mock, \
-             patch("squish.squash.integrations.vertex_ai.VertexAISquash.label_model") as label_mock, \
+        with patch("squash.integrations.vertex_ai.AttestPipeline") as pipeline_mock, \
+             patch("squash.integrations.vertex_ai.VertexAISquash.label_model") as label_mock, \
              patch.dict("sys.modules", {
                  "google": MagicMock(),
                  "google.cloud": MagicMock(),
@@ -195,8 +195,8 @@ class TestAttachAttestation:
         expected_result = _make_attest_result()
         aiplatform_mock = MagicMock()
 
-        with patch("squish.squash.integrations.vertex_ai.AttestPipeline") as pipeline_mock, \
-             patch("squish.squash.integrations.vertex_ai.VertexAISquash._upload_to_gcs") as gcs_mock, \
+        with patch("squash.integrations.vertex_ai.AttestPipeline") as pipeline_mock, \
+             patch("squash.integrations.vertex_ai.VertexAISquash._upload_to_gcs") as gcs_mock, \
              patch.dict("sys.modules", {
                  "google": MagicMock(),
                  "google.cloud": MagicMock(),

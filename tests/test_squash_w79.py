@@ -193,7 +193,7 @@ class TestCloudAttestCmd(unittest.TestCase):
 
             passing_result = _make_passing_attest_result("test-model", model_dir)
 
-            with patch("squish.squash.attest.AttestPipeline") as MockPipeline:
+            with patch("squash.attest.AttestPipeline") as MockPipeline:
                 MockPipeline.run.return_value = passing_result
                 args = _make_args(tenant_id=_TENANT_A, model_path=str(model_dir))
                 rc, _ = _capture_stdout(_cmd_cloud_attest, args, quiet=False)
@@ -213,7 +213,7 @@ class TestCloudAttestCmd(unittest.TestCase):
 
             passing_result = _make_passing_attest_result("test-model", model_dir)
 
-            with patch("squish.squash.attest.AttestPipeline") as MockPipeline:
+            with patch("squash.attest.AttestPipeline") as MockPipeline:
                 MockPipeline.run.return_value = passing_result
                 args = _make_args(tenant_id=_TENANT_A, model_path=str(model_dir))
                 rc, out = _capture_stdout(_cmd_cloud_attest, args, quiet=False)
@@ -229,7 +229,7 @@ class TestCloudAttestCmd(unittest.TestCase):
 
             failing_result = _make_failing_attest_result("test-model")
 
-            with patch("squish.squash.attest.AttestPipeline") as MockPipeline:
+            with patch("squash.attest.AttestPipeline") as MockPipeline:
                 MockPipeline.run.return_value = failing_result
                 args = _make_args(tenant_id=_TENANT_A, model_path=str(model_dir))
                 rc, _ = _capture_stdout(_cmd_cloud_attest, args, quiet=False)
@@ -261,7 +261,7 @@ class TestCloudAttestCmd(unittest.TestCase):
 
             passing_result = _make_passing_attest_result("test-model", model_dir)
 
-            with patch("squish.squash.attest.AttestPipeline") as MockPipeline:
+            with patch("squash.attest.AttestPipeline") as MockPipeline:
                 MockPipeline.run.return_value = passing_result
                 args = _make_args(tenant_id=_TENANT_A, model_path=str(model_dir), output_json=True)
                 rc, out = _capture_stdout(_cmd_cloud_attest, args, quiet=False)

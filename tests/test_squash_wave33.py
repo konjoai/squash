@@ -40,7 +40,7 @@ from squash.vex import (
 )
 
 # Path to the bundled community feed — same file load_bundled() reads.
-_BUNDLED_PATH = Path(__file__).parent.parent / "squish" / "squash" / "data" / "community_vex_feed.openvex.json"
+_BUNDLED_PATH = Path(__file__).parent.parent / "squash" / "data" / "community_vex_feed.openvex.json"
 
 _EXPECTED_CVES = {"CVE-2024-34359", "CVE-2023-27534", "CVE-2024-3660"}
 _VALID_STATUSES = {"not_affected", "affected", "fixed", "under_investigation"}

@@ -92,7 +92,7 @@ def test_attach_attestation_returns_attest_result(tmp_path):
     boto3_mock = MagicMock()
     boto3_mock.client.return_value = MagicMock()
 
-    with patch("squish.squash.integrations.sagemaker.AttestPipeline") as pipeline_mock, \
+    with patch("squash.integrations.sagemaker.AttestPipeline") as pipeline_mock, \
          patch.dict("sys.modules", {"boto3": boto3_mock}):
         pipeline_mock.run.return_value = expected_result
         result = SageMakerSquash.attach_attestation(model_dir)
@@ -133,7 +133,7 @@ def test_s3_upload_called_when_prefix_given(tmp_path):
     s3_client = MagicMock()
     boto3_mock.client.return_value = s3_client
 
-    with patch("squish.squash.integrations.sagemaker.AttestPipeline") as pipeline_mock, \
+    with patch("squash.integrations.sagemaker.AttestPipeline") as pipeline_mock, \
          patch.dict("sys.modules", {"boto3": boto3_mock}):
         pipeline_mock.run.return_value = _make_attest_result()
         SageMakerSquash.attach_attestation(
@@ -152,7 +152,7 @@ def test_no_s3_upload_when_prefix_none(tmp_path):
     s3_client = MagicMock()
     boto3_mock.client.return_value = s3_client
 
-    with patch("squish.squash.integrations.sagemaker.AttestPipeline") as pipeline_mock, \
+    with patch("squash.integrations.sagemaker.AttestPipeline") as pipeline_mock, \
          patch.dict("sys.modules", {"boto3": boto3_mock}):
         pipeline_mock.run.return_value = _make_attest_result()
         SageMakerSquash.attach_attestation(model_dir, s3_upload_prefix=None)
@@ -169,7 +169,7 @@ def test_no_tag_when_no_model_package_arn(tmp_path):
     sm_client = MagicMock()
     boto3_mock.client.return_value = sm_client
 
-    with patch("squish.squash.integrations.sagemaker.AttestPipeline") as pipeline_mock, \
+    with patch("squash.integrations.sagemaker.AttestPipeline") as pipeline_mock, \
          patch.dict("sys.modules", {"boto3": boto3_mock}):
         pipeline_mock.run.return_value = _make_attest_result()
         SageMakerSquash.attach_attestation(model_dir, model_package_arn=None)
@@ -184,7 +184,7 @@ def test_fail_on_violation_propagates(tmp_path):
     boto3_mock = MagicMock()
     boto3_mock.client.return_value = MagicMock()
 
-    with patch("squish.squash.integrations.sagemaker.AttestPipeline") as pipeline_mock, \
+    with patch("squash.integrations.sagemaker.AttestPipeline") as pipeline_mock, \
          patch.dict("sys.modules", {"boto3": boto3_mock}):
         pipeline_mock.run.return_value = _make_attest_result()
         SageMakerSquash.attach_attestation(model_dir, fail_on_violation=True)
@@ -499,7 +499,7 @@ def test_sagemaker_full_pipeline_with_real_bom(tmp_path):
 
     mock_result = _make_attest_result(passed=True)
 
-    with patch("squish.squash.integrations.sagemaker.AttestPipeline") as pipeline_mock, \
+    with patch("squash.integrations.sagemaker.AttestPipeline") as pipeline_mock, \
          patch.dict("sys.modules", {"boto3": boto3_mock}):
         pipeline_mock.run.return_value = mock_result
         result = SageMakerSquash.attach_attestation(

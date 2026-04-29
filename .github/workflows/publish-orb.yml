@@ -1,0 +1,44 @@
+name: Publish CircleCI Orb
+
+on:
+  push:
+    paths:
+      - 'integrations/circleci/orb.yml'
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate orb YAML
+        run: |
+          python3 -c "
+          import yaml, sys
+          with open('integrations/circleci/orb.yml') as f:
+              doc = yaml.safe_load(f)
+          assert isinstance(doc, dict), 'orb.yml must parse to a mapping'
+          assert 'version' in doc, 'orb.yml missing version'
+          assert 'commands' in doc, 'orb.yml missing commands'
+          print('orb.yml valid')
+          "
+
+  publish-dev:
+    runs-on: ubuntu-latest
+    needs: validate
+    if: github.ref != 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Publish orb (dev)
+        run: echo "Publish dev orb — configure CircleCI token and CLI for real publishing"
+
+  publish-prod:
+    runs-on: ubuntu-latest
+    needs: validate
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Publish orb (prod)
+        run: echo "Publish prod orb — configure CircleCI token and CLI for real publishing"

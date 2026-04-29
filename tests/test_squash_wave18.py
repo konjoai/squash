@@ -85,7 +85,7 @@ class TestCompositeAttestPipelineRun(unittest.TestCase):
             mock_result_a = _make_attest_result(model_a, passed=True)
             mock_result_b = _make_attest_result(model_b, passed=True)
 
-            with patch("squish.squash.attest.AttestPipeline") as MockPipeline:
+            with patch("squash.attest.AttestPipeline") as MockPipeline:
                 MockPipeline.run.side_effect = [mock_result_a, mock_result_b]
 
                 cfg = CompositeAttestConfig(
@@ -105,7 +105,7 @@ class TestCompositeAttestPipelineRun(unittest.TestCase):
 
             from squash.attest import CompositeAttestConfig, CompositeAttestPipeline
 
-            with patch("squish.squash.attest.AttestPipeline") as MockPipeline:
+            with patch("squash.attest.AttestPipeline") as MockPipeline:
                 MockPipeline.run.side_effect = RuntimeError("disk full")
 
                 cfg = CompositeAttestConfig(model_paths=[model_a])
@@ -143,7 +143,7 @@ class TestCompositeAttestPipelineRun(unittest.TestCase):
             mock_r_a.cyclonedx_path = model_a / "cyclonedx-mlbom.json"
             mock_r_b.cyclonedx_path = model_b / "cyclonedx-mlbom.json"
 
-            with patch("squish.squash.attest.AttestPipeline") as MockPipeline:
+            with patch("squash.attest.AttestPipeline") as MockPipeline:
                 MockPipeline.run.side_effect = [mock_r_a, mock_r_b]
 
                 cfg = CompositeAttestConfig(

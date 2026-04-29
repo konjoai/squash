@@ -1,0 +1,138 @@
+version: 2.1
+
+description: >
+  Squash AI compliance orb — automate EU AI Act attestation, policy gating, and
+  compliance checks directly in your CircleCI pipelines. Generates CycloneDX ML-BOM,
+  validates against EU AI Act, NIST AI RMF, and OWASP LLM Top 10 policies, and blocks
+  promotion on violation.
+
+display:
+  home_url: https://getsquash.dev
+  source_url: https://github.com/konjoai/squash
+
+commands:
+  attest:
+    description: >
+      Run squash attest against a model artifact. Generates a CycloneDX ML-BOM
+      attestation document and exits non-zero on policy violation (unless
+      fail-on-violation is false).
+    parameters:
+      model-path:
+        description: Path to the model directory or artifact to attest.
+        type: string
+      output:
+        description: Output file name for the attestation document.
+        type: string
+        default: squash-bom.json
+      format:
+        description: Output format for the attestation (cyclonedx-json, spdx-json, sarif).
+        type: string
+        default: cyclonedx-json
+      policy:
+        description: Policy set to apply (eu-ai-act, nist-rmf, owasp-llm).
+        type: string
+        default: eu-ai-act
+    steps:
+      - run:
+          name: Squash — attest model artifact
+          command: |
+            squash ci-run attest \
+              --model << parameters.model-path >> \
+              --output << parameters.output >> \
+              --format << parameters.format >> \
+              --policy << parameters.policy >>
+
+  check:
+    description: >
+      Check an existing attestation document against squash compliance policies.
+      Fails the build on any policy violation when fail-on-violation is true.
+    parameters:
+      attestation:
+        description: Path to attestation document to check.
+        type: string
+        default: squash-bom.json
+      policy:
+        description: Policy set to validate against.
+        type: string
+        default: eu-ai-act
+      fail-on-violation:
+        description: Exit non-zero when policy violations are found.
+        type: boolean
+        default: true
+    steps:
+      - run:
+          name: Squash — check attestation compliance
+          command: |
+            squash ci-run check \
+              --attestation << parameters.attestation >> \
+              --policy << parameters.policy >> \
+              <<# parameters.fail-on-violation >>--fail-on-violation<</ parameters.fail-on-violation >>
+
+  policy-gate:
+    description: >
+      Block pipeline promotion when the model's compliance score falls below the
+      required threshold. Use as a gate before staging or production deployment.
+    parameters:
+      attestation:
+        description: Path to attestation document to evaluate.
+        type: string
+        default: squash-bom.json
+      min-score:
+        description: Minimum compliance score (0–100) required to pass the gate.
+        type: integer
+        default: 80
+      allow-unscanned:
+        description: Allow deployment of models that have not been scanned.
+        type: boolean
+        default: false
+    steps:
+      - run:
+          name: Squash — policy gate
+          command: |
+            squash ci-run policy-gate \
+              --attestation << parameters.attestation >> \
+              --min-score << parameters.min-score >> \
+              <<# parameters.allow-unscanned >>--allow-unscanned<</ parameters.allow-unscanned >>
+
+examples:
+  basic_attestation:
+    description: Attest a model in CI and fail the build on EU AI Act violations.
+    usage:
+      version: 2.1
+      orbs:
+        squash: konjoai/squash@1.0.0
+      jobs:
+        attest-model:
+          docker:
+            - image: cimg/python:3.11
+          steps:
+            - checkout
+            - run: pip install squash-ai
+            - squash/attest:
+                model-path: ./model
+                output: squash-bom.json
+
+  policy_gate_before_deploy:
+    description: Block staging deployment if compliance score is below 80.
+    usage:
+      version: 2.1
+      orbs:
+        squash: konjoai/squash@1.0.0
+      workflows:
+        build-attest-deploy:
+          jobs:
+            - attest
+            - deploy-staging:
+                requires:
+                  - attest
+      jobs:
+        attest:
+          docker:
+            - image: cimg/python:3.11
+          steps:
+            - checkout
+            - run: pip install squash-ai
+            - squash/attest:
+                model-path: ./model
+            - squash/policy-gate:
+                min-score: 80

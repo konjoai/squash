@@ -196,7 +196,7 @@ class TestPoliciesCommandOutput:
     @pytest.fixture(scope="class")
     def policies_output(self):
         result = subprocess.run(
-            [sys.executable, "-m", "squish.squash.cli", "policies"],
+            [sys.executable, "-m", "squash.cli", "policies"],
             capture_output=True,
             text=True,
             timeout=30,

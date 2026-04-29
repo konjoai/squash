@@ -26,8 +26,6 @@ import yaml  # PyYAML is a squish dev dependency
 
 _ORB_PATH = (
     Path(__file__).parent.parent
-    / "squish"
-    / "squash"
     / "integrations"
     / "circleci"
     / "orb.yml"
@@ -138,10 +136,10 @@ class TestCircleCIOrbExists:
         for _name, example in doc["examples"].items():
             assert "usage" in example, f"example '{_name}' missing 'usage'"
 
-    def test_orb_home_url_references_squishai(self):
+    def test_orb_home_url_references_getsquash(self):
         with _ORB_PATH.open() as f:
             doc = yaml.safe_load(f)
-        assert "squishai" in doc["display"]["home_url"].lower()
+        assert "getsquash" in doc["display"]["home_url"].lower()
 
     def test_attest_command_steps_reference_squash_ci_run(self):
         with _ORB_PATH.open() as f:
@@ -341,7 +339,7 @@ class TestRunSquashValidation:
         mock_result = MagicMock()
         mock_result.summary.return_value = "[PASS] test-model: ok"
 
-        with patch("squish.squash.attest.AttestPipeline.run", return_value=mock_result):
+        with patch("squash.attest.AttestPipeline.run", return_value=mock_result):
             result = fn(Cfg(model_dir=model_dir, require_bom=True))
 
         assert result["validated"] is True
@@ -352,7 +350,7 @@ class TestRunSquashValidation:
         model_dir = tmp_path / "model"
         model_dir.mkdir()
 
-        with patch("squish.squash.attest.AttestPipeline.run", side_effect=ValueError("scan exploded")):
+        with patch("squash.attest.AttestPipeline.run", side_effect=ValueError("scan exploded")):
             with pytest.raises(RuntimeError, match="attestation failed"):
                 fn(Cfg(model_dir=model_dir, require_bom=True))
 
@@ -361,7 +359,7 @@ class TestRunSquashValidation:
         model_dir = tmp_path / "model"
         model_dir.mkdir()
 
-        with patch("squish.squash.attest.AttestPipeline.run", side_effect=ValueError("scan exploded")):
+        with patch("squash.attest.AttestPipeline.run", side_effect=ValueError("scan exploded")):
             result = fn(Cfg(model_dir=model_dir, require_bom=False))
 
         assert result["validated"] is False
@@ -375,7 +373,7 @@ class TestRunSquashValidation:
         mock_result = MagicMock()
         mock_result.summary.return_value = "[PASS] m: ok"
 
-        with patch("squish.squash.attest.AttestPipeline.run", return_value=mock_result):
+        with patch("squash.attest.AttestPipeline.run", return_value=mock_result):
             result = fn(Cfg(model_dir=model_dir, policy="eu-ai-act"))
 
         assert result.get("policy") == "eu-ai-act"
@@ -441,7 +439,7 @@ class TestSquashServeDeploymentMixin:
 
 class TestModuleCount:
     def test_squash_python_module_count_at_most_106(self):
-        squash_dir = Path(__file__).parent.parent / "squish" / "squash"
+        squash_dir = Path(__file__).parent.parent / "squash"
         py_files = [
             p for p in squash_dir.rglob("*.py")
             if "__pycache__" not in str(p)

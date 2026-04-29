@@ -26,7 +26,7 @@ def _load_yaml(rel_path: str) -> dict:
 # ---------------------------------------------------------------------------
 
 class TestCircleCIOrbYaml:
-    ORB_PATH = "squash/integrations/circleci/orb.yml"
+    ORB_PATH = "integrations/circleci/orb.yml"
 
     def test_orb_parseable(self):
         doc = _load_yaml(self.ORB_PATH)
@@ -80,7 +80,7 @@ class TestCircleCIOrbYaml:
 # ---------------------------------------------------------------------------
 
 class TestHelmChartYaml:
-    CHART_PATH = "helm/squish-serve/Chart.yaml"
+    CHART_PATH = "integrations/kubernetes-helm/Chart.yaml"
 
     def test_chart_parseable(self):
         doc = _load_yaml(self.CHART_PATH)
@@ -99,8 +99,8 @@ class TestHelmChartYaml:
 
     def test_chart_name(self):
         doc = _load_yaml(self.CHART_PATH)
-        assert doc["name"] == "squish-serve", (
-            f"Expected chart name 'squish-serve', got {doc['name']!r}"
+        assert doc["name"] == "squash-webhook", (
+            f"Expected chart name 'squash-webhook', got {doc['name']!r}"
         )
 
     def test_chart_version_semver_format(self):

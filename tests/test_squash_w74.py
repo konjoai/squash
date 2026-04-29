@@ -52,7 +52,7 @@ def _make_db(tmp_path) -> CloudDB:
 class TestCloudDBTenantEnforcement:
     def test_enforcement_keys_present(self, tmp_path):
         db = _make_db(tmp_path)
-        with mock.patch("squish.squash.cloud_db.datetime") as m:
+        with mock.patch("squash.cloud_db.datetime") as m:
             m.date.today.return_value = _SIMULATED_TODAY
             result = db.read_tenant_conformance("t1")
         for key in _ENF_KEYS:
@@ -60,7 +60,7 @@ class TestCloudDBTenantEnforcement:
 
     def test_enforcement_deadline_value(self, tmp_path):
         db = _make_db(tmp_path)
-        with mock.patch("squish.squash.cloud_db.datetime") as m:
+        with mock.patch("squash.cloud_db.datetime") as m:
             m.date.today.return_value = _SIMULATED_TODAY
             result = db.read_tenant_conformance("t1")
         assert result["enforcement_deadline"] == _EXPECTED_DEADLINE
@@ -68,7 +68,7 @@ class TestCloudDBTenantEnforcement:
 
     def test_days_until_enforcement_type_and_value(self, tmp_path):
         db = _make_db(tmp_path)
-        with mock.patch("squish.squash.cloud_db.datetime") as m:
+        with mock.patch("squash.cloud_db.datetime") as m:
             m.date.today.return_value = _SIMULATED_TODAY
             result = db.read_tenant_conformance("t1")
         assert isinstance(result["days_until_enforcement"], int)
@@ -76,7 +76,7 @@ class TestCloudDBTenantEnforcement:
 
     def test_risk_level_moderate_on_sim_date(self, tmp_path):
         db = _make_db(tmp_path)
-        with mock.patch("squish.squash.cloud_db.datetime") as m:
+        with mock.patch("squash.cloud_db.datetime") as m:
             m.date.today.return_value = _SIMULATED_TODAY
             result = db.read_tenant_conformance("t1")
         assert result["enforcement_risk_level"] == _EXPECTED_RISK
@@ -86,7 +86,7 @@ class TestCloudDBTenantEnforcement:
         db = _make_db(tmp_path)
         # 2026-08-02 - 29 days = 2026-07-04
         simulated = datetime.date(2026, 7, 4)
-        with mock.patch("squish.squash.cloud_db.datetime") as m:
+        with mock.patch("squash.cloud_db.datetime") as m:
             m.date.today.return_value = simulated
             result = db.read_tenant_conformance("t1")
         assert result["days_until_enforcement"] == 29
@@ -97,7 +97,7 @@ class TestCloudDBTenantEnforcement:
         db = _make_db(tmp_path)
         # 2026-08-02 - 30 days = 2026-07-03
         simulated = datetime.date(2026, 7, 3)
-        with mock.patch("squish.squash.cloud_db.datetime") as m:
+        with mock.patch("squash.cloud_db.datetime") as m:
             m.date.today.return_value = simulated
             result = db.read_tenant_conformance("t1")
         assert result["days_until_enforcement"] == 30
@@ -106,7 +106,7 @@ class TestCloudDBTenantEnforcement:
     def test_existing_fields_preserved(self, tmp_path):
         """Enforcement fields are additive; all original conformance fields intact."""
         db = _make_db(tmp_path)
-        with mock.patch("squish.squash.cloud_db.datetime") as m:
+        with mock.patch("squash.cloud_db.datetime") as m:
             m.date.today.return_value = _SIMULATED_TODAY
             result = db.read_tenant_conformance("t1")
         for key in ("conformant", "compliance_score", "attestation_pass_rate",
@@ -119,7 +119,7 @@ class TestCloudDBTenantEnforcement:
 class TestCloudDBReportEnforcement:
     def test_report_enforcement_keys_present(self, tmp_path):
         db = _make_db(tmp_path)
-        with mock.patch("squish.squash.cloud_db.datetime") as m:
+        with mock.patch("squash.cloud_db.datetime") as m:
             m.date.today.return_value = _SIMULATED_TODAY
             result = db.read_conformance_report()
         for key in _ENF_KEYS:
@@ -127,14 +127,14 @@ class TestCloudDBReportEnforcement:
 
     def test_report_enforcement_deadline(self, tmp_path):
         db = _make_db(tmp_path)
-        with mock.patch("squish.squash.cloud_db.datetime") as m:
+        with mock.patch("squash.cloud_db.datetime") as m:
             m.date.today.return_value = _SIMULATED_TODAY
             result = db.read_conformance_report()
         assert result["enforcement_deadline"] == _EXPECTED_DEADLINE
 
     def test_report_days_and_risk_on_sim_date(self, tmp_path):
         db = _make_db(tmp_path)
-        with mock.patch("squish.squash.cloud_db.datetime") as m:
+        with mock.patch("squash.cloud_db.datetime") as m:
             m.date.today.return_value = _SIMULATED_TODAY
             result = db.read_conformance_report()
         assert result["days_until_enforcement"] == _EXPECTED_DAYS
