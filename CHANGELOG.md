@@ -5,6 +5,65 @@ Format: [Conventional Commits](https://www.conventionalcommits.org/) · [Keep a 
 
 ---
 
+## [1.2.0] — 2026-04-29 — Sprint 7: Enterprise Moat
+
+### Added (W178–W181 — Sprint 7: Enterprise Moat)
+
+- **`squash/vendor_registry.py`** — AI Vendor Risk Register (W178):
+  - `VendorRegistry`: SQLite-backed register of all third-party AI vendors
+  - `VendorRiskTier`: CRITICAL / HIGH / MEDIUM / LOW risk tiering
+  - `QuestionnaireGenerator`: 36-question due-diligence questionnaire per risk tier
+    (Model Governance, Training Data, Security, Bias & Fairness, Data Handling,
+    Explainability, Human Oversight, Incident Response, Attestation)
+  - `import_trust_package()`: verify vendor Trust Packages and record compliance score
+  - `squash vendor add/list/questionnaire/import-trust-package/summary` CLI
+  - 22 new tests
+
+- **`squash/asset_registry.py`** — AI Asset Registry (W179):
+  - `AssetRegistry`: SQLite-backed inventory of every AI model in the organization
+  - `sync_from_attestation()`: auto-populates from squash attestation artifacts
+  - Drift detection, CVE tracking, shadow AI flagging, staleness detection (>30d)
+  - JSON + Markdown export for board reports and procurement reviews
+  - `squash registry add/sync/list/summary/export` CLI
+  - 22 new tests
+
+- **`squash/data_lineage.py`** — Training Data Lineage Certificate (W180):
+  - `DataLineageTracer.trace()`: traces datasets from model config / provenance files / MLflow
+  - 50+ HuggingFace dataset profiles: license, PII risk, GDPR legal basis
+  - SPDX license database: permissive / copyleft / research-only / restricted classification
+  - PII risk levels: NONE → LOW → MEDIUM → HIGH → CRITICAL (special GDPR categories)
+  - GDPR Article 6 legal basis assessment per dataset
+  - Signed certificate with SHA-256 hash
+  - `squash data-lineage [--datasets ...] [--fail-on-pii] [--fail-on-license]` CLI
+  - 24 new tests
+
+- **`squash/bias_audit.py`** — Algorithmic Bias Audit (W181):
+  - `BiasAuditor.audit()`: computes 5 fairness metrics across all protected attribute groups
+  - **Demographic Parity Difference (DPD)** — outcome rate gap
+  - **Disparate Impact Ratio (DIR)** — 4/5ths EEOC rule
+  - **Equalized Odds Difference (EOD)** — TPR + FPR parity
+  - **Predictive Equality Difference (PED)** — FPR parity
+  - **Accuracy Parity** — accuracy gap across groups
+  - Regulatory thresholds: NYC Local Law 144 (DPD ≤ 0.05), EU AI Act Annex III,
+    ECOA 4/5ths rule, Fair Housing Act
+  - `BiasAuditReport` with signed audit ID and data hash
+  - Zero external dependencies — pure Python stdlib math
+  - `squash bias-audit --predictions pred.csv --protected age,gender
+    --standard nyc_local_law_144 [--fail-on-fail]` CLI
+  - 24 new tests
+
+### Changed
+- **`squash/cli.py`** — 8 new commands: `vendor` (with 5 subcommands), `registry` (with 5 subcommands), `data-lineage`, `bias-audit`
+- **`tests/test_squash_model_card.py`** — module count gate updated 56 → 60
+- **`SQUASH_MASTER_PLAN.md`** — Sprint 7 complete; Sprint 8 roadmap added (W182–W187)
+
+### Stats
+- **104 new tests** · **0 regressions** · **3444 total tests passing**
+- **60 Python modules** (was 56 after Sprint 5)
+- **8 new CLI commands / subcommand groups**
+
+---
+
 ## [1.1.0] — 2026-04-29 — Sprint 5: Market Expansion
 
 ### Added (W170–W174 — Sprint 5: Market Expansion)

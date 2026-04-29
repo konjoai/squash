@@ -41,14 +41,18 @@ That's the moat. Credo AI and OneTrust are form-filling tools. Squash is a pipel
 | Metric | Value |
 |--------|-------|
 | **EU AI Act enforcement deadline** | August 2, 2026 — **95 days** |
-| **Squash code maturity** | v1.1.0 · Sprint 5 complete · 3400+ tests passing |
-| **Python modules** | 56 standalone modules · 90+ git commits |
+| **Squash code maturity** | v1.2.0 · Sprint 7 complete · 3444+ tests passing |
+| **Python modules** | 60 standalone modules · 95+ git commits |
 | **Annex IV coverage** | ✅ 100% — 12-section generator, completeness scoring, PDF export |
-| **ISO 42001 coverage** | ✅ NEW — 38-control readiness assessment, gap analysis, remediation roadmap |
-| **Trust Package** | ✅ NEW — Signed vendor attestation bundle, `squash verify-trust-package` CLI |
-| **Agent Compliance** | ✅ NEW — OWASP Agentic AI Top 10 audit, MCP agent manifest attestation |
-| **Incident Response** | ✅ NEW — EU AI Act Article 73 incident package, signed incident report |
-| **Board Report** | ✅ NEW — Executive board report generator, quarterly compliance scorecard |
+| **ISO 42001 coverage** | ✅ — 38-control readiness assessment, gap analysis, remediation roadmap |
+| **Trust Package** | ✅ — Signed vendor attestation bundle, `squash verify-trust-package` CLI |
+| **Agent Compliance** | ✅ — OWASP Agentic AI Top 10 audit, MCP agent manifest attestation |
+| **Incident Response** | ✅ — EU AI Act Article 73 incident package, signed incident report |
+| **Board Report** | ✅ — Executive board report generator, quarterly compliance scorecard |
+| **Vendor Risk Register** | ✅ NEW — AI vendor register, risk tiering, questionnaire generator, Trust Package import |
+| **AI Asset Registry** | ✅ NEW — Model inventory, auto-sync from CI, shadow AI flagging, drift/CVE tracking |
+| **Data Lineage Certificate** | ✅ NEW — Training dataset tracing, SPDX license check, PII risk, GDPR assessment |
+| **Bias Audit** | ✅ NEW — DPD/DIR/EOD/PED; NYC Local Law 144; EU AI Act Annex III; ECOA 4/5ths |
 | **Repo status** | ✅ Separated from `konjoai/squish` — standalone Apache 2.0 repo |
 | **Production status** | Dockerfile + fly.toml written; **not yet deployed** |
 | **PyPI status** | `pyproject.toml` ready; **not yet published** |
@@ -614,14 +618,30 @@ Value/effort matrix drove this sprint: highest-value features with existing modu
 
 ---
 
-### Sprint 7 — Enterprise Moat (Post-Launch Q3 2026)
+### Sprint 7 — Enterprise Moat (April 29, 2026) ✅ COMPLETE
+
+**All code shipped 2026-04-29. 4 new modules, 104 new tests, 0 regressions.**
+
+| Wave | Task | Strategic Value | Status |
+|------|------|-----------------|--------|
+| W178 | AI Vendor Risk Register (`squash vendor`) | Two-sided marketplace foundation; eliminates 66-apps-untracked shadow AI problem | ✅ |
+| W179 | AI Asset Registry (`squash registry`) | Enterprise answer to "what AI do you have?"; auto-populates from CI/CD | ✅ |
+| W180 | Training Data Lineage Certificate (`squash data-lineage`) | GDPR §6 liability reduction; SPDX license check; PII risk flags; €15M fine prevention | ✅ |
+| W181 | Bias Audit (`squash bias-audit`) | Workday lawsuit defense; NYC Local Law 144; EU AI Act Annex III; pure Python, no deps | ✅ |
+
+**Sprint 7 exit criteria: ALL MET**
+- `squash vendor add/list/questionnaire/import-trust-package/summary` functional ✅
+- `squash registry add/sync/list/summary/export` functional ✅
+- `squash data-lineage` traces datasets, checks 50+ known HF dataset profiles, SPDX license db, PII risk ✅
+- `squash bias-audit` computes DPD, DIR (4/5ths), EOD, PED for all protected attributes ✅
+- NYC Local Law 144, EU AI Act Annex III, ECOA 4/5ths rule thresholds implemented ✅
+
+---
+
+### Sprint 8 — Moat Deepening (Planned)
 
 | Wave | Task | Strategic Value |
 |------|------|-----------------|
-| W178 | AI Vendor Risk Register (buyer-side tool) | Two-sided marketplace foundation; 66 apps/org pain |
-| W179 | AI Asset Registry (`squash registry`) | Enterprise answer to "what AI do you have?" |
-| W180 | Training Data Lineage Certificate (`squash data-lineage`) | GDPR §6 liability reduction; €15M fine prevention |
-| W181 | Bias Audit (`squash bias-audit`) | Workday lawsuit defense; NYC Local Law 144; EU AI Act Annex III |
 | W182 | Annual Review Generator (`squash annual-review`) | Automates week-long compliance exercise |
 | W183 | Public Attestation Registry (`attestations.getsquash.dev`) | Strategic moat; SSL CA equivalent for AI compliance |
 | W184 | CISO/Executive Dashboard | Board-level visibility; Credo AI displaces at 1/10th price |

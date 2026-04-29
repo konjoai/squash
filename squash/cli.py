@@ -1571,6 +1571,168 @@ def _build_parser() -> argparse.ArgumentParser:
     board_report_cmd.add_argument("--json", dest="output_json", action="store_true",
                                   help="Print JSON summary to stdout")
 
+    # ── W178 — AI Vendor Risk Register ───────────────────────────────────────
+    vendor_cmd = sub.add_parser(
+        "vendor",
+        help="AI Vendor Risk Register — track and assess third-party AI vendors",
+        description=(
+            "Manage the AI vendor risk register: add vendors, generate due-diligence "
+            "questionnaires, import Trust Packages, and monitor assessment status.\n\n"
+            "Examples:\n"
+            "  squash vendor add --name OpenAI --risk-tier high --use-case 'Customer chat'\n"
+            "  squash vendor list\n"
+            "  squash vendor questionnaire VENDOR_ID\n"
+            "  squash vendor import-trust-package VENDOR_ID ./vendor.zip\n"
+            "  squash vendor summary\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    vendor_sub = vendor_cmd.add_subparsers(dest="vendor_command", metavar="SUBCOMMAND")
+
+    vendor_add = vendor_sub.add_parser("add", help="Add a new AI vendor to the register")
+    vendor_add.add_argument("--name", required=True, help="Vendor name")
+    vendor_add.add_argument("--website", default="", help="Vendor website URL")
+    vendor_add.add_argument("--risk-tier", default="medium",
+                            choices=["critical","high","medium","low"], dest="risk_tier",
+                            help="Risk tier (default: medium)")
+    vendor_add.add_argument("--use-case", default="", dest="use_case", help="Use case description")
+    vendor_add.add_argument("--data-access", default="none", dest="data_access",
+                            help="Data accessed (e.g. PII, financial, none)")
+    vendor_add.add_argument("--notes", default="", help="Additional notes")
+    vendor_add.add_argument("--db", default=None, help="Registry database path")
+
+    vendor_list = vendor_sub.add_parser("list", help="List registered vendors")
+    vendor_list.add_argument("--tier", default=None, help="Filter by risk tier")
+    vendor_list.add_argument("--json", dest="output_json", action="store_true")
+    vendor_list.add_argument("--db", default=None)
+
+    vendor_q = vendor_sub.add_parser("questionnaire", help="Generate due-diligence questionnaire for a vendor")
+    vendor_q.add_argument("vendor_id", help="Vendor ID")
+    vendor_q.add_argument("--output", "-o", default=None, help="Output file (.json or .txt)")
+    vendor_q.add_argument("--db", default=None)
+
+    vendor_import = vendor_sub.add_parser("import-trust-package", help="Import and verify a vendor Trust Package")
+    vendor_import.add_argument("vendor_id", help="Vendor ID")
+    vendor_import.add_argument("package_path", help="Path to trust package ZIP")
+    vendor_import.add_argument("--db", default=None)
+
+    vendor_summary = vendor_sub.add_parser("summary", help="Show vendor risk register summary")
+    vendor_summary.add_argument("--json", dest="output_json", action="store_true")
+    vendor_summary.add_argument("--db", default=None)
+
+    # ── W179 — AI Asset Registry ──────────────────────────────────────────────
+    registry_cmd = sub.add_parser(
+        "registry",
+        help="AI Asset Registry — inventory of all AI models in the organization",
+        description=(
+            "Maintain a continuously updated inventory of every AI model the organization owns.\n\n"
+            "Examples:\n"
+            "  squash registry add --model-id gpt4-ft-v2 --environment production\n"
+            "  squash registry sync ./my-model\n"
+            "  squash registry list\n"
+            "  squash registry summary\n"
+            "  squash registry export --format md\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    registry_sub = registry_cmd.add_subparsers(dest="registry_command", metavar="SUBCOMMAND")
+
+    registry_add = registry_sub.add_parser("add", help="Register an AI asset")
+    registry_add.add_argument("--model-id", required=True, dest="model_id")
+    registry_add.add_argument("--model-path", default="", dest="model_path")
+    registry_add.add_argument("--environment", default="development",
+                              choices=["production","staging","development","research","retired"])
+    registry_add.add_argument("--owner", default="")
+    registry_add.add_argument("--team", default="")
+    registry_add.add_argument("--risk-tier", default="unknown", dest="risk_tier")
+    registry_add.add_argument("--notes", default="")
+    registry_add.add_argument("--shadow", action="store_true", help="Flag as shadow AI")
+    registry_add.add_argument("--db", default=None)
+
+    registry_sync = registry_sub.add_parser("sync", help="Sync an asset from squash attestation artifacts")
+    registry_sync.add_argument("model_path", help="Path to model directory with squash artifacts")
+    registry_sync.add_argument("--db", default=None)
+
+    registry_list = registry_sub.add_parser("list", help="List all registered assets")
+    registry_list.add_argument("--environment", default=None)
+    registry_list.add_argument("--risk-tier", default=None, dest="risk_tier")
+    registry_list.add_argument("--shadow-only", action="store_true", dest="shadow_only")
+    registry_list.add_argument("--json", dest="output_json", action="store_true")
+    registry_list.add_argument("--db", default=None)
+
+    registry_summary = registry_sub.add_parser("summary", help="Show asset registry summary")
+    registry_summary.add_argument("--json", dest="output_json", action="store_true")
+    registry_summary.add_argument("--db", default=None)
+
+    registry_export = registry_sub.add_parser("export", help="Export registry to JSON or Markdown")
+    registry_export.add_argument("--format", default="json", choices=["json","md"])
+    registry_export.add_argument("--output", "-o", default=None)
+    registry_export.add_argument("--db", default=None)
+
+    # ── W180 — Training Data Lineage ──────────────────────────────────────────
+    data_lineage_cmd = sub.add_parser(
+        "data-lineage",
+        help="Training Data Lineage Certificate — license check, PII risk, GDPR assessment",
+        description=(
+            "Trace training datasets from a model directory, check licenses against the "
+            "SPDX database, flag PII risks, and generate a signed lineage certificate.\n\n"
+            "Examples:\n"
+            "  squash data-lineage ./my-model\n"
+            "  squash data-lineage ./my-model --config train_config.json\n"
+            "  squash data-lineage ./my-model --datasets wikipedia,common_crawl\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    data_lineage_cmd.add_argument("model_path", help="Path to model directory")
+    data_lineage_cmd.add_argument("--config", default=None, dest="config_path",
+                                  help="Training config file path")
+    data_lineage_cmd.add_argument("--datasets", default=None,
+                                  help="Comma-separated list of dataset names (supplements auto-detection)")
+    data_lineage_cmd.add_argument("--model-id", default=None, dest="model_id")
+    data_lineage_cmd.add_argument("--output", "-o", default=None,
+                                  help="Output path (default: model_path/data_lineage_certificate.json)")
+    data_lineage_cmd.add_argument("--format", default="text", choices=["text", "json"])
+    data_lineage_cmd.add_argument("--fail-on-pii", action="store_true", dest="fail_on_pii",
+                                  help="Exit 2 if HIGH or CRITICAL PII risk detected")
+    data_lineage_cmd.add_argument("--fail-on-license", action="store_true", dest="fail_on_license",
+                                  help="Exit 2 if any license issues detected")
+
+    # ── W181 — Bias Audit ─────────────────────────────────────────────────────
+    bias_audit_cmd = sub.add_parser(
+        "bias-audit",
+        help="Algorithmic bias audit (NYC Local Law 144, EU AI Act Annex III, ECOA)",
+        description=(
+            "Audit model predictions for bias across protected attributes.\n"
+            "Metrics: Demographic Parity Difference, Disparate Impact Ratio (4/5ths rule), "
+            "Equalized Odds Difference, Predictive Equality Difference.\n\n"
+            "Examples:\n"
+            "  squash bias-audit --predictions pred.csv --protected age_group,gender\n"
+            "  squash bias-audit --predictions pred.csv --standard nyc_local_law_144 "
+            "--label-col hired --pred-col model_output --fail-on-fail\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    bias_audit_cmd.add_argument("--predictions", required=True, dest="predictions_path",
+                                help="Path to CSV with predictions and protected attributes")
+    bias_audit_cmd.add_argument("--protected", required=True,
+                                help="Comma-separated protected attribute column names")
+    bias_audit_cmd.add_argument("--label-col", default="label", dest="label_col",
+                                help="Ground truth label column name (default: label)")
+    bias_audit_cmd.add_argument("--pred-col", default="prediction", dest="pred_col",
+                                help="Prediction column name (default: prediction)")
+    bias_audit_cmd.add_argument("--standard", default="generic", dest="standard",
+                                choices=["nyc_local_law_144","eu_ai_act_annex_iii",
+                                         "ecoa_4_5ths_rule","fair_housing","generic"],
+                                help="Regulatory standard for thresholds (default: generic)")
+    bias_audit_cmd.add_argument("--model-id", default="model", dest="model_id")
+    bias_audit_cmd.add_argument("--output", "-o", default=None,
+                                help="Output path for audit report JSON")
+    bias_audit_cmd.add_argument("--format", default="text", choices=["text","json"])
+    bias_audit_cmd.add_argument("--fail-on-fail", action="store_true", dest="fail_on_fail",
+                                help="Exit 2 if overall verdict is FAIL")
+    bias_audit_cmd.add_argument("--fail-on-warn", action="store_true", dest="fail_on_warn",
+                                help="Exit 2 if overall verdict is WARN or FAIL")
+
     # ── W135 / W136 — Annex IV generate + validate ────────────────────────────
     annex_iv_cmd = sub.add_parser(
         "annex-iv",
@@ -5032,6 +5194,226 @@ def _cmd_incident(args: argparse.Namespace, quiet: bool) -> int:
     return 0
 
 
+def _cmd_vendor(args: argparse.Namespace, quiet: bool) -> int:  # noqa: C901
+    """W178 — AI Vendor Risk Register."""
+    from squash.vendor_registry import VendorRegistry
+    from pathlib import Path as _Path
+
+    db = _Path(args.db) if getattr(args, "db", None) else None
+
+    with VendorRegistry(db) as reg:
+        cmd = getattr(args, "vendor_command", None)
+
+        if cmd == "add":
+            vid = reg.add_vendor(
+                name=args.name, website=args.website, risk_tier=args.risk_tier,
+                use_case=args.use_case, data_access=args.data_access, notes=args.notes,
+            )
+            if not quiet:
+                print(f"[squash vendor] Added vendor '{args.name}' ID={vid}")
+            return 0
+
+        elif cmd == "list":
+            vendors = reg.list_vendors(tier=getattr(args, "tier", None))
+            if getattr(args, "output_json", False):
+                print(json.dumps([v.to_dict() for v in vendors], indent=2))
+            else:
+                if not vendors:
+                    print("[squash vendor] No vendors registered.")
+                for v in vendors:
+                    print(f"  [{v.risk_tier.value.upper():8s}] {v.name:30s} {v.vendor_id}  "
+                          f"status={v.assessment_status.value}")
+            return 0
+
+        elif cmd == "questionnaire":
+            q = reg.generate_questionnaire(args.vendor_id)
+            output = getattr(args, "output", None)
+            if output:
+                from pathlib import Path as _P
+                _P(output).write_text(
+                    json.dumps(q.to_dict(), indent=2) if output.endswith(".json")
+                    else q.to_text()
+                )
+                if not quiet:
+                    print(f"[squash vendor] Questionnaire written to {output}")
+            else:
+                print(q.to_text())
+            return 0
+
+        elif cmd == "import-trust-package":
+            result = reg.import_trust_package(args.vendor_id, Path(args.package_path))
+            if not quiet:
+                status = "PASS" if result["passed"] else "FAIL"
+                print(f"[squash vendor] Trust Package import: {status}  "
+                      f"score={result.get('score', 'N/A')}")
+            return 0 if result["passed"] else 1
+
+        elif cmd == "summary":
+            s = reg.risk_summary()
+            if getattr(args, "output_json", False):
+                print(json.dumps(s, indent=2))
+            else:
+                print(f"[squash vendor] Registry: {s['total_vendors']} vendors")
+                for tier, count in s["by_risk_tier"].items():
+                    if count:
+                        print(f"  {tier.upper()}: {count}")
+                if s["high_or_critical_unreviewed"] > 0:
+                    print(f"  ⚠  {s['high_or_critical_unreviewed']} HIGH/CRITICAL vendors not reviewed")
+            return 0
+
+        else:
+            print("[squash vendor] Specify a subcommand: add | list | questionnaire | import-trust-package | summary")
+            return 1
+
+
+def _cmd_registry(args: argparse.Namespace, quiet: bool) -> int:  # noqa: C901
+    """W179 — AI Asset Registry."""
+    from squash.asset_registry import AssetRegistry
+
+    db = Path(args.db) if getattr(args, "db", None) else None
+
+    with AssetRegistry(db) as reg:
+        cmd = getattr(args, "registry_command", None)
+
+        if cmd == "add":
+            aid = reg.register(
+                model_id=args.model_id, model_path=args.model_path,
+                environment=args.environment, owner=args.owner, team=args.team,
+                risk_tier=args.risk_tier, notes=args.notes,
+                is_shadow_ai=getattr(args, "shadow", False),
+            )
+            if not quiet:
+                print(f"[squash registry] Registered '{args.model_id}' ID={aid}")
+            return 0
+
+        elif cmd == "sync":
+            aid = reg.sync_from_attestation(Path(args.model_path))
+            if not quiet:
+                if aid:
+                    print(f"[squash registry] Synced from {args.model_path} → ID={aid}")
+                else:
+                    print(f"[squash registry] No attestation found in {args.model_path}")
+            return 0
+
+        elif cmd == "list":
+            assets = reg.list_assets(
+                environment=getattr(args, "environment", None),
+                risk_tier=getattr(args, "risk_tier", None),
+                shadow_only=getattr(args, "shadow_only", False),
+            )
+            if getattr(args, "output_json", False):
+                print(json.dumps([a.to_dict() for a in assets], indent=2))
+            else:
+                if not assets:
+                    print("[squash registry] No assets registered.")
+                for a in assets:
+                    score = f"{a.compliance_score:.0f}%" if a.compliance_score else "N/A"
+                    print(f"  [{a.environment.value:12s}] {a.model_id:30s} "
+                          f"score={score:5s} viol={a.open_violations} cve={a.open_cves}")
+            return 0
+
+        elif cmd == "summary":
+            s = reg.summary()
+            if getattr(args, "output_json", False):
+                print(json.dumps({
+                    "total": s.total_assets,
+                    "by_environment": s.by_environment,
+                    "by_risk_tier": s.by_risk_tier,
+                    "compliant": s.compliant, "non_compliant": s.non_compliant,
+                    "unattested": s.unattested, "stale": s.stale,
+                    "shadow_ai": s.shadow_ai_count, "violations": s.total_violations,
+                    "cves": s.total_cves, "drift": s.drift_count,
+                }, indent=2))
+            else:
+                print(s.to_text())
+            return 0
+
+        elif cmd == "export":
+            output_str = reg.export(format=getattr(args, "format", "json"))
+            output_path = getattr(args, "output", None)
+            if output_path:
+                Path(output_path).write_text(output_str)
+                if not quiet:
+                    print(f"[squash registry] Exported to {output_path}")
+            else:
+                print(output_str)
+            return 0
+
+        else:
+            print("[squash registry] Specify a subcommand: add | sync | list | summary | export")
+            return 1
+
+
+def _cmd_data_lineage(args: argparse.Namespace, quiet: bool) -> int:
+    """W180 — Training Data Lineage Certificate."""
+    from squash.data_lineage import DataLineageTracer, PIIRiskLevel
+
+    model_path = Path(args.model_path)
+    datasets = [d.strip() for d in args.datasets.split(",")] if args.datasets else None
+    config_path = Path(args.config_path) if args.config_path else None
+
+    cert = DataLineageTracer.trace(
+        model_path=model_path,
+        config_path=config_path,
+        model_id=args.model_id,
+        datasets=datasets,
+    )
+
+    output_path = Path(args.output) if args.output else model_path / "data_lineage_certificate.json"
+    cert.save(output_path)
+
+    if args.format == "json":
+        print(json.dumps(cert.to_dict(), indent=2))
+    elif not quiet:
+        print(cert.summary())
+        print(f"\n[squash data-lineage] Certificate written to {output_path}")
+
+    if args.fail_on_pii and cert.overall_risk.value in ("high", "critical"):
+        print(f"[squash data-lineage] FAIL: PII risk is {cert.overall_risk.value}", file=sys.stderr)
+        return 2
+    if args.fail_on_license and cert.license_issues:
+        print(f"[squash data-lineage] FAIL: {len(cert.license_issues)} license issue(s)", file=sys.stderr)
+        return 2
+    return 0
+
+
+def _cmd_bias_audit(args: argparse.Namespace, quiet: bool) -> int:
+    """W181 — Bias Audit."""
+    from squash.bias_audit import BiasAuditor, FairnessVerdict
+
+    predictions_path = Path(args.predictions_path)
+    if not predictions_path.exists():
+        print(f"[squash bias-audit] ERROR: predictions file not found: {predictions_path}", file=sys.stderr)
+        return 1
+
+    protected = [a.strip() for a in args.protected.split(",")]
+
+    report = BiasAuditor.audit_from_csv(
+        predictions_path=predictions_path,
+        protected_attributes=protected,
+        label_col=args.label_col,
+        pred_col=args.pred_col,
+        model_id=args.model_id,
+        standard=args.standard,
+    )
+
+    if args.output:
+        report.save(Path(args.output))
+
+    if args.format == "json":
+        print(json.dumps(report.to_dict(), indent=2))
+    elif not quiet:
+        print(report.summary())
+        if args.output and not quiet:
+            print(f"\n[squash bias-audit] Report written to {args.output}")
+
+    if args.fail_on_fail and report.overall_verdict == FairnessVerdict.FAIL:
+        return 2
+    if args.fail_on_warn and report.overall_verdict in (FairnessVerdict.FAIL, FairnessVerdict.WARN):
+        return 2
+    return 0
+
+
 def _cmd_board_report(args: argparse.Namespace, quiet: bool) -> int:
     """W174 — Board report generation."""
     from squash.board_report import BoardReportGenerator
@@ -5174,6 +5556,14 @@ def main() -> None:
         sys.exit(_cmd_watch(args, quiet))
     elif args.command == "install-hook":
         sys.exit(_cmd_install_hook(args, quiet))
+    elif args.command == "vendor":
+        sys.exit(_cmd_vendor(args, quiet))
+    elif args.command == "registry":
+        sys.exit(_cmd_registry(args, quiet))
+    elif args.command == "data-lineage":
+        sys.exit(_cmd_data_lineage(args, quiet))
+    elif args.command == "bias-audit":
+        sys.exit(_cmd_bias_audit(args, quiet))
     elif args.command == "iso42001":
         sys.exit(_cmd_iso42001(args, quiet))
     elif args.command == "trust-package":
