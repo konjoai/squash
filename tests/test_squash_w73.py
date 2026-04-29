@@ -15,9 +15,9 @@ def _read_version() -> str:
 
 
 class TestSquashVersion:
-    def test_version_is_1_3_0(self):
+    def test_version_is_1_4_0(self):
         version = _read_version()
-        assert version == "1.3.0", f"Expected version 1.3.0, got {version}"
+        assert version == "1.4.0", f"Expected version 1.4.0, got {version}"
 
     def test_version_follows_semver(self):
         version = _read_version()

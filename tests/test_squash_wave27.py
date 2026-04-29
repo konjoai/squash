@@ -613,8 +613,8 @@ class TestWebhookCli:
         )
         assert result.returncode == 0
         output = (result.stdout + result.stderr).lower()
-        assert "port" in output
-        assert "tls" in output or "cert" in output
+        assert "add" in output
+        assert "list" in output or "register" in output
 
     def test_squash_help_includes_webhook(self):
         result = subprocess.run(

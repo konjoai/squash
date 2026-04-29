@@ -1864,6 +1864,120 @@ def _build_parser() -> argparse.ArgumentParser:
     bias_audit_cmd.add_argument("--fail-on-warn", action="store_true", dest="fail_on_warn",
                                 help="Exit 2 if overall verdict is WARN or FAIL")
 
+    # ── W191 — SBOM diff ──────────────────────────────────────────────────────
+    diff_cmd = sub.add_parser(
+        "diff",
+        help="Compare two squash attestation files and show compliance delta",
+        description=(
+            "Compare two squash attestation JSON files. Shows compliance score movement,\n"
+            "component changes, policy drift, and vulnerability lifecycle.\n\n"
+            "Examples:\n"
+            "  squash diff v1.json v2.json\n"
+            "  squash diff v1.json v2.json --format json\n"
+            "  squash diff v1.json v2.json --format html --output delta.html\n"
+            "  squash diff v1.json v2.json --fail-on-regression\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    diff_cmd.add_argument("before", help="Path to the older (before) attestation JSON")
+    diff_cmd.add_argument("after", help="Path to the newer (after) attestation JSON")
+    diff_cmd.add_argument(
+        "--format", default="table",
+        choices=["table", "json", "html", "summary"],
+        help="Output format (default: table)",
+    )
+    diff_cmd.add_argument("--output", "-o", default=None, help="Write output to file instead of stdout")
+    diff_cmd.add_argument(
+        "--fail-on-regression", action="store_true", dest="fail_on_regression",
+        help="Exit 2 if compliance regression is detected",
+    )
+
+    # ── W190 — Webhook management ─────────────────────────────────────────────
+    webhook_cmd = sub.add_parser(
+        "webhook",
+        help="Manage outbound webhook endpoints for squash compliance events",
+        description=(
+            "Register, list, test, and remove outbound webhook endpoints.\n"
+            "Squash POSTs signed JSON events to registered endpoints on attestation,\n"
+            "violation, drift, and VEX alert events.\n\n"
+            "Examples:\n"
+            "  squash webhook add --url https://hooks.example.com/squash --events attestation.complete\n"
+            "  squash webhook list\n"
+            "  squash webhook test --url https://hooks.example.com/squash\n"
+            "  squash webhook remove <id>\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    webhook_sub = webhook_cmd.add_subparsers(dest="webhook_command")
+    wh_add = webhook_sub.add_parser("add", help="Register a new webhook endpoint")
+    wh_add.add_argument("--url", required=True, help="HTTPS endpoint URL")
+    wh_add.add_argument(
+        "--events", default=None,
+        help="Comma-separated event types (default: all). Options: attestation.complete,violation.detected,drift.detected,vex.alert,score.changed",
+    )
+    wh_add.add_argument("--secret", default=None, help="HMAC-SHA256 signing secret (auto-generated if omitted)")
+    wh_list = webhook_sub.add_parser("list", help="List registered webhook endpoints")
+    wh_list.add_argument("--all", action="store_true", dest="show_all", help="Include inactive endpoints")
+    wh_test = webhook_sub.add_parser("test", help="Send a test event to a URL")
+    wh_test.add_argument("--url", required=True, help="URL to test")
+    wh_rm = webhook_sub.add_parser("remove", help="Deactivate a webhook endpoint")
+    wh_rm.add_argument("id", help="Endpoint ID to remove")
+
+    # ── W188 — Telemetry ──────────────────────────────────────────────────────
+    telemetry_cmd = sub.add_parser(
+        "telemetry",
+        help="Configure and test OpenTelemetry integration",
+        description=(
+            "Configure squash to emit OpenTelemetry spans for every attestation run.\n"
+            "Integrates with Datadog, Honeycomb, Jaeger, and any OTLP-compatible backend.\n\n"
+            "Examples:\n"
+            "  squash telemetry status\n"
+            "  squash telemetry test --endpoint http://localhost:4317\n"
+            "  squash telemetry configure --endpoint http://otelcollector:4317 --service squash-prod\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    telemetry_sub = telemetry_cmd.add_subparsers(dest="telemetry_command")
+    tel_status = telemetry_sub.add_parser("status", help="Show current telemetry configuration")
+    tel_test = telemetry_sub.add_parser("test", help="Send a test span to verify connectivity")
+    tel_test.add_argument("--endpoint", default=None, help="OTLP gRPC endpoint (overrides env var)")
+    tel_test.add_argument("--http-endpoint", default=None, dest="http_endpoint", help="OTLP HTTP endpoint")
+    tel_configure = telemetry_sub.add_parser("configure", help="Show configuration instructions")
+    tel_configure.add_argument("--endpoint", default=None, help="OTLP gRPC endpoint")
+    tel_configure.add_argument("--service", default="squash", help="Service name (default: squash)")
+
+    # ── W189 — GitOps ─────────────────────────────────────────────────────────
+    gitops_cmd = sub.add_parser(
+        "gitops",
+        help="ArgoCD / Flux GitOps enforcement gate for Kubernetes deployments",
+        description=(
+            "Enforce squash compliance in Kubernetes GitOps pipelines.\n"
+            "Blocks deployment of AI models that lack valid attestations or\n"
+            "fall below the minimum compliance score.\n\n"
+            "Examples:\n"
+            "  squash gitops check --manifest deployment.yaml --min-score 80\n"
+            "  squash gitops webhook-manifest --url https://squash.example.com\n"
+            "  squash gitops annotate --deployment my-model --attestation att://myorg/v1 --score 87.5\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    gitops_sub = gitops_cmd.add_subparsers(dest="gitops_command")
+    go_check = gitops_sub.add_parser("check", help="Check a K8s manifest for squash compliance annotations")
+    go_check.add_argument("--manifest", required=True, dest="manifest_path", help="Path to K8s manifest YAML")
+    go_check.add_argument("--min-score", type=float, default=80.0, dest="min_score", help="Minimum compliance score (default: 80)")
+    go_check.add_argument("--require-attestation", action="store_true", default=True, dest="require_attestation")
+    go_check.add_argument("--json", action="store_true", dest="output_json", help="Output JSON")
+    go_manifest = gitops_sub.add_parser("webhook-manifest", help="Generate K8s ValidatingWebhookConfiguration YAML")
+    go_manifest.add_argument("--url", required=True, help="HTTPS URL where squash webhook is hosted")
+    go_manifest.add_argument("--namespace", default="squash-system", help="Kubernetes namespace (default: squash-system)")
+    go_manifest.add_argument("--failure-policy", default="Fail", choices=["Fail", "Ignore"], dest="failure_policy")
+    go_annotate = gitops_sub.add_parser("annotate", help="Print kubectl annotate command for a deployment")
+    go_annotate.add_argument("--deployment", required=True, help="Deployment name")
+    go_annotate.add_argument("--attestation", required=True, dest="attestation_id", help="Attestation ID (att:// URI)")
+    go_annotate.add_argument("--score", type=float, required=True, dest="compliance_score", help="Compliance score")
+    go_annotate.add_argument("--policy", default="eu-ai-act", help="Policy name (default: eu-ai-act)")
+    go_annotate.add_argument("--passed", action="store_true", default=True)
+
     # ── W135 / W136 — Annex IV generate + validate ────────────────────────────
     annex_iv_cmd = sub.add_parser(
         "annex-iv",
@@ -5736,6 +5850,223 @@ def _cmd_bias_audit(args: argparse.Namespace, quiet: bool) -> int:
     return 0
 
 
+def _cmd_diff(args: argparse.Namespace, quiet: bool) -> int:
+    """Compare two squash attestation JSON files."""
+    from squash.sbom_diff import diff_attestations
+
+    before_path = Path(args.before)
+    after_path = Path(getattr(args, "after"))
+
+    try:
+        delta = diff_attestations(before_path, after_path)
+    except (FileNotFoundError, ValueError) as exc:
+        print(f"[squash diff] Error: {exc}", file=sys.stderr)
+        return 1
+
+    fmt = getattr(args, "format", "table")
+    output_path = getattr(args, "output", None)
+
+    if fmt == "json":
+        text = json.dumps(delta.to_dict(), indent=2)
+    elif fmt == "html":
+        text = delta.to_html()
+    elif fmt == "summary":
+        text = delta.summary_line()
+    else:
+        text = delta.to_table()
+
+    if output_path:
+        Path(output_path).write_text(text)
+        if not quiet:
+            print(f"[squash diff] Written to {output_path}")
+    else:
+        print(text)
+
+    if getattr(args, "fail_on_regression", False) and delta.is_regression:
+        if not quiet:
+            print("[squash diff] Regression detected — exiting 2", file=sys.stderr)
+        return 2
+
+    return 0
+
+
+def _cmd_webhook(args: argparse.Namespace, quiet: bool) -> int:
+    """Manage outbound webhook endpoints."""
+    from squash.webhook_delivery import WebhookDelivery, WebhookEvent
+
+    db_path = os.environ.get("SQUASH_WEBHOOK_DB", "squash_webhooks.db")
+    wh = WebhookDelivery(db_path=db_path)
+    cmd = getattr(args, "webhook_command", None)
+
+    if cmd == "add":
+        events_str = getattr(args, "events", None)
+        if events_str:
+            event_list = [WebhookEvent.from_str(e.strip()) for e in events_str.split(",")]
+        else:
+            event_list = WebhookEvent.all()
+        secret = getattr(args, "secret", None)
+        ep = wh.register(url=args.url, events=event_list, secret=secret)
+        if not quiet:
+            print(f"[squash webhook] Registered endpoint {ep.id}")
+            print(f"  URL:    {ep.url}")
+            print(f"  Events: {', '.join(e.value for e in ep.events)}")
+            print(f"  Secret: {ep.secret}")
+        return 0
+
+    elif cmd == "list":
+        show_all = getattr(args, "show_all", False)
+        endpoints = wh.list_endpoints(active_only=not show_all)
+        if not endpoints:
+            print("[squash webhook] No endpoints registered.")
+            return 0
+        for ep in endpoints:
+            status = "active" if ep.active else "inactive"
+            print(f"  {ep.id}  [{status}]  {ep.url}")
+            print(f"    events: {', '.join(e.value for e in ep.events)}")
+            print(f"    deliveries: {ep.delivery_count}  last_status: {ep.last_status_code}")
+        return 0
+
+    elif cmd == "test":
+        result = wh.test_endpoint(args.url)
+        if result.success:
+            print(f"[squash webhook] Test delivery succeeded ({result.status_code}) in {result.duration_ms:.0f}ms")
+            return 0
+        else:
+            print(f"[squash webhook] Test delivery failed: {result.error or result.status_code}", file=sys.stderr)
+            return 1
+
+    elif cmd == "remove":
+        removed = wh.remove(args.id)
+        if removed:
+            print(f"[squash webhook] Endpoint {args.id} deactivated.")
+        else:
+            print(f"[squash webhook] Endpoint {args.id} not found.", file=sys.stderr)
+            return 1
+        return 0
+
+    else:
+        print("squash webhook: specify a subcommand — add | list | test | remove")
+        return 1
+
+
+def _cmd_telemetry(args: argparse.Namespace, quiet: bool) -> int:
+    """Configure and test OpenTelemetry integration."""
+    from squash.telemetry import SquashTelemetry
+
+    cmd = getattr(args, "telemetry_command", None)
+
+    if cmd == "status":
+        tel = SquashTelemetry.from_env()
+        status = tel.status()
+        print("[squash telemetry] Status")
+        print(f"  Enabled:            {status.enabled}")
+        print(f"  OTel available:     {status.otel_available}")
+        print(f"  Exporter available: {status.exporter_available}")
+        print(f"  Endpoint:           {status.endpoint or '(not configured)'}")
+        print(f"  Service name:       {status.service_name}")
+        print(f"  Spans emitted:      {status.spans_emitted}")
+        if status.last_error:
+            print(f"  Last error:         {status.last_error}")
+        if not status.otel_available:
+            print("\n  Install OTel: pip install opentelemetry-api opentelemetry-sdk opentelemetry-exporter-otlp-proto-grpc")
+        return 0
+
+    elif cmd == "test":
+        endpoint = getattr(args, "endpoint", None)
+        http_endpoint = getattr(args, "http_endpoint", None)
+        tel = SquashTelemetry(
+            endpoint=endpoint or os.environ.get("SQUASH_OTEL_ENDPOINT"),
+            http_endpoint=http_endpoint or os.environ.get("SQUASH_OTEL_HTTP_ENDPOINT"),
+        )
+        result = tel.test_connection()
+        if result.emitted:
+            print(f"[squash telemetry] Test span emitted — trace_id={result.trace_id}")
+            return 0
+        elif not result.otel_available:
+            print("[squash telemetry] opentelemetry-api not installed. Install with:")
+            print("  pip install opentelemetry-api opentelemetry-sdk opentelemetry-exporter-otlp-proto-grpc")
+            return 1
+        else:
+            print(f"[squash telemetry] Test span not emitted: {result.error or 'no endpoint configured'}")
+            return 1
+
+    elif cmd == "configure":
+        endpoint = getattr(args, "endpoint", None)
+        service = getattr(args, "service", "squash")
+        print("[squash telemetry] Set these environment variables to enable telemetry:")
+        if endpoint:
+            print(f"  export SQUASH_OTEL_ENDPOINT={endpoint}")
+        else:
+            print("  export SQUASH_OTEL_ENDPOINT=http://localhost:4317")
+        print(f"  export SQUASH_OTEL_SERVICE_NAME={service}")
+        print("  export SQUASH_OTEL_ENABLED=true")
+        return 0
+
+    else:
+        print("squash telemetry: specify a subcommand — status | test | configure")
+        return 1
+
+
+def _cmd_gitops(args: argparse.Namespace, quiet: bool) -> int:
+    """ArgoCD / Flux GitOps enforcement gate."""
+    from squash.integrations.gitops import (
+        check_manifest_compliance,
+        generate_webhook_manifest,
+        annotate_deployment_command,
+    )
+
+    cmd = getattr(args, "gitops_command", None)
+
+    if cmd == "check":
+        manifest_path = Path(args.manifest_path)
+        result = check_manifest_compliance(
+            manifest_path=manifest_path,
+            min_score=getattr(args, "min_score", 80.0),
+            require_attestation=getattr(args, "require_attestation", True),
+        )
+        if getattr(args, "output_json", False):
+            print(json.dumps(result.to_dict(), indent=2))
+        else:
+            icon = "✓" if result.passed else "✗"
+            print(f"[squash gitops] {icon} {result.resource_kind}/{result.resource_name}")
+            print(f"  Passed:     {result.passed}")
+            print(f"  Reason:     {result.reason}")
+            if result.attestation_id:
+                print(f"  Attestation: {result.attestation_id}")
+            if result.compliance_score is not None:
+                print(f"  Score:      {result.compliance_score:.1f}")
+        return 0 if result.passed else 2
+
+    elif cmd == "webhook-manifest":
+        yaml_str = generate_webhook_manifest(
+            webhook_url=args.url,
+            namespace=getattr(args, "namespace", "squash-system"),
+            failure_policy=getattr(args, "failure_policy", "Fail"),
+        )
+        output = getattr(args, "output", None)
+        if output:
+            Path(output).write_text(yaml_str)
+            print(f"[squash gitops] Written to {output}")
+        else:
+            print(yaml_str)
+        return 0
+
+    elif cmd == "annotate":
+        cmd_str = annotate_deployment_command(
+            deployment_name=args.deployment,
+            attestation_id=args.attestation_id,
+            compliance_score=args.compliance_score,
+            policy=getattr(args, "policy", "eu-ai-act"),
+            passed=getattr(args, "passed", True),
+        )
+        print(cmd_str)
+        return 0
+
+    else:
+        print("squash gitops: specify a subcommand — check | webhook-manifest | annotate")
+        return 1
+
+
 def _cmd_board_report(args: argparse.Namespace, quiet: bool) -> int:
     """W174 — Board report generation."""
     from squash.board_report import BoardReportGenerator
@@ -5912,6 +6243,14 @@ def main() -> None:
         sys.exit(_cmd_incident(args, quiet))
     elif args.command == "board-report":
         sys.exit(_cmd_board_report(args, quiet))
+    elif args.command == "diff":
+        sys.exit(_cmd_diff(args, quiet))
+    elif args.command == "webhook":
+        sys.exit(_cmd_webhook(args, quiet))
+    elif args.command == "telemetry":
+        sys.exit(_cmd_telemetry(args, quiet))
+    elif args.command == "gitops":
+        sys.exit(_cmd_gitops(args, quiet))
     else:
         parser.print_help()
         sys.exit(1)

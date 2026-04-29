@@ -36,13 +36,13 @@ That's the moat. Credo AI and OneTrust are form-filling tools. Squash is a pipel
 
 ---
 
-## ⚡ Situation Report (April 29, 2026) — Post Sprint 5 ✅ COMPLETE
+## ⚡ Situation Report (April 29, 2026) — Post Sprint 9 ✅ COMPLETE
 
 | Metric | Value |
 |--------|-------|
 | **EU AI Act enforcement deadline** | August 2, 2026 — **95 days** |
-| **Squash code maturity** | v1.3.0 · Sprint 8 complete · 3572+ tests passing |
-| **Python modules** | 65 standalone modules + VS Code extension · 100+ git commits |
+| **Squash code maturity** | v1.4.0 · Sprint 9 complete · 3839 tests passing |
+| **Python modules** | 69 standalone modules + VS Code extension · 100+ git commits |
 | **Annex IV coverage** | ✅ 100% — 12-section generator, completeness scoring, PDF export |
 | **ISO 42001 coverage** | ✅ — 38-control readiness assessment, gap analysis, remediation roadmap |
 | **Trust Package** | ✅ — Signed vendor attestation bundle, `squash verify-trust-package` CLI |
@@ -59,6 +59,10 @@ That's the moat. Credo AI and OneTrust are form-filling tools. Squash is a pipel
 | **Regulatory Feed** | ✅ NEW — 9 regulations tracked; enforcement deadlines; change log; squash control mapping |
 | **M&A Due Diligence** | ✅ NEW — Complete AI DD package; R&W guidance; liability flag scoring; ZIP bundle |
 | **VS Code Extension** | ✅ NEW — Full TypeScript scaffold; 9 commands; sidebar tree; status bar; dashboard webview |
+| **OpenTelemetry** | ✅ NEW (Sprint 9) — `squash/telemetry.py`; OTLP gRPC+HTTP; spans per attestation; Datadog/Honeycomb/Jaeger |
+| **ArgoCD/Flux GitOps Gate** | ✅ NEW (Sprint 9) — K8s ValidatingWebhookConfiguration; admission deny on missing/low score; `squash gitops check` CLI |
+| **Generic Webhook Delivery** | ✅ NEW (Sprint 9) — HMAC-signed outbound webhooks; 5 event types; SQLite persistence; `squash webhook` CLI |
+| **SBOM Diff** | ✅ NEW (Sprint 9) — `squash diff v1.json v2.json`; score delta, component/policy/vuln drift; table/JSON/HTML |
 | **Repo status** | ✅ Separated from `konjoai/squish` — standalone Apache 2.0 repo |
 | **Production status** | Dockerfile + fly.toml written; **not yet deployed** |
 | **PyPI status** | `pyproject.toml` ready; **not yet published** |
@@ -605,6 +609,28 @@ Value/effort matrix drove this sprint: highest-value features with existing modu
 - `squash agent-audit --manifest agent.json` covers all 10 OWASP Agentic AI risks ✅
 - `squash incident --model ./model --timestamp ISO8601` produces EU AI Act Article 73 compliant report ✅
 - `squash board-report --quarter Q2-2026` generates executive-ready PDF with scorecard ✅
+
+---
+
+### Sprint 9 — Enterprise Pipeline Integration (April 29, 2026) ✅ COMPLETE
+
+**All code shipped 2026-04-29. 4 new modules, 212 new tests, 0 regressions.**
+
+| Wave | Module / Feature | What It Delivers | Status |
+|------|-----------------|-----------------|--------|
+| W188 | `squash/telemetry.py` | OpenTelemetry spans per attestation run — OTLP gRPC+HTTP, Datadog/Honeycomb/Jaeger; `squash telemetry status/test/configure` | ✅ |
+| W189 | `squash/integrations/gitops.py` | ArgoCD/Flux admission webhook — K8s ValidatingWebhookConfiguration; blocks deployment without attestation or below min score; `squash gitops check/webhook-manifest/annotate` | ✅ |
+| W190 | `squash/webhook_delivery.py` | Generic outbound webhook delivery — HMAC-SHA256 signed; 5 event types; SQLite persistence; `squash webhook add/list/test/remove` | ✅ |
+| W191 | `squash/sbom_diff.py` | Attestation diff engine — score delta, component/policy/vulnerability drift; ANSI table/JSON/HTML output; `squash diff v1.json v2.json --fail-on-regression` | ✅ |
+
+**Sprint 9 exit criteria: ALL MET**
+- `squash telemetry status` shows OTel configuration; `squash telemetry test` emits test span ✅
+- `squash gitops check --manifest deployment.yaml` passes/fails based on squash annotations ✅
+- `squash gitops webhook-manifest --url https://...` outputs K8s ValidatingWebhookConfiguration YAML ✅
+- `squash webhook add/list/test/remove` manage persistent outbound endpoints ✅
+- `squash diff v1.json v2.json` outputs score delta, component/policy/vuln changes ✅
+- `squash diff --fail-on-regression` exits non-zero on compliance regression ✅
+- 3839/3839 tests passing · 0 regressions
 
 ---
 

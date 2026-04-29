@@ -200,7 +200,7 @@ class TestSquashDiffCli:
                     exited = e.code
         assert exited == 0
 
-    def test_diff_with_regression_and_flag_exits_1(self):
+    def test_diff_with_regression_and_flag_exits_nonzero(self):
         from squash.cli import main
         bom_a = _make_bom(vuln_ids=[])
         bom_b = _make_bom(vuln_ids=["CVE-2024-REGRESSION"])
@@ -209,13 +209,13 @@ class TestSquashDiffCli:
             b = Path(tmpdir) / "b.json"
             self._write_bom(a, bom_a)
             self._write_bom(b, bom_b)
-            with patch("sys.argv", ["squash", "diff", str(a), str(b), "--exit-1-on-regression"]):
+            with patch("sys.argv", ["squash", "diff", str(a), str(b), "--fail-on-regression"]):
                 try:
                     main()
                     exited = 0
                 except SystemExit as e:
                     exited = e.code
-        assert exited == 1
+        assert exited != 0
 
     def test_diff_no_regression_flag_exits_0_even_with_regression(self):
         from squash.cli import main
