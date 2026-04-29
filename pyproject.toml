@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "squash-ai"
-version = "1.0.0"
+version = "1.1.0"
 description = "Squash violations, not velocity. Automated EU AI Act compliance for ML teams — CI/CD-native, open-core, developer-first."
 readme = "README.md"
 requires-python = ">=3.10"

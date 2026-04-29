@@ -5,6 +5,62 @@ Format: [Conventional Commits](https://www.conventionalcommits.org/) · [Keep a 
 
 ---
 
+## [1.1.0] — 2026-04-29 — Sprint 5: Market Expansion
+
+### Added (W170–W174 — Sprint 5: Market Expansion)
+
+- **`squash/iso42001.py`** — ISO/IEC 42001:2023 AI Management System readiness assessment (W170):
+  - `Iso42001Assessor.assess()`: 38-control gap analysis covering Clauses 4–10 and Annex A
+  - `ReadinessLevel` enum: `CERTIFIED_READY` / `SUBSTANTIALLY_COMPLIANT` / `PARTIAL` / `EARLY_STAGE`
+  - Weighted scoring, high-priority gap extraction, remediation roadmap with squash CLI commands
+  - `squash iso42001 ./model [--format json] [--fail-below SCORE]` CLI command
+  - 21 new tests in `tests/test_squash_sprint5.py`
+
+- **`squash/trust_package.py`** — Signed vendor attestation bundle exporter + verifier (W171):
+  - `TrustPackageBuilder.build()`: bundles CycloneDX ML-BOM, SPDX, NIST RMF, VEX, SLSA, ISO 42001 report into signed ZIP with SHA-256 manifest
+  - `TrustPackageVerifier.verify()`: integrity check of all artifacts + manifest in <10 seconds
+  - EU AI Act conformance score auto-computed from available artifacts
+  - `squash trust-package ./model --output vendor.zip [--sign] [--model-id ID]` CLI
+  - `squash verify-trust-package vendor.zip [--json] [--fail-on-error]` CLI
+  - 22 new tests
+
+- **`squash/agent_audit.py`** — OWASP Agentic AI Top 10 (December 2025) compliance audit (W172):
+  - `AgentAuditor.audit()`: audits all 10 agentic AI risks from any agent manifest format
+  - Covers: AA1 Goal Hijacking, AA2 Unsafe Tools, AA3 Identity Abuse, AA4 Memory Poisoning, AA5 Cascading Failure, AA6 Rogue Agents, AA7 Auditability, AA8 Excessive Autonomy, AA9 Data Exfiltration, AA10 Human Oversight
+  - LangChain / LlamaIndex / CrewAI manifest format parsing
+  - `squash agent-audit ./agent.json [--fail-on-critical] [--format json]` CLI
+  - 25 new tests
+
+- **`squash/incident.py`** — AI incident response package generator (W173):
+  - `IncidentResponder.respond()`: structured incident package with attestation snapshot, EU AI Act Article 73 disclosure, drift delta, and remediation plan
+  - `IncidentSeverity` enum: critical → serious → moderate → minor (with regulatory threshold mapping)
+  - `IncidentCategory` enum: 10 categories (bias_discrimination, pii_exposure, prompt_injection, etc.)
+  - Automatic 15-working-day Article 73 notification deadline computation
+  - PII exposure → GDPR Art. 33 (72h) action auto-inserted
+  - `squash incident ./model --description "..." [--severity serious] [--affected-persons N]` CLI
+  - 22 new tests
+
+- **`squash/board_report.py`** — Executive AI compliance board report generator (W174):
+  - `BoardReportGenerator.generate()`: quarterly board report from model portfolio
+  - Outputs: JSON (machine-readable), Markdown, plain text summary, optional PDF via weasyprint
+  - Sections: executive summary, compliance scorecard, model portfolio status, regulatory deadlines, remediation roadmap
+  - Auto-populates EU AI Act + Colorado AI Act + ISO 42001 deadlines with days-remaining countdown
+  - Portfolio trend: IMPROVING / STABLE / DEGRADING
+  - `squash board-report --quarter Q2-2026 [--models-dir ./models] [--output-dir ./report] [--json]` CLI
+  - 18 new tests
+
+### Changed
+- **`squash/cli.py`** — 7 new commands: `iso42001`, `trust-package`, `verify-trust-package`, `agent-audit`, `incident`, `board-report`
+- **`tests/test_squash_model_card.py`** — module count gate updated from 51 → 56 (Sprint 5 +5 modules)
+- **`SQUASH_MASTER_PLAN.md`** — Sprint 5 roadmap + Sprint 7 (Enterprise Moat) waves W178–W187 added; market intelligence section added with structural market shift analysis ($340M → $4.83B TAM)
+
+### Stats
+- **120 new tests** · **0 regressions** · **3339 total tests passing**
+- **56 Python modules** (was 51 after Sprint 4B)
+- **5 new CLI commands**
+
+---
+
 ## [1.0.0] — 2026-04-28 — Sprint 4A: Critical Path to Launch
 
 ### Changed

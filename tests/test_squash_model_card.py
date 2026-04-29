@@ -643,10 +643,12 @@ class TestModuleCountGate(unittest.TestCase):
         # postgres_db, monitoring + integrations subpackage — 47 total.
         # Sprint 4B (W163–W168) added notifications.py, metrics.py, ticketing.py,
         # middleware.py — 51 total.
+        # Sprint 5 (W170–W174) added iso42001.py, trust_package.py, agent_audit.py,
+        # incident.py, board_report.py — 56 total.
         self.assertEqual(
             count,
-            51,
-            msg=f"squash/ has {count} Python files (expected 51 after Sprint 4B). "
+            56,
+            msg=f"squash/ has {count} Python files (expected 56 after Sprint 5). "
                 "If you added a file, update this gate.",
         )
 

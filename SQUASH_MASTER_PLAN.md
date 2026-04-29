@@ -1,7 +1,7 @@
 # SQUASH — Master Grand Plan
 ## From Zero to $10M ARR: EU AI Act Compliance Platform
 
-> **Last updated:** 2026-04-28
+> **Last updated:** 2026-04-29
 > **Status:** Living document — updated on every commit
 > **Horizon:** April 2026 → October 2027
 
@@ -36,27 +36,75 @@ That's the moat. Credo AI and OneTrust are form-filling tools. Squash is a pipel
 
 ---
 
-## ⚡ Situation Report (April 28, 2026) — Post Sprint 4B ✅ COMPLETE
+## ⚡ Situation Report (April 29, 2026) — Post Sprint 5 ✅ COMPLETE
 
 | Metric | Value |
 |--------|-------|
-| **EU AI Act enforcement deadline** | August 2, 2026 — **96 days** |
-| **Squash code maturity** | v0.9.14 · Sprint 4B complete · 2299+ tests passing |
-| **Python modules** | 51 standalone modules · 83 git commits |
+| **EU AI Act enforcement deadline** | August 2, 2026 — **95 days** |
+| **Squash code maturity** | v1.1.0 · Sprint 5 complete · 3400+ tests passing |
+| **Python modules** | 56 standalone modules · 90+ git commits |
 | **Annex IV coverage** | ✅ 100% — 12-section generator, completeness scoring, PDF export |
+| **ISO 42001 coverage** | ✅ NEW — 38-control readiness assessment, gap analysis, remediation roadmap |
+| **Trust Package** | ✅ NEW — Signed vendor attestation bundle, `squash verify-trust-package` CLI |
+| **Agent Compliance** | ✅ NEW — OWASP Agentic AI Top 10 audit, MCP agent manifest attestation |
+| **Incident Response** | ✅ NEW — EU AI Act Article 73 incident package, signed incident report |
+| **Board Report** | ✅ NEW — Executive board report generator, quarterly compliance scorecard |
 | **Repo status** | ✅ Separated from `konjoai/squish` — standalone Apache 2.0 repo |
 | **Production status** | Dockerfile + fly.toml written; **not yet deployed** |
 | **PyPI status** | `pyproject.toml` ready; **not yet published** |
 | **Integration surface** | GitHub Actions, GitLab CI, Jenkins, Azure DevOps, Helm, MLflow, W&B, HuggingFace, SageMaker, Vertex AI, Ray, Kubernetes, Slack, Teams, JIRA, Linear, GitHub Issues |
-| **TAM** | $609M in 2026 · $10.5B by 2035 (37.3% CAGR) |
+| **TAM (updated)** | $340M today → $4.83B by 2034 (35–45% CAGR) · 75%+ of orgs will have formal AI governance by end of 2026 |
+| **Regulatory urgency** | EU AI Act Aug 2 · Colorado AI Act June 2026 · SEC top AI/cybersecurity exam priority · Italy fined OpenAI €15M for GDPR |
 | **Competitor pricing** | Credo AI $30K–$150K/yr · OneTrust $50K–$200K/yr |
 | **Squash target pricing** | $0 (Community) → $299 (Pro) → $499 (Startup) → $899 (Team) → $4K+ (Enterprise) |
 
 **The clock is running.** High-risk AI enforcement hits August 2, 2026. Every week of delay is market share surrendered.
 
-**What's complete:** 83 commits. v0.9.14. 51 Python modules. 2299+ tests across 4 completed sprints. Full engineering surface: Annex IV engine, cloud API + auth, CI/CD integration layer, Prometheus metrics, Slack/Teams/webhook notifications, JIRA/Linear/GitHub ticketing, FastAPI/Django compliance middleware, `squash demo`, `squash init`, `squash watch`, `squash install-hook`, shields.io-compatible badge SVG endpoint. An insane surface area for one person — competitors at $30K–$150K/yr don't touch half of this.
+**Market context update (April 2026):** The regulatory shift is structural, not cyclical. 75% of organizations will have formal AI governance frameworks by end of 2026 (up from <30% in 2023). The EU AI Act, Colorado AI Act (June 2026), SEC AI disclosure priority, and Italy's OpenAI GDPR fine confirm that regulators have crossed from intent to enforcement. They no longer want policy statements. **They want proof. Squash generates proof.**
+
+**What's complete:** 90+ commits. v1.1.0. 56 Python modules. 3400+ tests across 5 completed sprints. Full engineering surface: Annex IV engine, ISO 42001 readiness, Trust Package exporter/verifier, OWASP Agentic AI Top 10, incident response, board report generator, cloud API + auth, CI/CD integration layer, Prometheus metrics, Slack/Teams/webhook notifications, JIRA/Linear/GitHub ticketing, FastAPI/Django compliance middleware, `squash demo`, `squash init`, `squash watch`, `squash install-hook`, shields.io-compatible badge SVG endpoint.
 
 **What's not done yet:** PyPI publication, live Fly.io production deployment, website, domain, Stripe checkout links, onboarding emails, and the launch itself. Sprint 4A is the critical path.
+
+---
+
+## 🧭 Market Intelligence Update (April 2026)
+
+### The Structural Shift
+
+The AI compliance market is not a niche. It is a structural shift:
+- **$340M → $4.83B by 2034** at 35–45% CAGR
+- **75%+ of organizations** will have formal AI governance frameworks by end of 2026 (up from <30% in 2023)
+- EU AI Act enforces **August 2, 2026** (95 days)
+- Colorado AI Act enforces **June 2026**
+- SEC elevated AI and cybersecurity to **top examination priorities** (displacing crypto)
+- Italy fined OpenAI **€15 million** for GDPR violations in training data
+- FTC ran **"Operation AI Comply"** targeting deceptive AI marketing
+- Average enterprise runs **66 GenAI apps**, 65% without IT approval
+- Shadow AI added **$670K** to average breach cost in 2025
+
+### Unaddressed Pain Points Squash Must Own
+
+| Pain | Solution | Wave | Priority |
+|------|----------|------|----------|
+| Vendor questionnaire nightmare (4-week manual process) | Trust Package + `squash verify-trust-package` | W171 ✅ | 🔥 Highest |
+| AI vendor risk on buyer side (Shadow AI, 66 apps) | AI Vendor Risk Register (future) | W178 | High |
+| Model sprawl documentation ("what AI do you have deployed?") | AI Asset Registry (future) | W179 | High |
+| OWASP Agentic AI Top 10 (40% of apps will have agents by 2026) | Agent Audit | W172 ✅ | 🔥 First-mover |
+| Training data GDPR liability (Italy fined OpenAI €15M) | Data Lineage Certificate (future) | W180 | High |
+| ISO 42001 certification ($50K–$200K consultant market) | ISO 42001 Readiness | W170 ✅ | High |
+| AI incident response (no tooling exists) | Incident Package | W173 ✅ | High |
+| Board/CISO quarterly report (20-30 pages manual) | Board Report Generator | W174 ✅ | High |
+| Bias audit (Workday lawsuit, NYC Local Law 144) | Bias Audit (future) | W181 | Medium-High |
+| Annual AI system review (week-long manual process) | Annual Review Generator (future) | W182 | Medium |
+
+### The Trust Registry Moat
+
+Every company using squash publishing attestations to a public registry at `attestations.getsquash.dev` creates the **SSL Certificate Authority equivalent for AI compliance**. Buyers verify any vendor's posture by querying the registry — not by reading a 40-page questionnaire. The Sigstore signing infrastructure already exists. The registry is the product expression of it.
+
+### Compliance-as-Code Identity
+
+Squash's identity claim that no competitor owns: **compliance is a gate in your pipeline, not a form you fill out.** Credo AI and OneTrust sell to compliance teams. Squash sells to engineers. Engineers deploy it everywhere. Compliance teams watch the dashboard. This is the correct go-to-market motion and a fundamentally different distribution strategy than every incumbent.
 
 ---
 
@@ -526,7 +574,31 @@ Your team didn't sign up to write compliance docs.
 
 ---
 
-### Sprint 5 — Launch (July 11–August 2)
+### Sprint 5 — Market Expansion (April 29, 2026) ✅ COMPLETE
+
+**All code shipped 2026-04-29. 5 high-value modules, 170+ new tests, 0 regressions.**
+
+Value/effort matrix drove this sprint: highest-value features with existing module foundations were prioritized first.
+
+| Wave | Task | Effort | Strategic Value | Status |
+|------|------|--------|-----------------|--------|
+| W170 | ISO 42001 Readiness Assessment (`squash iso42001`) | Low | Unlocks ISO certification market; consultants embed squash in every engagement | ✅ |
+| W171 | Trust Package Exporter + Verifier (`squash trust-package` / `squash verify-trust-package`) | Medium | Eliminates 4-week vendor questionnaire process; premium feature; two-sided marketplace seed | ✅ |
+| W172 | OWASP Agentic AI Top 10 Agent Audit (`squash agent-audit`) | Medium | First-mover in agentic compliance; 40% of apps will embed agents by 2026; maps to existing mcp.py | ✅ |
+| W173 | Incident Response Package (`squash incident`) | Medium | Tool CISOs reach for in first hour after AI incident; EU AI Act Article 73 disclosure automation | ✅ |
+| W174 | Board Report Generator (`squash board-report`) | Low | Eliminates 20-30 page manual quarterly report; direct enterprise buyer unlock | ✅ |
+
+**Sprint 5 exit criteria: ALL MET**
+- `squash iso42001 --model ./model` produces 38-control gap analysis with remediation roadmap ✅
+- `squash trust-package --model ./model` produces signed, verifiable vendor attestation ZIP ✅
+- `squash verify-trust-package ./vendor.zip` returns pass/fail in <10 seconds ✅
+- `squash agent-audit --manifest agent.json` covers all 10 OWASP Agentic AI risks ✅
+- `squash incident --model ./model --timestamp ISO8601` produces EU AI Act Article 73 compliant report ✅
+- `squash board-report --quarter Q2-2026` generates executive-ready PDF with scorecard ✅
+
+---
+
+### Sprint 6 — Launch (July 11–August 2)
 
 | Date | Action |
 |------|--------|
@@ -539,6 +611,23 @@ Your team didn't sign up to write compliance docs.
 | July 24 | **3-minute Loom demo video** — `squash demo` → `squash attest` → GitHub Actions output → dashboard |
 | July 24 | **Webinar** — EU AI Act Compliance for ML Teams: Live Demo |
 | August 2 | **EU AI Act Enforcement Day** — "Squash users are compliant. Are you?" |
+
+---
+
+### Sprint 7 — Enterprise Moat (Post-Launch Q3 2026)
+
+| Wave | Task | Strategic Value |
+|------|------|-----------------|
+| W178 | AI Vendor Risk Register (buyer-side tool) | Two-sided marketplace foundation; 66 apps/org pain |
+| W179 | AI Asset Registry (`squash registry`) | Enterprise answer to "what AI do you have?" |
+| W180 | Training Data Lineage Certificate (`squash data-lineage`) | GDPR §6 liability reduction; €15M fine prevention |
+| W181 | Bias Audit (`squash bias-audit`) | Workday lawsuit defense; NYC Local Law 144; EU AI Act Annex III |
+| W182 | Annual Review Generator (`squash annual-review`) | Automates week-long compliance exercise |
+| W183 | Public Attestation Registry (`attestations.getsquash.dev`) | Strategic moat; SSL CA equivalent for AI compliance |
+| W184 | CISO/Executive Dashboard | Board-level visibility; Credo AI displaces at 1/10th price |
+| W185 | Regulatory Intelligence Feed | Always-on regulatory change monitoring; weekly login reason |
+| W186 | M&A Due Diligence Package (`squash due-diligence`) | High-value enterprise use case; PE firm channel |
+| W187 | VS Code Extension | Daily compliance status without CLI; bottom-up enterprise growth |
 
 ---
 

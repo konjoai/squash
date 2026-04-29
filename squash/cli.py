@@ -1448,6 +1448,129 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Suppress non-error output",
     )
 
+    # ── W170 — ISO 42001 Readiness Assessment ────────────────────────────────
+    iso42001_cmd = sub.add_parser(
+        "iso42001",
+        help="ISO/IEC 42001:2023 AI Management System readiness assessment",
+        description=(
+            "Assess a model directory against the 38 controls of ISO/IEC 42001:2023 "
+            "and generate a gap analysis with remediation roadmap.\n\n"
+            "Example: squash iso42001 ./my-model\n"
+            "Example: squash iso42001 ./my-model --output iso42001-report.json --format json\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    iso42001_cmd.add_argument("model_path", help="Path to model directory")
+    iso42001_cmd.add_argument("--output", "-o", default=None, help="Output file path (default: model_path/iso42001_report.json)")
+    iso42001_cmd.add_argument("--format", default="text", choices=["text", "json"], help="Output format (default: text)")
+    iso42001_cmd.add_argument("--fail-below", type=float, default=None, metavar="SCORE",
+                              help="Exit 2 if readiness score below this percentage")
+
+    # ── W171 — Trust Package ──────────────────────────────────────────────────
+    trust_pkg_cmd = sub.add_parser(
+        "trust-package",
+        help="Export a signed vendor attestation bundle (eliminates questionnaire process)",
+        description=(
+            "Bundle all compliance artifacts into a signed, verifiable trust package ZIP. "
+            "Buyers verify it in <10 seconds instead of reviewing a 40-page questionnaire.\n\n"
+            "Example: squash trust-package ./my-model --output vendor-package.zip\n"
+            "Example: squash trust-package ./my-model --sign --model-id acme-llm-v2\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    trust_pkg_cmd.add_argument("model_path", help="Path to model directory containing squash artifacts")
+    trust_pkg_cmd.add_argument("--output", "-o", default=None, help="Output ZIP path (default: <model_id>-trust-package.zip)")
+    trust_pkg_cmd.add_argument("--model-id", default=None, help="Override model ID in package")
+    trust_pkg_cmd.add_argument("--sign", action="store_true", help="Sign manifest via Sigstore")
+    trust_pkg_cmd.add_argument("--verification-url", default="", help="URL for online verification")
+
+    verify_trust_cmd = sub.add_parser(
+        "verify-trust-package",
+        help="Verify integrity and compliance posture of a trust package ZIP",
+        description=(
+            "Verify a vendor trust package: check SHA-256 integrity of all artifacts, "
+            "parse the compliance summary, and report pass/fail.\n\n"
+            "Example: squash verify-trust-package vendor-package.zip\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    verify_trust_cmd.add_argument("package_path", help="Path to trust package ZIP file")
+    verify_trust_cmd.add_argument("--json", dest="output_json", action="store_true", help="Output JSON result")
+    verify_trust_cmd.add_argument("--fail-on-error", action="store_true", help="Exit 2 if verification fails")
+
+    # ── W172 — Agent Audit (OWASP Agentic AI Top 10) ─────────────────────────
+    agent_audit_cmd = sub.add_parser(
+        "agent-audit",
+        help="OWASP Agentic AI Top 10 compliance audit for AI agents",
+        description=(
+            "Audit an AI agent manifest against the OWASP Agentic AI Top 10 (December 2025): "
+            "goal hijacking, unsafe tools, identity abuse, memory poisoning, cascading failure, "
+            "rogue agents, auditability, excessive autonomy, data exfiltration, human oversight.\n\n"
+            "Example: squash agent-audit ./agent.json\n"
+            "Example: squash agent-audit ./agent.json --output agent_audit.json --fail-on-critical\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    agent_audit_cmd.add_argument("manifest_path", help="Path to agent manifest JSON file")
+    agent_audit_cmd.add_argument("--output", "-o", default=None, help="Output path for audit report JSON")
+    agent_audit_cmd.add_argument("--fail-on-critical", action="store_true", help="Exit 2 if any CRITICAL risk found")
+    agent_audit_cmd.add_argument("--fail-on-high", action="store_true", help="Exit 2 if any HIGH risk found")
+    agent_audit_cmd.add_argument("--format", default="text", choices=["text", "json"], help="Output format")
+
+    # ── W173 — Incident Response ──────────────────────────────────────────────
+    incident_cmd = sub.add_parser(
+        "incident",
+        help="Generate AI incident response package (EU AI Act Article 73 disclosure)",
+        description=(
+            "Generate a structured incident response package including the model attestation "
+            "snapshot, EU AI Act Article 73 disclosure document, drift delta, and remediation plan.\n\n"
+            "Example: squash incident ./my-model --description 'Model output exposed PII'\n"
+            "Example: squash incident ./my-model --severity serious --affected-persons 150\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    incident_cmd.add_argument("model_path", help="Path to model directory")
+    incident_cmd.add_argument("--description", "-d", required=True, help="Incident description")
+    incident_cmd.add_argument("--timestamp", default=None, help="Incident timestamp (ISO8601, default: now)")
+    incident_cmd.add_argument("--severity", default="serious",
+                              choices=["critical", "serious", "moderate", "minor"],
+                              help="Incident severity (default: serious)")
+    incident_cmd.add_argument("--category", default="other",
+                              choices=["bias_discrimination", "pii_exposure", "harmful_output",
+                                       "model_failure", "security_breach", "accuracy_regression",
+                                       "policy_violation", "data_poisoning", "prompt_injection", "other"],
+                              help="Incident category")
+    incident_cmd.add_argument("--affected-persons", type=int, default=0, dest="affected_persons",
+                              help="Number of affected persons")
+    incident_cmd.add_argument("--output-dir", default=None, dest="output_dir",
+                              help="Output directory for incident package")
+    incident_cmd.add_argument("--model-id", default=None, dest="model_id", help="Override model ID")
+
+    # ── W174 — Board Report ───────────────────────────────────────────────────
+    board_report_cmd = sub.add_parser(
+        "board-report",
+        help="Generate executive AI compliance board report",
+        description=(
+            "Generate a quarterly AI compliance board report: compliance scorecard, "
+            "model portfolio status, violations, CVEs, regulatory deadlines, and remediation roadmap.\n\n"
+            "Example: squash board-report --models-dir ./models --quarter Q2-2026\n"
+            "Example: squash board-report --model ./my-model --output-dir ./reports\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    board_report_cmd.add_argument("--models-dir", default=None, dest="models_dir",
+                                  help="Directory containing model subdirectories")
+    board_report_cmd.add_argument("--model", default=None, dest="model_path",
+                                  help="Single model directory path")
+    board_report_cmd.add_argument("--quarter", "-q", default=None,
+                                  help="Quarter identifier, e.g. Q2-2026 (default: current quarter)")
+    board_report_cmd.add_argument("--output-dir", default=None, dest="output_dir",
+                                  help="Output directory (default: ./board-report-<quarter>)")
+    board_report_cmd.add_argument("--format", default="all", choices=["all", "json", "md", "text"],
+                                  help="Output format (default: all)")
+    board_report_cmd.add_argument("--json", dest="output_json", action="store_true",
+                                  help="Print JSON summary to stdout")
+
     # ── W135 / W136 — Annex IV generate + validate ────────────────────────────
     annex_iv_cmd = sub.add_parser(
         "annex-iv",
@@ -4774,6 +4897,173 @@ def _cmd_install_hook(args: argparse.Namespace, quiet: bool) -> int:
     return 0
 
 
+def _cmd_iso42001(args: argparse.Namespace, quiet: bool) -> int:
+    """W170 — ISO 42001 readiness assessment."""
+    from squash.iso42001 import Iso42001Assessor
+
+    model_path = Path(args.model_path)
+    if not model_path.exists():
+        print(f"[squash iso42001] ERROR: path not found: {model_path}", file=sys.stderr)
+        return 1
+
+    report = Iso42001Assessor.assess(model_path)
+
+    output_path = args.output
+    if output_path is None:
+        output_path = model_path / "iso42001_report.json" if model_path.is_dir() else Path("iso42001_report.json")
+    else:
+        output_path = Path(output_path)
+
+    report.save(output_path)
+
+    if args.format == "json":
+        print(json.dumps(report.to_dict(), indent=2))
+    else:
+        if not quiet:
+            print(report.summary())
+            print(f"\n[squash iso42001] Report written to {output_path}")
+            print(f"  Readiness: {report.readiness_level.value}  Score: {report.overall_score:.1f}%")
+
+    if args.fail_below is not None and report.overall_score < args.fail_below:
+        print(f"[squash iso42001] FAIL: score {report.overall_score:.1f}% < threshold {args.fail_below}%",
+              file=sys.stderr)
+        return 2
+    return 0
+
+
+def _cmd_trust_package(args: argparse.Namespace, quiet: bool) -> int:
+    """W171 — Trust Package export."""
+    from squash.trust_package import TrustPackageBuilder
+
+    model_path = Path(args.model_path)
+    model_id = args.model_id or model_path.name
+    output_path = Path(args.output) if args.output else Path(f"{model_id}-trust-package.zip")
+
+    pkg = TrustPackageBuilder.build(
+        model_path=model_path,
+        output_path=output_path,
+        model_id=model_id,
+        sign=args.sign,
+        verification_url=args.verification_url,
+    )
+
+    if not quiet:
+        print(pkg.summary())
+        print(f"\n[squash trust-package] Package written to {output_path}")
+        print(f"  Artifacts: {len(pkg.artifacts_included)}")
+        print(f"  Verify with: squash verify-trust-package {output_path}")
+    return 0
+
+
+def _cmd_verify_trust_package(args: argparse.Namespace, quiet: bool) -> int:
+    """W171 — Trust Package verification."""
+    from squash.trust_package import TrustPackageVerifier
+
+    result = TrustPackageVerifier.verify(Path(args.package_path))
+
+    if args.output_json:
+        print(json.dumps({
+            "passed": result.passed,
+            "package_path": result.package_path,
+            "integrity_errors": result.integrity_errors,
+            "missing_artifacts": result.missing_artifacts,
+            "compliance_summary": result.compliance_summary,
+        }, indent=2))
+    elif not quiet:
+        print(result.summary())
+
+    if args.fail_on_error and not result.passed:
+        return 2
+    return 0 if result.passed else 1
+
+
+def _cmd_agent_audit(args: argparse.Namespace, quiet: bool) -> int:
+    """W172 — OWASP Agentic AI Top 10 agent audit."""
+    from squash.agent_audit import AgentAuditor, RiskLevel
+
+    manifest_path = Path(args.manifest_path)
+    if not manifest_path.exists():
+        print(f"[squash agent-audit] ERROR: manifest not found: {manifest_path}", file=sys.stderr)
+        return 1
+
+    report = AgentAuditor.audit(manifest_path)
+
+    if args.output:
+        report.save(Path(args.output))
+
+    if args.format == "json":
+        print(json.dumps(report.to_dict(), indent=2))
+    else:
+        if not quiet:
+            print(report.summary())
+            if args.output:
+                print(f"\n[squash agent-audit] Report written to {args.output}")
+            print(f"\n[squash agent-audit] Overall Risk: {report.overall_risk.value}  Score: {report.risk_score}/100")
+
+    if args.fail_on_critical and report.critical_count > 0:
+        return 2
+    if args.fail_on_high and (report.critical_count > 0 or report.high_count > 0):
+        return 2
+    return 0
+
+
+def _cmd_incident(args: argparse.Namespace, quiet: bool) -> int:
+    """W173 — Incident response package generation."""
+    from squash.incident import IncidentResponder
+
+    model_path = Path(args.model_path)
+    pkg = IncidentResponder.respond(
+        model_path=model_path,
+        description=args.description,
+        timestamp=args.timestamp,
+        severity=args.severity,
+        category=args.category,
+        affected_persons=args.affected_persons,
+        model_id=args.model_id,
+    )
+
+    output_dir = Path(args.output_dir) if args.output_dir else Path(f"incident-{pkg.incident_id}")
+    pkg.save(output_dir)
+
+    if not quiet:
+        print(pkg.summary())
+        print(f"\n[squash incident] Incident package written to {output_dir}/")
+
+    return 0
+
+
+def _cmd_board_report(args: argparse.Namespace, quiet: bool) -> int:
+    """W174 — Board report generation."""
+    from squash.board_report import BoardReportGenerator
+
+    model_paths = None
+    models_dir = Path(args.models_dir) if args.models_dir else None
+    if args.model_path:
+        model_paths = [Path(args.model_path)]
+
+    report = BoardReportGenerator.generate(
+        models_dir=models_dir,
+        model_paths=model_paths,
+        quarter=args.quarter,
+    )
+
+    if args.output_json:
+        print(json.dumps(report.to_dict(), indent=2))
+        return 0
+
+    if not quiet:
+        print(report.executive_summary())
+
+    output_dir = Path(args.output_dir) if args.output_dir else Path(f"board-report-{report.quarter}")
+    written = report.save(output_dir)
+
+    if not quiet:
+        print(f"\n[squash board-report] Report written to {output_dir}/")
+        for f in written:
+            print(f"  {f}")
+    return 0
+
+
 def main() -> None:
     parser = _build_parser()
     args = parser.parse_args()
@@ -4884,6 +5174,18 @@ def main() -> None:
         sys.exit(_cmd_watch(args, quiet))
     elif args.command == "install-hook":
         sys.exit(_cmd_install_hook(args, quiet))
+    elif args.command == "iso42001":
+        sys.exit(_cmd_iso42001(args, quiet))
+    elif args.command == "trust-package":
+        sys.exit(_cmd_trust_package(args, quiet))
+    elif args.command == "verify-trust-package":
+        sys.exit(_cmd_verify_trust_package(args, quiet))
+    elif args.command == "agent-audit":
+        sys.exit(_cmd_agent_audit(args, quiet))
+    elif args.command == "incident":
+        sys.exit(_cmd_incident(args, quiet))
+    elif args.command == "board-report":
+        sys.exit(_cmd_board_report(args, quiet))
     else:
         parser.print_help()
         sys.exit(1)
