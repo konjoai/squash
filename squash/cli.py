@@ -34,6 +34,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
 import sys
 from pathlib import Path
 
@@ -1977,6 +1978,57 @@ def _build_parser() -> argparse.ArgumentParser:
     go_annotate.add_argument("--score", type=float, required=True, dest="compliance_score", help="Compliance score")
     go_annotate.add_argument("--policy", default="eu-ai-act", help="Policy name (default: eu-ai-act)")
     go_annotate.add_argument("--passed", action="store_true", default=True)
+
+    # ── W193 / B6 — Audit-trail blockchain anchoring ──────────────────────────
+    anchor_cmd = sub.add_parser(
+        "anchor",
+        help="Audit-trail blockchain anchoring (Merkle batch + multi-backend)",
+        description=(
+            "Stage attestations into a batch, build a Merkle commitment, and\n"
+            "anchor the root using a local Ed25519 witness, OpenTimestamps\n"
+            "(Bitcoin), or an Ethereum-class chain.\n\n"
+            "Examples:\n"
+            "  squash anchor add ./out/master_record.json\n"
+            "  squash anchor commit --backend local --priv-key ./squash.priv.pem\n"
+            "  squash anchor commit --backend opentimestamps\n"
+            "  squash anchor verify att-abc123\n"
+            "  squash anchor proof  att-abc123 --out proof.json\n"
+            "  squash anchor list   --json\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    anchor_sub = anchor_cmd.add_subparsers(dest="anchor_command")
+
+    an_add = anchor_sub.add_parser("add", help="Stage a master attestation record into the pending batch")
+    an_add.add_argument("master_record_path", help="Path to master_record.json")
+    an_add.add_argument("--ledger-dir", default=None, help="Ledger root directory (default: ~/.squash/anchor)")
+
+    an_commit = anchor_sub.add_parser("commit", help="Build Merkle root and anchor the pending batch")
+    an_commit.add_argument("--backend", default="local", choices=["local", "opentimestamps", "ethereum"])
+    an_commit.add_argument("--priv-key", dest="priv_key", default=None, help="Ed25519 .priv.pem (local backend)")
+    an_commit.add_argument("--pub-key", dest="pub_key", default=None, help="Ed25519 .pub.pem (local backend; embedded in anchor)")
+    an_commit.add_argument("--rpc-url", dest="rpc_url", default=None, help="EVM RPC URL (ethereum backend)")
+    an_commit.add_argument("--eth-key", dest="eth_key", default=None, help="0x-prefixed hex private key (ethereum backend; or set $SQUASH_ETH_KEY)")
+    an_commit.add_argument("--ledger-dir", default=None, help="Ledger root directory (default: ~/.squash/anchor)")
+    an_commit.add_argument("--json", action="store_true", dest="output_json")
+
+    an_verify = anchor_sub.add_parser("verify", help="Verify Merkle inclusion + anchor witness for an attestation")
+    an_verify.add_argument("attestation_id")
+    an_verify.add_argument("--ledger-dir", default=None)
+    an_verify.add_argument("--json", action="store_true", dest="output_json")
+
+    an_proof = anchor_sub.add_parser("proof", help="Emit a portable inclusion-proof JSON document")
+    an_proof.add_argument("attestation_id")
+    an_proof.add_argument("--ledger-dir", default=None)
+    an_proof.add_argument("--out", default=None, help="Write to PATH instead of stdout")
+
+    an_list = anchor_sub.add_parser("list", help="List committed anchor entries")
+    an_list.add_argument("--ledger-dir", default=None)
+    an_list.add_argument("--json", action="store_true", dest="output_json")
+
+    an_status = anchor_sub.add_parser("status", help="Show staged batch + last anchor")
+    an_status.add_argument("--ledger-dir", default=None)
+    an_status.add_argument("--json", action="store_true", dest="output_json")
 
     # ── W135 / W136 — Annex IV generate + validate ────────────────────────────
     annex_iv_cmd = sub.add_parser(
@@ -6067,6 +6119,132 @@ def _cmd_gitops(args: argparse.Namespace, quiet: bool) -> int:
         return 1
 
 
+def _cmd_anchor(args: argparse.Namespace, quiet: bool) -> int:
+    """W193 / B6 — audit-trail blockchain anchoring."""
+    from squash.anchor import (
+        AnchorLedger,
+        EthereumAnchor,
+        LocalAnchor,
+        OpenTimestampsAnchor,
+    )
+
+    ledger_dir = Path(args.ledger_dir) if getattr(args, "ledger_dir", None) else None
+    ledger = AnchorLedger(root_dir=ledger_dir)
+    sub = getattr(args, "anchor_command", None)
+
+    if sub == "add":
+        path = Path(args.master_record_path)
+        if not path.exists():
+            print(f"error: master record not found: {path}", file=sys.stderr)
+            return 1
+        staged = ledger.stage(path)
+        if not quiet:
+            print(f"✓ staged {staged.attestation_id} ({staged.record_hash[:12]}…) — {len(ledger.staged())} pending")
+        return 0
+
+    if sub == "commit":
+        backend_name = args.backend
+        if backend_name == "local":
+            if not args.priv_key:
+                print("error: --priv-key required for local backend", file=sys.stderr)
+                return 1
+            backend = LocalAnchor(priv_key_path=Path(args.priv_key), pub_key_path=Path(args.pub_key) if args.pub_key else None)
+        elif backend_name == "opentimestamps":
+            backend = OpenTimestampsAnchor()
+        elif backend_name == "ethereum":
+            rpc_url = args.rpc_url or os.environ.get("SQUASH_ETH_RPC_URL")
+            eth_key = args.eth_key or os.environ.get("SQUASH_ETH_KEY")
+            if not rpc_url or not eth_key:
+                print("error: ethereum backend requires --rpc-url and --eth-key (or $SQUASH_ETH_RPC_URL, $SQUASH_ETH_KEY)", file=sys.stderr)
+                return 1
+            backend = EthereumAnchor(rpc_url=rpc_url, private_key=eth_key)
+        else:
+            print(f"error: unknown backend {backend_name!r}", file=sys.stderr)
+            return 1
+
+        try:
+            entry = ledger.commit(backend)
+        except RuntimeError as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 1
+        except FileNotFoundError as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 2
+
+        if args.output_json:
+            print(json.dumps(entry.to_dict(), indent=2, sort_keys=True))
+            return 0
+        if not quiet:
+            a = entry.anchor
+            print(f"✓ anchored {a.leaf_count} attestation(s) — backend={a.backend} root={a.root[:16]}… anchor_id={a.anchor_id}")
+            print(f"  ledger: {ledger.ledger_path}")
+            for s in entry.attestations:
+                print(f"   • {s.attestation_id}  ({s.record_hash[:12]}…)")
+        return 0
+
+    if sub == "verify":
+        ok, msg = ledger.verify(args.attestation_id)
+        if args.output_json:
+            print(json.dumps({"ok": ok, "message": msg, "attestation_id": args.attestation_id}, indent=2))
+            return 0 if ok else 2
+        icon = "✓" if ok else "✗"
+        print(f"{icon} {args.attestation_id}: {msg}")
+        return 0 if ok else 2
+
+    if sub == "proof":
+        try:
+            doc = ledger.export_proof(args.attestation_id)
+        except KeyError as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 1
+        text = json.dumps(doc, indent=2, sort_keys=True)
+        if args.out:
+            Path(args.out).write_text(text)
+            if not quiet:
+                print(f"✓ proof written to {args.out}")
+        else:
+            print(text)
+        return 0
+
+    if sub == "list":
+        entries = ledger.entries()
+        if args.output_json:
+            print(json.dumps([e.to_dict() for e in entries], indent=2, sort_keys=True))
+            return 0
+        if not entries:
+            print("(no anchors committed)")
+            return 0
+        for e in entries:
+            a = e.anchor
+            print(f"{a.iso_timestamp}  {a.anchor_id}  backend={a.backend:14s}  leaves={a.leaf_count:>4}  root={a.root[:16]}…")
+        return 0
+
+    if sub == "status":
+        staged = ledger.staged()
+        entries = ledger.entries()
+        last = entries[-1] if entries else None
+        if args.output_json:
+            print(json.dumps({
+                "staged": [s.to_dict() for s in staged],
+                "last_anchor": last.anchor.to_dict() if last else None,
+                "ledger_dir": str(ledger.root_dir),
+            }, indent=2, sort_keys=True))
+            return 0
+        print(f"ledger: {ledger.root_dir}")
+        print(f"staged: {len(staged)} attestation(s) pending")
+        for s in staged:
+            print(f"   • {s.attestation_id}  ({s.record_hash[:12]}…)")
+        if last:
+            a = last.anchor
+            print(f"last anchor: {a.iso_timestamp}  {a.anchor_id}  backend={a.backend}  leaves={a.leaf_count}")
+        else:
+            print("last anchor: (none)")
+        return 0
+
+    print("squash anchor: specify a subcommand — add | commit | verify | proof | list | status")
+    return 1
+
+
 def _cmd_board_report(args: argparse.Namespace, quiet: bool) -> int:
     """W174 — Board report generation."""
     from squash.board_report import BoardReportGenerator
@@ -6251,6 +6429,8 @@ def main() -> None:
         sys.exit(_cmd_telemetry(args, quiet))
     elif args.command == "gitops":
         sys.exit(_cmd_gitops(args, quiet))
+    elif args.command == "anchor":
+        sys.exit(_cmd_anchor(args, quiet))
     else:
         parser.print_help()
         sys.exit(1)

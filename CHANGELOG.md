@@ -5,6 +5,62 @@ Format: [Conventional Commits](https://www.conventionalcommits.org/) · [Keep a 
 
 ---
 
+## [1.6.0] — 2026-04-30 — B6: Audit-Trail Blockchain Anchoring (W193)
+
+### Added
+
+- **`squash/anchor.py`** — Merkle-tree audit-trail anchoring (W193 / Tier 3 #29):
+  - `MerkleTree` — domain-separated (RFC 6962) binary Merkle tree; pure stdlib SHA-256;
+    odd-level duplicate-tail to prevent phantom-node attacks; O(n) build, O(log n) proof.
+  - `MerkleProof` — frozen, self-contained inclusion proof that verifies with stdlib only;
+    no squash code, no network, no trust in the issuer beyond holding their public key.
+  - `LocalAnchor` — Ed25519 signature over `root || leaf_count || timestamp`;
+    public key embedded in the anchor record so verifiers need no separate key fetch;
+    works in air-gapped / FedRAMP environments; signing payload is canonical JSON.
+  - `OpenTimestampsAnchor` — submits Merkle root to the Bitcoin-backed OTS aggregator
+    network; produces a `.ots` file; verification via `ots verify` at a Bitcoin node.
+  - `EthereumAnchor` — posts root as EVM calldata (`0x73717368` magic + 32-byte root +
+    uint64 leaf_count) via Foundry `cast`; chain-agnostic (mainnet, Base, Optimism, Polygon);
+    verifiable by anyone with `cast tx <hash> input`.
+  - `AnchorLedger` — append-only JSONL ledger (`~/.squash/anchor/`); stage→commit→verify
+    workflow; `export_proof()` emits a portable, self-contained `squash.anchor.proof/v1`
+    doc that a third party can verify with 30 lines of stdlib Python.
+  - `canonical_json()` + `hash_attestation()` — deterministic attestation hashing;
+    two organisations producing semantically identical attestations get bit-identical hashes,
+    enabling cross-organisation verification.
+  - `verify_proof()` — standalone reference verifier; the auditor's side of the protocol.
+- **CLI: `squash anchor`** — 6 subcommands:
+  - `add <master_record.json>` — stage into pending batch
+  - `commit --backend local|opentimestamps|ethereum` — build Merkle root + anchor
+  - `verify <attestation_id>` — Merkle inclusion + backend witness check
+  - `proof <attestation_id> [--out PATH]` — emit portable proof JSON
+  - `list` — all committed anchors (ANSI + `--json`)
+  - `status` — pending batch + last anchor
+- **`tests/test_anchor.py`** — 23 tests:
+  - Canonical hashing: key-order invariant, whitespace-free, Unicode-stable
+  - Merkle tree: 1-leaf, 2-leaf, 3-leaf (odd), 50-leaf; all proofs verify
+  - Tampered leaf / tampered root / tampered path → FAIL
+  - LocalAnchor sign/verify roundtrip; tampered root → FAIL
+  - AnchorLedger stage → commit → per-attestation verify
+  - Cross-instance durability (fresh reader after writer commits)
+  - Portable proof verified by `verify_proof()` with no ledger access
+  - Post-anchor record tamper: anchored proof still holds; new hash diverges (tamper detection)
+  - Empty-batch commit raises; multi-commit ordering preserved
+  - `SQUASH_ANCHOR_DIR` env override; CLI subcommand registration; status on empty ledger
+
+### Konjo notes
+
+- 건조 — the cryptographic construction (domain-separated Merkle, canonical JSON, embedded
+  public key) strips to the essential invariants. No blockchain SDK dependency; the only
+  external dep for the local backend is `cryptography`, already in the squash tree.
+- ᨀᨚᨐᨚ — a portable proof is a single JSON file. Any auditor can carry it to any machine
+  and verify with stdlib hashlib + cryptography. No squash code required, no network call,
+  no trust in the issuer beyond their public key.
+- 康宙 — the ledger is append-only. Compromises are new entries, never rewrites.
+  No goroutines, no daemons, no background workers.
+
+---
+
 ## [1.5.0] — 2026-04-30 — B4: Terraform / Pulumi Provider
 
 ### Added — Tier 3 #26 (B4) Terraform/Pulumi provider
