@@ -45,7 +45,10 @@ def store_with_sqlite(tmp_path):
 
 class TestPlanLimits:
     def test_all_plans_present(self):
-        assert set(PLAN_LIMITS.keys()) == {"free", "pro", "enterprise"}
+        # Sprint 13 (W202) added startup + team to the plan registry.
+        assert set(PLAN_LIMITS.keys()) == {
+            "free", "pro", "startup", "team", "enterprise",
+        }
 
     def test_free_quota(self):
         assert PLAN_LIMITS["free"]["monthly_quota"] == 10

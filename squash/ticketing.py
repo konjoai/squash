@@ -170,6 +170,7 @@ class TicketDispatcher:
         priority: str = "medium",
         model_id: str = "",
         policy: str = "",
+        plan: str = "",
     ) -> TicketResult:
         """Create a compliance ticket in the configured backend.
 
@@ -195,6 +196,33 @@ class TicketDispatcher:
         if not self.config.is_configured:
             log.debug("ticketing: backend not configured, skipping")
             return TicketResult(success=False, error="backend not configured")
+
+        # Sprint 13 (W203) — entitlement gating per backend. When `plan` is
+        # provided but does not grant the backend's entitlement, the call
+        # fails fast with a structured error (plan="" preserves backward
+        # compat for CLI / library callers).
+        if plan:
+            from squash.auth import (
+                has_entitlement,
+                ENTITLEMENT_GITHUB_ISSUES,
+                ENTITLEMENT_JIRA,
+                ENTITLEMENT_LINEAR,
+            )
+            backend_entitlement = {
+                "github": ENTITLEMENT_GITHUB_ISSUES,
+                "jira": ENTITLEMENT_JIRA,
+                "linear": ENTITLEMENT_LINEAR,
+            }.get(self.config.backend)
+            if backend_entitlement and not has_entitlement(plan, backend_entitlement):
+                msg = (
+                    f"ticketing: backend {self.config.backend!r} requires "
+                    f"entitlement {backend_entitlement!r} (plan={plan!r}). "
+                    "Upgrade required."
+                )
+                log.info(msg)
+                return TicketResult(
+                    success=False, backend=self.config.backend, error=msg,
+                )
 
         full_body = _build_body(body, model_id=model_id, policy=policy)
         labels = labels or ["squash", "compliance"]

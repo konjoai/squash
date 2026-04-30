@@ -5,6 +5,324 @@ Format: [Conventional Commits](https://www.conventionalcommits.org/) · [Keep a 
 
 ---
 
+## [1.8.0] — 2026-04-30 — Sprint 13: Startup Pricing Tier ($499/mo)
+
+### Added (W202–W204 — Sprint 13: Startup Pricing Tier — Tier 2 #19)
+
+Open the seed/Series A revenue band with a $499/mo Startup tier. The
+gap between Free → Pro ($299) → Team ($899) was exactly where the
+highest-velocity buyers sit. This sprint closes it and turns the Pro
+plan into a stepping stone rather than a ceiling.
+
+- **`squash/auth.py` — Plan registry expansion (W202)**:
+  - New `PLAN_LIMITS["startup"]` — 500 attestations/mo, 1200 req/min,
+    `max_seats: 3`, entitlements: annex_iv + drift_alerts + slack +
+    teams + **vex_read** + **github_issues**
+  - New `PLAN_LIMITS["team"]` — 1000 attestations/mo, 3000 req/min,
+    `max_seats: 10`, entitlements add jira + linear + saml_sso + hitl +
+    audit_export
+  - All five plans (free / pro / startup / team / enterprise) now
+    carry consistent `max_seats` and `entitlements` keys
+  - 13 named entitlement constants exported from `squash.auth`
+    (`ENTITLEMENT_VEX_READ`, `ENTITLEMENT_SLACK_DELIVERY`, etc.)
+  - `KeyRecord.max_seats`, `KeyRecord.entitlements`,
+    `KeyRecord.has_entitlement(name)` — three new properties / methods
+  - `to_dict()` now exposes `max_seats` + `entitlements` for API consumers
+
+- **`squash/auth.py` — `has_entitlement()` helper (W203)**:
+  - `has_entitlement(plan, name) -> bool` — central lookup function
+  - Empty plan returns False for everything (safe default for
+    unauthenticated callers); unknown plans behave like `free`
+  - `plan_max_seats(plan) -> int | None` — seat-cap lookup
+
+- **`squash/notifications.py` — gated dispatch (W203)**:
+  - `NotificationDispatcher.notify(..., plan="")` — new optional kwarg
+  - When `plan` is supplied AND lacks `slack_delivery` / `teams_delivery`,
+    that channel is silently skipped (logged at DEBUG)
+  - `plan=""` (default) preserves existing un-gated CLI / library behaviour
+
+- **`squash/ticketing.py` — gated dispatch (W203)**:
+  - `TicketDispatcher.create_ticket(..., plan="")` — new optional kwarg
+  - GitHub backend requires `github_issues` (startup+); Jira requires
+    `jira` (team+); Linear requires `linear` (team+)
+  - On entitlement miss: returns `TicketResult(success=False)` with a
+    structured `error` message naming the missing entitlement
+
+- **`squash/billing.py` — Stripe Startup checkout (W204)**:
+  - `create_checkout_session(plan="startup", ...)` flows through the
+    existing checkout flow using `SQUASH_STRIPE_PRICE_STARTUP` env var
+  - `POST /billing/checkout` (api.py W155) already accepted `startup` —
+    Sprint 13 adds test coverage to lock the behaviour
+  - Stripe webhook → plan sync via `_price_to_plan()` already mapped
+    Startup; tests cover the round-trip
+
+### Changed
+- **`tests/test_squash_w137.py`** — `TestPlanLimits.test_all_plans_present`
+  updated to recognise the 5-plan registry (was 3)
+- **`SQUASH_MASTER_PLAN.md`** — Sprint 13 marked complete; full
+  **Tier 3 sprint breakdown** added (Sprints 14–18, waves W205–W220)
+  covering all 8 Tier 3 features:
+  - Sprint 14: Public Security Scanner & HF Spaces (#23 + #27)
+  - Sprint 15: Branded PDF Reports & Compliance Email Digest (#24 + #25)
+  - Sprint 16: IaC & Runtime API Gates (#26 + #28)
+  - Sprint 17: Cryptographic Provenance: Blockchain Anchoring (#29)
+  - Sprint 18: SOC 2 Type II Readiness (#30)
+
+### Stats
+- **35 new tests** · **0 regressions** · **3987 total tests passing**
+- **0 new modules** (Sprint 13 is extensions only) · 71 modules unchanged
+- **2 new plans** (`startup`, `team`) · **13 named entitlement constants**
+- **Tier 2 of the master plan now 100% complete.**
+
+### Konjo notes
+The Konjo discipline this sprint: keep gating *additive*. Every dispatcher
+keeps its existing un-gated behaviour when `plan=""` (the default). Tests
+only see the gate when they explicitly pass a plan. No breaking changes,
+no migration required, no surface area for regression. Five plans now
+share one entitlement vocabulary — *建造* (the discipline of subtraction)
+applied to the policy surface.
+
+---
+
+## [1.7.0] — 2026-04-29 — Sprint 12: Model Registry Auto-Attest Gates
+
+### Added (W198–W201 — Sprint 12: Registry Auto-Attest Gates — Tier 2 #18)
+
+Make registration in MLflow / W&B / SageMaker Model Registry the
+enforcement gate for compliance. A model that fails attestation cannot
+reach production. Compliance is enforced at the moment of promotion,
+not discovered later in audit.
+
+- **`squash/integrations/mlflow.py` — `MLflowSquash.register_attested()` (W198)**:
+  - Attest, then call `mlflow.register_model` only on policy success
+  - On policy fail (default `fail_on_violation=True`): raises
+    `AttestationViolationError` and **never calls `register_model`**
+  - On `fail_on_violation=False`: registers anyway, lets the failed
+    `squash.passed=false` tag drive downstream gates
+  - Tags new ModelVersion with `squash.passed`, `squash.attestation_id`,
+    `squash.scan_status`, `squash.policy.<name>.passed`, plus optional
+    user-supplied `tags={...}`
+  - 6 new tests (happy path, refuse path, import error, fail_on_violation
+    toggle, attestation tag, extra tags merged)
+
+- **`squash/integrations/wandb.py` — `WandbSquash.log_artifact_attested()` (W199)**:
+  - Attest, then build a fresh `wandb.Artifact` containing both model
+    files and squash artefacts, then call `run.log_artifact()` only on pass
+  - Artifact metadata block carries `squash.passed`, `squash.attestation_id`,
+    `squash.scan_status`, and per-policy pass/fail/error/warning counts
+  - On policy fail (default): raises `AttestationViolationError`,
+    `run.log_artifact` is **never called**
+  - `aliases=` argument forwarded to W&B (`["latest", "production"]` …)
+  - 6 new tests (happy path, refuse path, import error, metadata
+    contents, alias forwarding, soft-gate mode)
+
+- **`squash/integrations/sagemaker.py` — `SageMakerSquash.register_model_package_attested()` (W200)**:
+  - Attest, then `sagemaker.create_model_package(...)` with
+    `ModelApprovalStatus="Approved"` only on policy pass
+  - On policy fail (default): raises `AttestationViolationError`,
+    no ModelPackage is created
+  - On `fail_on_violation=False`: ModelPackage is created with
+    `approval_status_on_fail` (default `"Rejected"`,
+    `"PendingManualApproval"` also supported) so audit trail records the
+    attempt
+  - All squash attestation results recorded as AWS tags on the new
+    ModelPackage; `squash:gate_decision` tag captures the approval status
+  - 6 new tests (Approved on pass, Rejected on fail soft-mode,
+    PendingManualApproval custom status, refuse path, tag attachment,
+    import error)
+
+- **`squash/cli.py` — `squash registry-gate` first-class command (W201)**:
+  - Unified pre-registration gate for CI/CD pipelines:
+    `squash registry-gate --backend {mlflow|wandb|sagemaker|local} \
+       --uri <URI> --model-path ./model --policy <P>`
+  - Backend-specific URI validation (rejects ARNs for mlflow,
+    `models:/...` for sagemaker, etc.) — exits 2 on misconfig
+  - Always emits `registry-gate.json` under `--output-dir` containing
+    structured `decision: allow|refuse|record-only`, attestation_id,
+    per-policy pass/fail, scan_status
+  - `--allow-on-fail` for soft-gate mode (records but exits 0)
+  - `--json` for machine-readable stdout (CI parsing)
+  - 9 new tests (help, local backend, --allow-on-fail, JSON output,
+    URI validation per backend, missing model path)
+
+### Changed
+- **`squash/cli.py`** — added `registry-gate` top-level subcommand and
+  `_validate_registry_uri()` helper
+- **`squash/integrations/sagemaker.py`** — extracted `_result_to_tags()`
+  helper shared between `tag_model_package()` and
+  `register_model_package_attested()`
+
+### Stats
+- **28 new tests** · **0 regressions** · **3952 total tests passing**
+- **0 new modules** (Sprint 12 is extensions only) · 71 modules unchanged
+- **3 new in-process gate methods** (one per supported registry)
+- **1 new top-level CLI command** (`registry-gate`) with 9 flags
+
+### Konjo notes
+The gate-vs-record distinction is the core idea. Production model
+registries are the moment compliance becomes real. Sprint 12 turns
+squash from passive observer into an active gate at exactly that moment
+— without forcing it: `fail_on_violation=False` preserves the soft
+mode for orgs that want to record-and-route rather than block.
+
+---
+
+## [1.6.0] — 2026-04-29 — Sprint 11: Chain & Pipeline Attestation
+
+### Added (W195–W197 — Sprint 11: Chain & Pipeline Attestation — Tier 2 #16)
+
+The EU AI Act regulates the deployed system, not individual model weights.
+A modern AI system is a chain — RAG (retriever → embedder → LLM), a
+tool-using agent (LLM + tool-belt), or a multi-LLM ensemble (parallel
+branches). Squash now attests the whole chain as a single signed unit.
+
+- **`squash/chain_attest.py` — Composite chain attestation engine (W195) — NEW MODULE**:
+  - `ChainComponent` / `ChainSpec` / `ComponentAttestation` / `ChainAttestation` dataclasses
+  - `ChainAttestPipeline.run()` — iterates components, delegates each to
+    `AttestPipeline`, aggregates worst-case
+  - **Composite score formula**:
+      `score = 100 − 25·errors − 5·warnings − 50·(scan failed)` per
+      component, clipped [0, 100]; composite = `min(component scores)`
+  - **Worst-case policy roll-up**: a chain passes a policy iff every
+    attestable component passes it
+  - **HMAC-SHA256 signing** over canonical JSON serialisation; default
+    deterministic per-chain key, override with `signing_key`
+  - **Tamper detection** via `verify_signature()` — flips on any change
+    to chain_id / components / scores / policy roll-up
+  - JSON / Markdown rendering (`save()`, `to_markdown()`, `to_json()`)
+  - JSON / YAML chain-spec loader (`load_chain_spec`); PyYAML optional
+  - 30 new tests
+
+- **`squash/integrations/langchain.py` — `attest_chain()` Runnable graph walker (W196)**:
+  - Walks any LangChain Runnable graph duck-style (no LangChain SDK
+    dependency); recognises:
+    - `RunnableSequence` (linear LLM chain) → `ChainKind.SEQUENCE`
+    - `RunnableParallel` (multi-LLM ensemble) → `ChainKind.ENSEMBLE`
+    - Tool-using agents (`AgentExecutor.tools`) → `ChainKind.AGENT`
+    - RAG retrievers, embedders, tools, LLMs auto-classified by role
+  - Hosted-API LLMs (`ChatOpenAI`, `ChatAnthropic`, `Bedrock`, `Cohere`,
+    `AzureOpenAI`, `Google`, …) auto-flagged `external=True` and
+    excluded from the score (recorded in report for vendor risk review)
+  - Edge topology preserved; duplicate component names auto-suffixed
+    while edges are retargeted onto new unique names
+  - 12 new tests
+
+- **`squash/cli.py` — `squash chain-attest` first-class command (W197)**:
+  - `squash chain-attest ./chain.json [--policy P] [--output-dir DIR]`
+  - `squash chain-attest myapp.chains:rag_pipeline` — Python module
+    path resolution to a LangChain Runnable
+  - `--verify <chain-attest.json>` — HMAC verification, exits non-zero
+    on tamper
+  - `--fail-on-component-violation` — exits 1 when composite_passed=False
+  - `--chain-id REPO_ID` — override the chain identifier
+  - `--sign-components` — Sigstore-sign each component BOM during attest
+  - `--json` / `--quiet` — structured / silent output
+  - 7 new tests
+
+### Changed
+- **`tests/test_squash_model_card.py`**, **`tests/test_squash_wave49.py`**,
+  **`tests/test_squash_wave52.py`**, **`tests/test_squash_wave5355.py`** —
+  module count gates updated 70 → 71
+- **`SQUASH_MASTER_PLAN.md`** — Sprint 11 marked complete; situation report
+  updated to v1.6.0; remaining Tier 2 items: #18 registry auto-attest,
+  #19 startup pricing tier
+
+### Stats
+- **49 new tests** · **0 regressions** · **3924 total tests passing**
+- **71 Python modules** (was 70 after Sprint 10)
+- **1 new module** (`squash/chain_attest.py`)
+- **1 new top-level CLI command** (`chain-attest`) with 8 flags
+- **Three chain topologies covered**: RAG (sequence), tool-using agent,
+  multi-LLM ensemble (parallel)
+
+---
+
+## [1.5.0] — 2026-04-29 — Sprint 10: Model Card First-Class CLI
+
+### Added (W192–W194 — Sprint 10: Model Card First-Class CLI — Tier 2 #15)
+
+- **`squash/model_card.py` — Annex IV / bias / lineage data fusion (W192)**:
+  - HF model card now pre-fills from `annex_iv.json` (Article-13 metadata —
+    intended purpose, intended users, prohibited uses, risk management,
+    adversarial testing, oversight, hardware requirements)
+  - Reads `bias_audit_report.json` to populate Bias / Fairness narrative
+  - Reads `data_lineage_certificate.json` to populate Training Data table
+  - Four extended HF sections added: **Training Data**, **Evaluation**,
+    **Environmental Impact**, **Ethical Considerations**
+  - Graceful degradation preserved — every helper falls back to safe defaults
+    when the source artefact is absent
+  - 13 new tests
+
+- **`squash/model_card_validator.py` — HuggingFace schema validator (W193) — NEW MODULE**:
+  - `ModelCardValidator.validate()` returns structured `ModelCardValidationReport`
+  - Stdlib-only frontmatter parser (no PyYAML dep) — handles scalars, lists,
+    dicts, list-of-dicts, quoted strings, bools, numbers
+  - Required frontmatter check: `license`, `language`, `tags`
+  - Recommended frontmatter check: `pipeline_tag`, `model_id`, `model-index`
+  - Required section check: `Intended Use`, `Limitations`
+  - Recommended section check: `Training Data`, `Evaluation`,
+    `Ethical Considerations`, `How to Use`
+  - SPDX licence sanity check (24 known licences) — warning surface
+  - HF pipeline_tag recognition (18 well-known tags) — info surface
+  - Body length sanity check — short body warning
+  - `to_dict()` for JSON output; `summary()` for terminal display
+  - 14 new tests
+
+- **`squash/cli.py` — `model-card` first-class flags (W194)**:
+  - `--validate` — generate then run validator; exits non-zero on errors
+  - `--validate-only` — skip generation; validate existing
+    `squash-model-card-hf.md`
+  - `--push-to-hub REPO_ID` — upload to HuggingFace via `huggingface_hub`
+    (optional dep; clean error if not installed; uploads as `README.md`)
+  - `--hub-token TOKEN` — token override; falls back to
+    `HUGGING_FACE_HUB_TOKEN` / `HF_TOKEN` env
+  - `--json` — structured JSON validation report on stdout
+  - 9 new tests
+
+### Changed
+- **`tests/test_squash_model_card.py`** — module count gate updated 69 → 70
+- **`tests/test_squash_wave49.py`**, **`tests/test_squash_wave52.py`**,
+  **`tests/test_squash_wave5355.py`** — secondary module count gates
+  updated 69 → 70 (collateral)
+- **`tests/test_squash_w139.py`** — fixed pre-existing fly.toml whitespace
+  literal test by switching to regex match (not Sprint 10 work, but blocked
+  the "all green" exit gate)
+- **`SQUASH_MASTER_PLAN.md`** — Sprint 10 marked complete; Sprints 11–13
+  scheduled (chain attestation, registry auto-attest gates, startup pricing tier)
+
+### Stats
+- **36 new tests** · **0 regressions** · **3875 total tests passing**
+- **70 Python modules** (was 69 after Sprint 9)
+- **1 new module** (`squash/model_card_validator.py`)
+- **5 new CLI flags** on `squash model-card`
+
+---
+
+## [1.4.0] — 2026-04-29 — Sprint 9: Enterprise Pipeline Integration
+
+### Added (W188–W191 — Sprint 9)
+
+- **`squash/telemetry.py` (W188)** — OpenTelemetry spans per attestation run,
+  OTLP gRPC + HTTP exporters, Datadog / Honeycomb / Jaeger compatible;
+  `squash telemetry status / test / configure` CLI
+- **`squash/integrations/gitops.py` (W189)** — ArgoCD / Flux admission webhook;
+  K8s ValidatingWebhookConfiguration; blocks deployment when attestation
+  missing or score below threshold; `squash gitops check / webhook-manifest /
+  annotate` CLI
+- **`squash/webhook_delivery.py` (W190)** — Generic outbound webhook delivery
+  with HMAC-SHA256 signing, 5 event types, SQLite persistence;
+  `squash webhook add / list / test / remove` CLI
+- **`squash/sbom_diff.py` (W191)** — Attestation diff engine; score delta,
+  component / policy / vulnerability drift; ANSI table / JSON / HTML output;
+  `squash diff v1.json v2.json --fail-on-regression` CLI
+
+### Stats
+- **212 new tests** · **0 regressions** · **3839 total tests passing**
+- **69 Python modules** (was 65 after Sprint 8)
+- **4 new modules**
+
+---
+
 ## [1.3.0] — 2026-04-29 — Sprint 8: Moat Deepening
 
 ### Added (W182–W187 — Sprint 8: Moat Deepening)
