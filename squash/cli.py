@@ -2014,6 +2014,40 @@ def _build_parser() -> argparse.ArgumentParser:
     go_annotate.add_argument("--policy", default="eu-ai-act", help="Policy name (default: eu-ai-act)")
     go_annotate.add_argument("--passed", action="store_true", default=True)
 
+    # ── W223-W225 / C2 — AI Washing Detection ─────────────────────────────────
+    aw_cmd = sub.add_parser(
+        "detect-washing",
+        help="AI washing detection — scan marketing collateral for unsupported capability claims",
+        description=(
+            "Scan marketing docs, investor decks, model cards, and landing pages\n"
+            "for AI capability claims; cross-reference against squash attestation\n"
+            "evidence; flag every divergence. SEC Operation AI Comply top priority.\n\n"
+            "Examples:\n"
+            "  squash detect-washing scan ./investor-deck.md\n"
+            "  squash detect-washing scan ./docs/ --master-record ./out/master_record.json\n"
+            "  squash detect-washing scan ./landing.md --bias-audit ./bias.json\n"
+            "  squash detect-washing scan ./docs/ --fail-on high --format json --out r.json\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    aw_sub = aw_cmd.add_subparsers(dest="aw_command")
+
+    aw_scan = aw_sub.add_parser("scan", help="Scan documents for AI washing indicators")
+    aw_scan.add_argument("doc_paths", nargs="+", help="Document paths or directories to scan")
+    aw_scan.add_argument("--model-id", default="", dest="model_id")
+    aw_scan.add_argument("--master-record", default=None, dest="master_record", help="Path to master_record.json")
+    aw_scan.add_argument("--bias-audit", default=None, dest="bias_audit", help="Path to bias_audit.json")
+    aw_scan.add_argument("--data-lineage", default=None, dest="data_lineage", help="Path to data_lineage.json")
+    aw_scan.add_argument("--format", default="text", choices=["text", "json", "md"], dest="aw_format")
+    aw_scan.add_argument("--out", default=None)
+    aw_scan.add_argument(
+        "--fail-on", default="high", choices=["low", "medium", "high", "critical"], dest="fail_on",
+    )
+
+    aw_report = aw_sub.add_parser("report", help="Render a previously saved AI washing report")
+    aw_report.add_argument("report_path")
+    aw_report.add_argument("--format", default="text", choices=["text", "json", "md"], dest="aw_format")
+
     # ── W196 / B10 — License Conflict Detection ───────────────────────────────
     lc_cmd = sub.add_parser(
         "license-check",
@@ -2268,6 +2302,127 @@ def _build_parser() -> argparse.ArgumentParser:
                         help="Sigstore-sign the underlying attestation")
     rg_cmd.add_argument("--quiet", "-q", action="store_true",
                         help="Suppress informational output")
+
+
+
+    # ── C3 (Sprint 23) — Approval Workflow (W232–W234) ───────────────────────
+
+    # squash request-approval
+    req_appr_cmd = sub.add_parser(
+        "request-approval",
+        help="Create a signed human-oversight approval request for a model deployment",
+        description=(
+            "Create a multi-reviewer approval request for a model attestation.\n"
+            "Required by EU AI Act Article 9 and NIST AI RMF GOVERN pillar.\n\n"
+            "Examples:\n"
+            "  squash request-approval --attestation att://sha256:a3f1... --reviewers ciso@acme.com,vp-eng@acme.com\n"
+            "  squash request-approval --attestation att://sha256:a3f1... --threshold 2 --require-role COMPLIANCE,ENGINEERING\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    req_appr_cmd.add_argument("--attestation", required=True, dest="appr_attestation_id",
+                              help="Attestation ID (att:// URI or bare entry_id)")
+    req_appr_cmd.add_argument("--model-id", dest="appr_model_id", default="",
+                              help="Human-readable model identifier")
+    req_appr_cmd.add_argument("--reviewers", dest="appr_reviewers", default="",
+                              help="Comma-separated reviewer email addresses")
+    req_appr_cmd.add_argument("--threshold", dest="appr_threshold", type=int, default=1,
+                              help="Minimum APPROVED responses needed (default: 1)")
+    req_appr_cmd.add_argument("--require-role", dest="appr_required_roles", default="",
+                              help="Comma-separated roles required (COMPLIANCE,ENGINEERING,SECURITY,LEGAL,EXECUTIVE)")
+    req_appr_cmd.add_argument("--requestor", dest="appr_requestor", default="",
+                              help="Email of the requestor")
+    req_appr_cmd.add_argument("--notes", dest="appr_notes", default="",
+                              help="Context notes for reviewers")
+    req_appr_cmd.add_argument("--attestation-hash", dest="appr_hash", default="",
+                              help="SHA-256 of the attestation payload (snapshot integrity)")
+    req_appr_cmd.add_argument("--ttl-days", dest="appr_ttl", type=int, default=30,
+                              help="Days before the request expires (default: 30)")
+    req_appr_cmd.add_argument("--json", action="store_true", dest="appr_json",
+                              help="Print full request JSON")
+    req_appr_cmd.add_argument("--quiet", "-q", action="store_true")
+
+    # squash approve
+    approve_cmd = sub.add_parser(
+        "approve",
+        help="Submit a reviewer decision on an approval request",
+        description=(
+            "Record your APPROVED / REJECTED / APPROVED_WITH_CONDITIONS decision.\n"
+            "Each record is HMAC-SHA256 signed and written to the approval store.\n\n"
+            "Examples:\n"
+            "  squash approve appr-abc123 --decision APPROVED --rationale \"Bias audit clean\"\n"
+            "  squash approve appr-abc123 --decision APPROVED_WITH_CONDITIONS --condition \"Retrain by 2026-08-01\"\n"
+            "  squash approve appr-abc123 --decision REJECTED --rationale \"Drift exceeds threshold\"\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    approve_cmd.add_argument("request_id", help="Approval request ID (appr-...)")
+    approve_cmd.add_argument("--decision", required=True,
+                             choices=["APPROVED", "REJECTED", "APPROVED_WITH_CONDITIONS"],
+                             dest="appr_decision",
+                             help="Your decision on this request")
+    approve_cmd.add_argument("--rationale", required=True, dest="appr_rationale",
+                             help="Documented basis for your decision (required for Article 9)")
+    approve_cmd.add_argument("--reviewer-email", dest="appr_reviewer_email", default="",
+                             help="Your email address (defaults to SQUASH_REVIEWER_EMAIL env)")
+    approve_cmd.add_argument("--reviewer-name", dest="appr_reviewer_name", default="",
+                             help="Your display name")
+    approve_cmd.add_argument("--role", dest="appr_reviewer_role", default="ANY",
+                             choices=["COMPLIANCE", "ENGINEERING", "SECURITY", "LEGAL", "EXECUTIVE", "ANY"],
+                             help="Your reviewer role (default: ANY)")
+    approve_cmd.add_argument("--condition", action="append", dest="appr_conditions",
+                             metavar="CONDITION",
+                             help="Attach a condition to an APPROVED_WITH_CONDITIONS decision (repeatable)")
+    approve_cmd.add_argument("--json", action="store_true", dest="appr_json",
+                             help="Print full record JSON")
+    approve_cmd.add_argument("--quiet", "-q", action="store_true")
+
+    # squash approval-status
+    appr_status_cmd = sub.add_parser(
+        "approval-status",
+        help="Show the current status of an approval request",
+        description="Displays request details, collected records, and overall decision.\n\n"
+                    "Example:\n  squash approval-status appr-abc123",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    appr_status_cmd.add_argument("request_id", help="Approval request ID (appr-...)")
+    appr_status_cmd.add_argument("--json", action="store_true", dest="appr_json",
+                                 help="Print full JSON")
+    appr_status_cmd.add_argument("--quiet", "-q", action="store_true")
+
+    # squash approval-list
+    appr_list_cmd = sub.add_parser(
+        "approval-list",
+        help="List approval requests",
+        description="List pending or recent approval requests, optionally filtered by reviewer.\n\n"
+                    "Example:\n  squash approval-list --reviewer ciso@acme.com --pending-only",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    appr_list_cmd.add_argument("--reviewer", dest="appr_reviewer_filter", default="",
+                               help="Filter by reviewer email")
+    appr_list_cmd.add_argument("--pending-only", action="store_true", dest="appr_pending_only",
+                               help="Show only PENDING requests")
+    appr_list_cmd.add_argument("--limit", type=int, default=20, dest="appr_limit",
+                               help="Max results (default: 20)")
+    appr_list_cmd.add_argument("--json", action="store_true", dest="appr_json",
+                               help="Print full JSON list")
+    appr_list_cmd.add_argument("--quiet", "-q", action="store_true")
+
+    # squash approval-export
+    appr_export_cmd = sub.add_parser(
+        "approval-export",
+        help="Export a signed Article 9 evidence bundle for a completed approval",
+        description="Exports a regulator-ready evidence bundle: request JSON, per-record\n"
+                    "signature verification, regulatory mapping, and audit summary.\n\n"
+                    "Example:\n  squash approval-export appr-abc123 --output evidence.json",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    appr_export_cmd.add_argument("request_id", help="Approval request ID (appr-...)")
+    appr_export_cmd.add_argument("--output", dest="appr_output", default=None,
+                                 help="Write evidence to this file (default: stdout)")
+    appr_export_cmd.add_argument("--json", action="store_true", dest="appr_json",
+                                 help="Pretty-print JSON (default when no --output)")
+    appr_export_cmd.add_argument("--quiet", "-q", action="store_true")
 
 
     # ── W135 / W136 — Annex IV generate + validate ────────────────────────────
@@ -4310,6 +4465,202 @@ def _model_card_validate(card_path: Path, json_out: bool, quiet: bool) -> int:
             print(f"  {f.render()}")
 
     return 0 if report.is_valid else 1
+
+
+def _cmd_request_approval(args: argparse.Namespace, quiet: bool) -> int:
+    """C3 — create a multi-reviewer approval request."""
+    from squash.approval_workflow import ApprovalWorkflow, ReviewerRole
+
+    reviewers = [e.strip() for e in args.appr_reviewers.split(",") if e.strip()]
+    required_roles_raw = [r.strip() for r in args.appr_required_roles.split(",") if r.strip()]
+    try:
+        required_roles = [ReviewerRole(r) for r in required_roles_raw]
+    except ValueError as exc:
+        print(f"request-approval: invalid role — {exc}", file=sys.stderr)
+        return 2
+
+    with ApprovalWorkflow() as wf:
+        req = wf.request(
+            attestation_id=args.appr_attestation_id,
+            model_id=args.appr_model_id or args.appr_attestation_id,
+            reviewers=reviewers,
+            threshold=args.appr_threshold,
+            required_roles=required_roles,
+            requestor_email=args.appr_requestor or os.environ.get("SQUASH_REQUESTOR_EMAIL", ""),
+            notes=args.appr_notes,
+            attestation_hash=args.appr_hash,
+            ttl_days=args.appr_ttl,
+        )
+
+    if getattr(args, "appr_json", False):
+        print(json.dumps(req.to_dict(), indent=2))
+    elif not quiet:
+        print(f"[squash request-approval] Created {req.request_id}")
+        print(f"  Model:      {req.model_id}")
+        print(f"  Attestation: {req.attestation_id}")
+        print(f"  Reviewers:  {', '.join(req.reviewers) or '(open)'}")
+        print(f"  Threshold:  {req.threshold}")
+        if req.required_roles:
+            print(f"  Roles:      {', '.join(r.value for r in req.required_roles)}")
+        print(f"  Expires:    {req.expires_at}")
+    return 0
+
+
+def _cmd_approve(args: argparse.Namespace, quiet: bool) -> int:
+    """C3 — record a reviewer's decision on an approval request."""
+    from squash.approval_workflow import (
+        ApprovalDecision, ApprovalWorkflow, ApproverIdentity, ReviewerRole,
+    )
+
+    email = (args.appr_reviewer_email
+             or os.environ.get("SQUASH_REVIEWER_EMAIL", "")
+             or os.environ.get("GIT_AUTHOR_EMAIL", ""))
+    if not email:
+        print("approve: --reviewer-email is required (or set SQUASH_REVIEWER_EMAIL)", file=sys.stderr)
+        return 2
+
+    try:
+        decision = ApprovalDecision(args.appr_decision)
+        role = ReviewerRole(args.appr_reviewer_role)
+    except ValueError as exc:
+        print(f"approve: invalid value — {exc}", file=sys.stderr)
+        return 2
+
+    reviewer = ApproverIdentity(
+        email=email,
+        name=args.appr_reviewer_name or os.environ.get("SQUASH_REVIEWER_NAME", email),
+        role=role,
+    )
+
+    try:
+        with ApprovalWorkflow() as wf:
+            record = wf.approve(
+                request_id=args.request_id,
+                reviewer=reviewer,
+                decision=decision,
+                rationale=args.appr_rationale,
+                conditions=getattr(args, "appr_conditions", None) or [],
+            )
+            req = wf.status(args.request_id)
+    except ValueError as exc:
+        print(f"approve: {exc}", file=sys.stderr)
+        return 1
+
+    if getattr(args, "appr_json", False):
+        print(json.dumps(record.to_dict(), indent=2))
+    elif not quiet:
+        icons = {
+            "APPROVED": "✅", "REJECTED": "❌",
+            "APPROVED_WITH_CONDITIONS": "✅⚠",
+        }
+        icon = icons.get(record.decision.value, "•")
+        print(f"[squash approve] {icon} {record.decision.value} — {args.request_id}")
+        print(f"  Reviewer:  {email} ({role.value})")
+        print(f"  Rationale: {record.rationale[:80]}")
+        if record.conditions:
+            for c in record.conditions:
+                print(f"  Condition: {c}")
+        print(f"  Sig:       {record.signature[:24]}...")
+        print(f"  Overall:   {req.overall_status.value}  "
+              f"({req.approved_count}/{req.threshold} approved)")
+    return 0
+
+
+def _cmd_approval_status(args: argparse.Namespace, quiet: bool) -> int:
+    """C3 — show status of an approval request."""
+    from squash.approval_workflow import ApprovalWorkflow, RequestStatus
+
+    try:
+        with ApprovalWorkflow() as wf:
+            req = wf.status(args.request_id)
+    except ValueError as exc:
+        print(f"approval-status: {exc}", file=sys.stderr)
+        return 1
+
+    if getattr(args, "appr_json", False):
+        print(json.dumps(req.to_dict(), indent=2))
+    elif not quiet:
+        status_icon = {
+            RequestStatus.APPROVED: "✅",
+            RequestStatus.REJECTED: "❌",
+            RequestStatus.PENDING:  "⏳",
+            RequestStatus.EXPIRED:  "⌛",
+        }.get(req.overall_status, "•")
+        print(f"[squash approval-status] {status_icon} {req.request_id}")
+        print(f"  Model:        {req.model_id}")
+        print(f"  Attestation:  {req.attestation_id}")
+        print(f"  Status:       {req.overall_status.value}")
+        print(f"  Threshold:    {req.approved_count}/{req.threshold} approved")
+        print(f"  Requested:    {req.requested_at}")
+        print(f"  Expires:      {req.expires_at}")
+        if req.pending_reviewers:
+            print(f"  Awaiting:     {', '.join(req.pending_reviewers)}")
+        if req.all_conditions:
+            print("  Conditions:")
+            for c in req.all_conditions:
+                print(f"    · {c}")
+        if req.records:
+            print("  Records:")
+            for r in req.records:
+                valid = "✓sig" if r.verify() else "✗sig"
+                print(f"    {r.reviewer.email} [{r.reviewer.role.value}] → "
+                      f"{r.decision.value} {valid}")
+    return 0 if req.overall_status.value != "REJECTED" else 1
+
+
+def _cmd_approval_list(args: argparse.Namespace, quiet: bool) -> int:
+    """C3 — list approval requests."""
+    from squash.approval_workflow import ApprovalWorkflow
+
+    reviewer_filter = getattr(args, "appr_reviewer_filter", "") or ""
+    pending_only = getattr(args, "appr_pending_only", False)
+    limit = getattr(args, "appr_limit", 20)
+
+    with ApprovalWorkflow() as wf:
+        if pending_only:
+            requests = wf.list_pending(reviewer_email=reviewer_filter or None)
+        else:
+            requests = wf.list_all(limit=limit)
+            if reviewer_filter:
+                requests = [r for r in requests if reviewer_filter in r.reviewers]
+
+    if getattr(args, "appr_json", False):
+        print(json.dumps([r.to_dict() for r in requests], indent=2))
+    elif not quiet:
+        if not requests:
+            print("[squash approval-list] No requests found")
+        else:
+            for req in requests:
+                status_icon = {"APPROVED": "✅", "REJECTED": "❌", "PENDING": "⏳"}.get(
+                    req.overall_status.value, "•")
+                print(f"  {status_icon} {req.request_id}  {req.model_id}  "
+                      f"{req.overall_status.value}  {req.requested_at[:10]}  "
+                      f"({req.approved_count}/{req.threshold})")
+    return 0
+
+
+def _cmd_approval_export(args: argparse.Namespace, quiet: bool) -> int:
+    """C3 — export Article 9 evidence bundle."""
+    from squash.approval_workflow import ApprovalWorkflow
+
+    try:
+        with ApprovalWorkflow() as wf:
+            evidence = wf.export_evidence(args.request_id)
+    except ValueError as exc:
+        print(f"approval-export: {exc}", file=sys.stderr)
+        return 1
+
+    blob = json.dumps(evidence, indent=2)
+    output = getattr(args, "appr_output", None)
+    if output:
+        Path(output).write_text(blob)
+        if not quiet:
+            print(f"[squash approval-export] Written to {output}")
+            print(f"  Signatures valid: {evidence['all_signatures_valid']}")
+    else:
+        print(blob)
+    return 0
+
 
 
 def _cmd_chain_attest(args: argparse.Namespace, quiet: bool) -> int:
@@ -6704,6 +7055,89 @@ def _cmd_gitops(args: argparse.Namespace, quiet: bool) -> int:
         return 1
 
 
+def _cmd_detect_washing(args: argparse.Namespace, quiet: bool) -> int:
+    """W223-W225 / C2 — AI washing detection."""
+    from squash.washing_detector import (
+        AttestationEvidence,
+        OverallVerdict,
+        WashingDetector,
+        load_evidence,
+        load_report,
+    )
+
+    sub = getattr(args, "aw_command", None)
+
+    if sub == "scan":
+        # Resolve document paths (expand directories)
+        doc_paths: list[Path] = []
+        for raw in args.doc_paths:
+            p = Path(raw)
+            if p.is_dir():
+                for ext in ("*.md", "*.txt", "*.html", "*.pdf"):
+                    doc_paths.extend(sorted(p.rglob(ext)))
+            elif p.exists():
+                doc_paths.append(p)
+            else:
+                print(f"warning: {p} not found — skipped", file=sys.stderr)
+
+        if not doc_paths:
+            print("error: no readable documents found", file=sys.stderr)
+            return 1
+
+        evidence = load_evidence(
+            master_record_path=Path(args.master_record) if args.master_record else None,
+            bias_audit_path=Path(args.bias_audit) if args.bias_audit else None,
+            data_lineage_path=Path(args.data_lineage) if args.data_lineage else None,
+            model_id=args.model_id,
+        )
+
+        report = WashingDetector().scan(doc_paths, evidence=evidence, model_id=args.model_id)
+        _output_washing_report(report, args.aw_format, args.out, quiet)
+
+        fail_threshold = OverallVerdict(args.fail_on)
+        if report.verdict >= fail_threshold:
+            if not quiet and args.aw_format == "text":
+                print(
+                    f"error: verdict {report.verdict.value.upper()} "
+                    f">= --fail-on {fail_threshold.value.upper()}",
+                    file=sys.stderr,
+                )
+            return 2
+        return 0
+
+    if sub == "report":
+        try:
+            report = load_report(Path(args.report_path))
+        except Exception as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 1
+        _output_washing_report(report, args.aw_format, None, quiet)
+        return 0
+
+    print("squash detect-washing: specify a subcommand — scan | report")
+    return 1
+
+
+def _output_washing_report(report: Any, fmt: str, out_path: str | None, quiet: bool) -> None:
+    if fmt == "json":
+        text = report.to_json()
+    elif fmt == "md":
+        text = report.to_markdown()
+    else:
+        lines = [report.summary(), ""]
+        for f in report.findings:
+            lines.append(f"  [{f.severity.value.upper()}] {f.rule_id}: {f.title}")
+            lines.append(f"      claim: \"{f.claim.raw_text[:80]}\"")
+            lines.append(f"      {f.legal_risk[:120]}")
+        text = "\n".join(lines)
+    if out_path:
+        Path(out_path).write_text(text, encoding="utf-8")
+        if not quiet:
+            print(f"✓ AI washing report written to {out_path}")
+    else:
+        print(text)
+
+
 def _cmd_license_check(args: argparse.Namespace, quiet: bool) -> int:
     """W196 / B10 — Licence conflict detection."""
     from squash.license_conflict import (
@@ -7289,6 +7723,8 @@ def main() -> None:
         sys.exit(_cmd_telemetry(args, quiet))
     elif args.command == "gitops":
         sys.exit(_cmd_gitops(args, quiet))
+    elif args.command == "detect-washing":
+        sys.exit(_cmd_detect_washing(args, quiet))
     elif args.command == "license-check":
         sys.exit(_cmd_license_check(args, quiet))
     elif args.command == "data-poison":
@@ -7301,6 +7737,16 @@ def main() -> None:
         sys.exit(_cmd_chain_attest(args, quiet))
     elif args.command == "registry-gate":
         sys.exit(_cmd_registry_gate(args, quiet))
+    elif args.command == "request-approval":
+        sys.exit(_cmd_request_approval(args, quiet))
+    elif args.command == "approve":
+        sys.exit(_cmd_approve(args, quiet))
+    elif args.command == "approval-status":
+        sys.exit(_cmd_approval_status(args, quiet))
+    elif args.command == "approval-list":
+        sys.exit(_cmd_approval_list(args, quiet))
+    elif args.command == "approval-export":
+        sys.exit(_cmd_approval_export(args, quiet))
     else:
         parser.print_help()
         sys.exit(1)

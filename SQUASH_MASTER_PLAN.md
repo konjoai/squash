@@ -166,8 +166,8 @@ High-ROI items derived from market research. Each operationalises a specific anc
 | ID | Item | Effort | Date | ∥ With | Anchor Stat | Sprint Spec |
 |---|---|---|---|---|---|---|
 | **C1 ★** | **`squash freeze`** — emergency response orchestrator | **2 days** | **May 5–6** | A3, B1 | 20% have a tested AI incident-response plan | Sprint 19 (W221–W222) |
-| **C2** | **AI Washing Detection** — `squash detect-washing` | 5 days | May 7–12 | B1, B2 | SEC #1 AI exam priority 2026 | Sprint 20 (W223–W225) |
-| **C3** | **Approval Workflow** — `squash approve` (signed reviewer record) | 5 days | May 13–19 | B2, B3, B4 | EU AI Act Art. 9 human-oversight requirement | Sprint 23 (W232–W234) |
+| **C2** ✅ | **AI Washing Detection** — `squash detect-washing` | shipped 2026-04-30 | B1, B2 | SEC #1 AI exam priority 2026. `washing_detector.py`: 28 patterns, 9 claim types, 12 divergence rules, 95.7% recall. 38 tests. | Sprint 20 (W223–W225) ✅ |
+| **C3** ✅ | **Approval Workflow** — `squash approve` (signed reviewer record) | 5 days | May 13–19 | B2, B3, B4 | EU AI Act Art. 9 human-oversight requirement | Sprint 23 (W232–W234) |
 | **C4** | **Regulatory Watch Daemon** — primary-source polling + gap analysis | 7 days | May 20–28 | B4, D1 | Daily-touch product = retention | Sprint 27 (W243–W245) |
 | **C5** | **Audit Simulation** — `squash simulate-audit --regulator EU-AI-Act` | 10 days | Jun 2–13 | D1, D2, B5 | 78% can't pass audit in 90 days | Sprint 22 (W229–W231) |
 | **C6** | **Insurance Risk Package** — Munich Re / Coalition format | 7 days | Jun 16–24 | D2, D3 | AI cyber-insurance market crystallising late 2026 | Sprint 24 (W235–W237) |
@@ -1151,7 +1151,7 @@ No competitor has all of these. Most have none.
 
 ---
 
-### Sprint 23 — Model Deployment Approval Workflow (`squash approve`) · **Track C / C3**
+### Sprint 23 — Model Deployment Approval Workflow (`squash approve`) · **Track C / C3** ✅ COMPLETE
 
 **Goal:** Generate cryptographically signed approval records — reviewer identity, attestation state at moment of review, timestamp, explicit approval/rejection rationale. Sigstore handles the crypto; squash provides the workflow shell. Required by EU AI Act Article 9 and NIST AI RMF "GOVERN" pillar.
 

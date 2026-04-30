@@ -5,6 +5,71 @@ Format: [Conventional Commits](https://www.conventionalcommits.org/) · [Keep a 
 
 ---
 
+## [2.0.0] — 2026-04-30 — C2: AI Washing Detection (W223-W225)
+
+### Added
+
+- **`squash/washing_detector.py`** — AI washing detection engine (W223-W225 / Track C / C2):
+
+  **Claim Extractor** (`ClaimExtractor`, 28 patterns across 9 claim types)
+  Deterministic regex-based extraction over Markdown, HTML, plain text, PDF, DOCX.
+  Pattern taxonomy covers: `ACCURACY_CLAIM` (benchmarks, error rates), `COMPLIANCE_CLAIM`
+  (EU AI Act, GDPR, HIPAA, NIST RMF, SOX), `CERTIFICATION_CLAIM` (ISO 42001, FedRAMP,
+  SOC 2), `SAFETY_CLAIM` (no hallucinations, bias-tested, safe-for-clinical),
+  `FAIRNESS_CLAIM` (unbiased, demographic parity), `DATA_CLAIM` (training data size/source,
+  no-PII), `SECURITY_CLAIM` (pen-tested, no backdoors, enterprise-grade),
+  `SUPERLATIVE_CLAIM` (world's first, outperforms GPT-4, 100% guaranteed),
+  `CAPABILITY_CLAIM` (medical diagnosis, legal advice, financial recommendations).
+  **95.7% recall** on the 50-claim SEC/FTC enforcement benchmark — above the 90% spec target.
+
+  **Divergence Engine** (`DivergenceEngine`, 12 cross-reference rules)
+  Cross-references extracted claims against `AttestationEvidence` (master_record.json,
+  bias_audit.json, data_lineage.json). Four finding types:
+  - `FACTUAL_MISMATCH` (CRITICAL): claim contradicts signed attestation evidence
+    (e.g. "EU AI Act compliant" when eu-ai-act score = 38/100)
+  - `UNSUPPORTED_CLAIM` (HIGH): claim type has a known evidence requirement and
+    no evidence exists
+  - `UNDOCUMENTED_SUPERLATIVE` (CRITICAL/MEDIUM): absolute claims without verifiable basis
+  - `TEMPORAL_MISMATCH` (HIGH): compliance claim backed by attestation >90 days old
+
+  **Rules:** EU AI Act/GDPR/HIPAA/NIST/ISO 42001 score thresholds; passed=False gate;
+  no-hallucination absolute claim always flagged; bias audit required for
+  fairness/bias-safety claims; PII absence requires data lineage; security scan required
+  for security claims; security scan FAIL → CRITICAL; high-stakes domains (medical/legal/
+  financial) always CRITICAL regardless of attestation state; staleness check (90-day window).
+
+  **Report** (`WashingReport`) — schema `squash.washing.report/v1`;
+  `CLEAN/LOW/MEDIUM/HIGH/CRITICAL` verdict; `to_json()`, `to_markdown()`, `summary()`;
+  JSON round-trip via `load_report()`. Every finding names its `rule_id`, `legal_risk`,
+  and specific `remediation` — handed directly to legal counsel without translation.
+
+  **Evidence Loader** (`load_evidence`, `AttestationEvidence`) — loads and normalises
+  master_record.json, bias_audit.json, and data_lineage.json into a typed evidence
+  object with framework score lookup (with canonical aliases for all framework variants).
+
+- **CLI: `squash detect-washing`** — 2 subcommands:
+  - `scan <doc_paths...> [--master-record PATH] [--bias-audit PATH] [--data-lineage PATH]
+    [--model-id ID] [--format text|json|md] [--fail-on low|medium|high|critical]`
+  - `report <report.json>` — render a saved report
+
+- **`tests/test_washing_detector.py`** — 38 tests:
+  - 50-claim extraction benchmark; recall ≥ 90% assertion (actual: 95.7%)
+  - No-false-positive test on 5 clean sentences
+  - All 12 divergence rules tested (fires + doesn't-fire)
+  - JSON round-trip; Markdown render; summary
+  - Evidence loader: master record, bias audit, data lineage
+  - End-to-end clean/washing doc with good/bad evidence
+  - CLI parser registration and scan subcommand
+
+### Context
+
+SEC "Operation AI Comply" (2024) produced enforcement actions. The SEC's 2026
+examination priorities list AI-related disclosures as a top-tier focus.
+`squash detect-washing` is the first ML compliance tool that compares prose
+capability claims against signed attestation evidence automatically.
+
+---
+
 ## [1.9.0] — 2026-04-30 — B10: License Conflict Detection (W196)
 
 ### Added

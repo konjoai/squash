@@ -657,10 +657,11 @@ class TestModuleCountGate(unittest.TestCase):
         # W196 / B10 (licence conflict detection) added license_conflict.py — 73 total.
         # Sprint 10 (W193) added model_card_validator.py — 74 total.
         # Sprint 11 (W197) added chain_attest.py — 75 total.
+        # W223-225 / C2 (AI washing detection) added washing_detector.py — +2 more = 77 total.
         self.assertEqual(
             count,
-            75,
-            msg=f"squash/ has {count} Python files (expected 75 after Sprint 11). "
+            77,
+            msg=f"squash/ has {count} Python files (expected 77 after W225/C2). "
                 "If you added a file, update this gate.",
         )
 
