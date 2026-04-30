@@ -154,6 +154,10 @@ Pure engineering that has zero dependency on Track A once A1 is live. Each item 
 | **B4** | **Terraform/Pulumi Provider** — Go provider + Pulumi component | 10 days | May 15–26 | C3, C4, D1 | API stable after A1; new repo `terraform-provider-squash/` | Sprint 16 (W211–W214) |
 | **B5** | **API Gateway Plugin** — Kong + AWS Lambda authorizer | 8 days | May 27–Jun 5 | D1, C5 | Two packages (Kong Go/Lua + AWS Python) | (de-scoped Tier 3 #28; reinstated as B5) |
 | **B6** | **Blockchain Anchoring** — Ethereum OP_RETURN of attestation hash | 6 days | Jun 6–13 | D1, C5 | `provenance.py` exists; new web3.py + tx builder | Sprint 17 (W215–W217) |
+| **B7** | **Drift SLA Certificate** — `squash drift-sla --threshold 0.05 --window 30d` | 4 days | May 28–Jun 2 | B5, C4 | `drift.py` already computes PSI/KS; new SLA cert + breach event | Sprint 31 (W253–W254) |
+| **B8** | **LoRA / Adapter Poisoning Detection** — `squash scan-adapter --lora ./adapter.safetensors` | 5 days | Jun 5–11 | B6, D1 | `scanner.py` + ModelScan; new behavioural-comparison + weight-delta anomaly | Sprint 32 (W257–W258) |
+| **B9** | **Data Poisoning + Pipeline Integrity Attestation** — `squash attest-pipeline --datasets ./data/` | 7 days | Jun 12–22 | C5, D2 | `data_lineage.py` + `scanner.py`; new dataset hash verifier + label-distribution anomaly | Sprint 34 (W262–W264) |
+| **B10** | **License Conflict Detector** — `squash license-check --deployment-type commercial-saas` | 5 days | May 18–23 | B4, C3 | `data_lineage.py` SPDX layer; new 200+ LLM license DB + deployment-type rules | Sprint 33 (W255–W256) — OMB M-26-04 deadline |
 
 ### Track C — New Opportunities (parallel, research-driven)
 
@@ -167,6 +171,11 @@ High-ROI items derived from market research. Each operationalises a specific anc
 | **C4** | **Regulatory Watch Daemon** — primary-source polling + gap analysis | 7 days | May 20–28 | B4, D1 | Daily-touch product = retention | Sprint 27 (W243–W245) |
 | **C5** | **Audit Simulation** — `squash simulate-audit --regulator EU-AI-Act` | 10 days | Jun 2–13 | D1, D2, B5 | 78% can't pass audit in 90 days | Sprint 22 (W229–W231) |
 | **C6** | **Insurance Risk Package** — Munich Re / Coalition format | 7 days | Jun 16–24 | D2, D3 | AI cyber-insurance market crystallising late 2026 | Sprint 24 (W235–W237) |
+| **C7 ★** | **Hallucination Rate Attestation** — `squash hallucination-attest --domain legal` | 5 days | **May 9–15** | C2, B2 | **$67.4B in 2024 losses · 47% decisions on hallucinated content** | Sprint 30 (W251–W252) |
+| **C8** | **Model Deprecation Watch** — `squash deprecation-watch` cross-references registry vs provider sunsets | 4 days | Jun 25–30 | C6, D2 | OpenAI / Anthropic / Google sunsets break attested deployments quarterly | Sprint 35 (W265–W266) |
+| **C9** | **Carbon / Energy Attestation** — `squash attest-carbon --deployment-region us-east-1` | 6 days | Jul 1–9 | D3 | CSRD reporting (all large EU orgs from 2025) · OMB DOE AI data-centre rule | Sprint 36 (W259–W261) |
+| **C10** | **Runtime Hallucination Monitor** — `squash monitor --mode hallucination --endpoint http://...` | 6 days | Jul 7–15 | D3 | EU AI Act Art. 9 post-market monitoring · 18% production hallucination rate | Sprint 37 (W267–W269) |
+| **C11** | **Genealogy + Copyright Contamination Cert** — `squash genealogy --memorisation-probe ./probes/` | 7 days | Jul 21–30 | D5 | NYT v. OpenAI legal theory · GC buyer · Books3 / copyleft-code exposure | Sprint 39 (W272–W274) |
 
 ### Track D — Enterprise Moat (post-launch defensibility)
 
@@ -180,6 +189,7 @@ Higher-effort items that build the long-term moat. Most depend on Track A's live
 | **D4** | **Multi-Jurisdiction Matrix** — `squash compliance-matrix --regions ...` | 8 days | Jul 10–20 | D3, D5 | Multinational legal-mapping is 1-week consult per deploy | Sprint 26 (W240–W242) |
 | **D5** | **Industry Benchmarking** — `squash industry-benchmark --sector ...` | 7 days | Jul 20–28 | D3, D4 | QBR conversation starter; data-density unlock | Sprint 29 (W249–W250) |
 | **D6** | **SOC 2 Type II** — readiness phase + auditor selection | 6 mo | Aug 2026+ | (external) | Procurement unblocker for $50K+ ACV | Sprint 18 (W218–W220) |
+| **D7** | **AI Vendor Concentration Risk** — `squash vendor-concentration` aggregates Asset Registry by provider | 5 days | Aug 5–11 | D6 onboarding, R1 | NIST AI RMF GOVERN function · CRO buyer · 5-provider average AI stack | Sprint 38 (W270–W271) |
 
 ### Launch Sequence (red, date-locked)
 
@@ -221,6 +231,27 @@ traceable back to one of them. They define the proof gap.
 | **22%** of orgs confident they could pass an AI governance audit in 90 days | Grant Thornton 2026 | The negative framing of the same stat — used in HN posts and design-partner outreach. |
 | **20%** of organizations have a tested AI incident response plan | Industry research, 2026 | Sprint 19 (`squash freeze`) lands here — emergency response as a feature. |
 | **4×** revenue-growth multiple for orgs with strong AI governance | Industry research | The CFO ROI line, not just risk-averter pitch. |
+
+### The Hallucination Crisis (general counsel + CFO layer)
+
+| Stat | Source | What It Unlocks |
+|---|---|---|
+| **$67.4 billion** in global AI hallucination losses in 2024 | 2024 industry research | **The headline stat for the entire squash story.** Sprint 30 (`squash hallucination-attest`) is the direct product. |
+| **47%** of enterprise AI users made at least one major business decision based on hallucinated content | 2024–2025 enterprise survey | Hallucination is operational risk, not edge-case risk. C7 lands here. |
+| **4.3 hours/week** spent per knowledge worker verifying AI outputs ≈ **$14,200/employee/year** in hallucination mitigation | Productivity studies, 2025 | The CFO ROI math. Squash converts this hidden cost into a one-line attestation. |
+| **18%** hallucination rate in live enterprise chatbot deployments · **5–15%** in RAG systems even with retrieval working | Production telemetry studies | Sprint 37 (`squash monitor --mode hallucination`) — runtime SLA distinct from pre-deploy. |
+| **39%** of AI customer-service bots pulled or reworked in 2024 due to hallucination errors | 2024 deployment retrospective | Confirms hallucination monitoring as a continuous-compliance requirement, not one-time test. |
+| **34%** more confident language used by models *when hallucinating* than when factual | MIT research, 2025 | The legal-exposure framing for Sprint 39 (Genealogy + Copyright Contamination Cert). |
+
+### The Drift / Data-Integrity Crisis (CISO + ML platform layer)
+
+| Stat | Source | What It Unlocks |
+|---|---|---|
+| **35%** error-rate jump in models left unmonitored 6+ months on new data | 2024 MLOps survey | Sprint 31 (`squash drift-sla`) — formal drift SLA certificate. |
+| **67%** of orgs at scale reported a critical issue from statistical misalignment unnoticed for >1 month | 2024 enterprise survey | Same buyer; same product. Drift is silent until it's expensive. |
+| **90%** of AI models fail to reach production due to fragile pipelines | MLOps research | Sprint 34 (`squash attest-pipeline`) — training pipeline integrity attestation. |
+| **~100** malicious models discovered on HuggingFace with embedded code-execution payloads (some establishing reverse-shell on load) | JFrog Security 2024 | Sprint 32 (`squash scan-adapter`) for LoRA + Sprint 34 for pipelines both land here. |
+| **0.001%** of training data poisoned is enough to fundamentally degrade model reliability | Adversarial-ML research | Statistical detection threshold for the data-poisoning module. Order-of-magnitude proof point. |
 
 ### The AI Identity Crisis (CISO layer)
 
@@ -1014,7 +1045,7 @@ The eight Tier 3 features (#23–#30) are batched into five sprints by proximity
 
 ---
 
-## Tier 4 — Market-Opportunity Sprints (Sprints 19–29)
+## Tier 4 — Market-Opportunity Sprints (Sprints 19–29) · _continues into Tier 5 (Sprints 30–39)_
 
 Tier 1+2 made squash a paid product; Tier 3 made it long-tail
 infrastructure. Tier 4 is what wins the next 18 months: each sprint
@@ -1270,6 +1301,214 @@ No competitor has all of these. Most have none.
 
 ---
 
+## Tier 5 — Research-Anchored Sprints (Sprints 30–39)
+
+Ten new sprints derived from documented operational pain — every one
+grounded in a quantified statistic (see Market Intelligence above).
+Wave numbering W251–W274 (24 waves total). Each Tier 5 sprint
+operationalises one anchor stat.
+
+The thread: **the problem isn't that the risk doesn't exist, it's that
+there's no signed, auditable, machine-readable proof the risk was
+measured and addressed.** That is what squash generates. Every Tier 5
+deliverable is one more proof artefact.
+
+---
+
+### Sprint 30 — Hallucination Rate Attestation (`squash hallucination-attest`) · **Track C / C7 ★ HEADLINE STAT**
+
+> ★ **The single most-quoted statistic in the squash story sits here: $67.4B in 2024 AI hallucination losses, 47% of executives made decisions on hallucinated content, $14,200/employee/year in mitigation cost.** Sprint 30 is the product that converts that pain into a one-line attestation. Lead every press release, every HN post, every CFO conversation with this stat.
+
+**Goal:** Signed certificate that measures a model's hallucination rate on a domain-specific probe dataset (legal, medical, financial, code, general), records the Vectara-equivalent score, flags whether the rate exceeds the deployment-domain threshold (legal AI at 6.4% is very different from general knowledge at 0.8%), and generates a certificate suitable for vendor trust packages.
+
+**Why now:** EU AI Act Article 13 (Aug 2 enforcement) requires transparency for AI outputs. Hallucination documentation goes from best-practice to compliance requirement on Day 1. No competitor produces a signed, attested hallucination rate.
+
+| Wave | Module / Feature | What It Delivers |
+|------|-----------------|-----------------|
+| W251 | `squash/hallucination_attest.py` (NEW) | `HallucinationAttester.attest(model_endpoint, domain)`: runs a curated probe set per domain (Vectara HHEM-style), measures faithfulness against ground-truth references, computes domain-adjusted hallucination rate, signs the result. Five built-in domains: `legal`, `medical`, `financial`, `code`, `general`. |
+| W252 | CLI: `squash hallucination-attest` + Trust Package integration | `squash hallucination-attest --model http://model.local:8080 --domain legal`. Signed cert under `squash-hallucination.json`; auto-included in Trust Package export; threshold gate flag (`--max-rate 0.05`) for CI. |
+
+**Sprint 30 exit criteria:**
+- 1 new module (`hallucination_attest.py`); module count tracked
+- 5 domains × ≥40 probes each shipped as built-in fixtures
+- Threshold gate blocks attestation on overshoot
+
+---
+
+### Sprint 31 — Drift SLA Certificate (`squash drift-sla`) · **Track B / B7**
+
+**Goal:** Formal drift SLA certificate. `squash drift-sla --threshold 0.05 --window 30d` monitors PSI + KS statistic on model outputs over a rolling window, compares to a signed baseline attestation, issues a green/yellow/red drift cert. Used in regulated industries (BFSI / healthcare) as evidence of EU AI Act post-market continuous monitoring.
+
+**The stat:** 35% error-rate jump in models left unmonitored 6+ months · 67% of orgs at scale hit a critical statistical-misalignment issue unnoticed for >1 month.
+
+| Wave | Module / Feature | What It Delivers |
+|------|-----------------|-----------------|
+| W253 | `squash/drift.py` extension — SLA certificate engine | `DriftSLA(threshold=0.05, window_days=30)`: rolling PSI/KS evaluator that emits structured `DriftCertificate` (signed) with green/yellow/red status, breach timestamp, recommended action. |
+| W254 | CLI: `squash drift-sla` + breach alerting | `squash drift-sla --baseline ./squash-attest.json --threshold 0.05 --window 30d`; cron-friendly exit codes (0 green, 1 yellow, 2 red); breach event fires through `webhook_delivery.notify(event="drift.sla_breach")`. |
+
+**Sprint 31 exit criteria:**
+- 0 new modules (extension); 0 regressions
+- PSI + KS computed deterministically against fixture distributions
+- Breach event verified against existing webhook delivery
+
+---
+
+### Sprint 32 — LoRA / Adapter Poisoning Detection (`squash scan-adapter`) · **Track B / B8**
+
+**Goal:** `squash scan-adapter --lora ./adapter.safetensors --base-model ./model` runs behavioural-comparison testing between the base model and the LoRA-applied model, flags statistical anomalies in the weight-delta distribution that could indicate backdoor injection, checks adapter provenance + signing, generates a signed adapter safety certificate. Includes `--require-safetensors` to block pickle-format adapters outright.
+
+**The stat:** ~100 malicious models found on HuggingFace with embedded code-execution payloads (JFrog 2024) · LoRA adapters perceived as "small therefore low-risk" — wrong — they carry full behavioural rewrite capability.
+
+| Wave | Module / Feature | What It Delivers |
+|------|-----------------|-----------------|
+| W257 | `squash/scanner.py` extension — LoRA delta analyser | Behavioural-diff harness: load base + adapter, run a fixed prompt set through both, compute output-distribution distance + weight-delta statistical fingerprint; flag anomalies vs. clean-fine-tune baselines. |
+| W258 | CLI: `squash scan-adapter` + safetensors gate | `squash scan-adapter --lora ./adapter.safetensors`; `--require-safetensors` returns rc=2 on pickle-format input; signed `squash-adapter-scan.json` written. |
+
+**Sprint 32 exit criteria:**
+- 0 new modules (scanner extension)
+- Statistical anomaly threshold tuned against ≥3 known-clean and ≥1 known-malicious adapter fixtures
+- Pickle-format input rejected before any deserialisation
+
+---
+
+### Sprint 33 — License Conflict Detector (`squash license-check`) · **Track B / B10 — OMB M-26-04**
+
+**Goal:** `squash license-check --model ./model --deployment-type commercial-saas --user-count 50000` parses model licence file, checks against a curated DB of 200+ LLM licences (Llama 2/3/3.1, Mistral, DeepSeek, Gemma, OpenRAIL, Apache, MIT, …), flags conflicts with the intended deployment (commercial-saas, federal, MAU-thresholds, derivative-works), generates a signed compliance cert.
+
+**The stat:** OMB M-26-04 (Dec 2025, effective March 2026) — federal agencies must request model cards, evaluation artefacts, and acceptable-use policies before LLM purchase. **Already past deadline.** California AB 2013 effective Jan 1, 2026.
+
+| Wave | Module / Feature | What It Delivers |
+|------|-----------------|-----------------|
+| W255 | `squash/license_check.py` (NEW) | LLM licence database (200+ entries) keyed by SPDX-extended identifier; per-licence rules (MAU thresholds, federal-use clauses, derivative restrictions); `LicenseChecker.check(model_path, deployment_type, user_count)` → signed `LicenseCertificate`. |
+| W256 | CLI: `squash license-check` + OMB-M-26-04 profile | `squash license-check --omb-m-26-04` profile bundles federal-procurement requirements; emits the model card + AUP + eval artefacts referenced by the directive in one bundle. |
+
+**Sprint 33 exit criteria:**
+- 1 new module (`license_check.py`); module count tracked
+- 200+ licences with deployment-specific rules
+- OMB profile produces the exact artefact set the directive requires
+
+---
+
+### Sprint 34 — Data Poisoning + Pipeline Integrity (`squash attest-pipeline`) · **Track B / B9**
+
+**Goal:** `squash attest-pipeline --config training_config.yaml --datasets ./data/` verifies each training dataset against known-clean hash signatures, flags anomalous label distributions (label-flipping signatures), validates dataset-download URLs against original-source checksums, generates a signed pipeline-integrity certificate.
+
+**The stat:** 90% of AI models fail to reach production due to fragile pipelines · 0.001% of training data poisoned suffices to fundamentally degrade reliability · ~100 malicious HF models found 2024.
+
+| Wave | Module / Feature | What It Delivers |
+|------|-----------------|-----------------|
+| W262 | `squash/data_lineage.py` extension — hash verification | Per-dataset SHA-256 verification against a curated known-clean catalogue (HF Datasets, Common Crawl snapshots, etc.); ingest extension to `LineageCertificate`. |
+| W263 | `squash/scanner.py` extension — label-distribution anomaly | Statistical detector for label-flipping signatures: KS test on label distributions vs. expected; configurable per-dataset baseline. |
+| W264 | CLI: `squash attest-pipeline` + signed pipeline cert | Combines W262 + W263 into a pipeline-integrity attestation; signed JSON with per-dataset verdicts + overall PASS/FAIL. |
+
+**Sprint 34 exit criteria:**
+- 0 new modules (extensions only)
+- Label-flipping detector validated against synthetic-poisoned fixtures
+- Pipeline cert round-trips through Sigstore verification
+
+---
+
+### Sprint 35 — Model Deprecation Watch (`squash deprecation-watch`) · **Track C / C8**
+
+**Goal:** Background monitor of every major AI provider's deprecation calendar (OpenAI, Anthropic, Google, Meta, Mistral). Cross-references squash Asset Registry. Fires alerts with configurable lead time when a registered model approaches sunset. Each alert carries the re-attestation requirements + estimated migration effort.
+
+**The stat:** Original Claude retired Jan 5, 2026 · DALL-E 2/3 retire May 12 · Assistants API sunsets Aug 26 · video models deprecated March 2026. Every sunset breaks a tied-to-version Annex IV record.
+
+| Wave | Module / Feature | What It Delivers |
+|------|-----------------|-----------------|
+| W265 | `squash/deprecation_watch.py` (NEW) | Provider-specific deprecation feed adapters (OpenAI, Anthropic, Google, Meta, Mistral); persisted SQLite cache; cross-reference engine against `asset_registry`. |
+| W266 | CLI: `squash deprecation-watch` + alert routing | `squash deprecation-watch --lead-time 30d --alert-channel slack`; per-model migration-effort estimator; re-attestation checklist generator. |
+
+**Sprint 35 exit criteria:**
+- 1 new module (`deprecation_watch.py`); module count tracked
+- 5 provider feeds covered
+- Cross-reference produces deterministic alerts against fixture registry
+
+---
+
+### Sprint 36 — Carbon / Energy Attestation (`squash attest-carbon`) · **Track C / C9 — CSRD buyer**
+
+**Goal:** `squash attest-carbon --model ./model --deployment-region us-east-1` calculates kWh/inference using FLOP count + regional grid carbon intensity (Electricity Maps API), computes CO₂ equivalents per inference + per 1M tokens, generates a CSRD-mappable carbon attestation, embeds energy fields in the CycloneDX ML-BOM.
+
+**The stat:** EU AI Act will require large AI systems to report energy + life-cycle impacts · CSRD applies to all large EU companies from 2025 · OMB DOE rule on AI data-centre lifecycle reporting drafted Jan 2025.
+
+**The new buyer:** ESG / sustainability office. Different budget holder from the CISO. Critical for opening the second beachhead.
+
+| Wave | Module / Feature | What It Delivers |
+|------|-----------------|-----------------|
+| W259 | `squash/carbon_attest.py` (NEW) | FLOP estimator (per architecture family) × regional carbon intensity (live Electricity Maps cache); `CarbonAttestation.compute(model, region)` returns gCO₂eq/inference + kWh/1M-tokens. |
+| W260 | `carbon_attest.py` — CSRD field mapping | `to_csrd()` adapter that maps the certificate to CSRD Scope 2 + Scope 3 fields; same for CSDDD + UK PRA SS1/23. |
+| W261 | CLI: `squash attest-carbon` + ML-BOM enrichment | `squash attest-carbon ...` writes the standalone cert AND injects the energy fields into the model's CycloneDX ML-BOM as AI-specific environmental section. |
+
+**Sprint 36 exit criteria:**
+- 1 new module (`carbon_attest.py`); module count tracked
+- Electricity Maps cache layer (offline-replayable)
+- CSRD field mapping verified against published schema
+
+---
+
+### Sprint 37 — Runtime Hallucination Monitor (`squash monitor --mode hallucination`) · **Track C / C10**
+
+**Goal:** Sidecar runtime monitor for live inference endpoints. Samples a configurable percentage of outputs, runs each through a lightweight faithfulness scorer, tracks rolling hallucination rate, fires alerts on threshold breach, logs violations to attestation registry.
+
+**The stat:** EU AI Act Article 9 mandates post-market monitoring throughout AI-system lifecycle · 18% production hallucination rate in enterprise chatbots · 5–15% in RAG even with retrieval working · 39% of customer-service bots pulled in 2024.
+
+**Distinct from C7 (pre-deploy):** C7 attests the model before launch; C10 is the continuous-SLA enforcement that regulators increasingly demand.
+
+| Wave | Module / Feature | What It Delivers |
+|------|-----------------|-----------------|
+| W267 | `squash/monitoring.py` extension — hallucination scorer | Lightweight faithfulness scorer (perplexity + retrieval-grounded check for RAG endpoints); rolling-window aggregator with configurable sample-rate. |
+| W268 | `monitoring.py` — breach alert + registry log | Threshold-breach event fires `webhook_delivery.notify(event="hallucination.threshold_breach")`; violations logged to `attestation_registry` with timestamp + sample. |
+| W269 | CLI: `squash monitor --mode hallucination` daemon | `squash monitor --mode hallucination --endpoint http://localhost:8080 --sample-rate 0.05 --threshold 0.10`; cron / k8s-deployment-friendly. |
+
+**Sprint 37 exit criteria:**
+- 0 new modules (extension)
+- Faithfulness scorer correlates ≥0.7 with human judgement on a labelled fixture
+- Daemon mode runs without leaking memory across 1M-sample fixture
+
+---
+
+### Sprint 38 — AI Vendor Concentration Risk (`squash vendor-concentration`) · **Track D / D7**
+
+**Goal:** `squash vendor-concentration --registry ./registry.json` aggregates the AI Asset Registry by provider, calculates the percentage of critical business processes dependent on each, flags single-points-of-failure (configurable threshold), assesses migration cost on a per-provider outage / sunset, generates a CRO-readable concentration-risk attestation.
+
+**The stat:** Average enterprise AI stack runs 5+ providers (OpenAI, Anthropic, Google, Meta, Mistral) without central visibility · NIST AI RMF GOVERN function explicitly requires third-party AI dependency management.
+
+**The new buyer:** Chief Risk Officer. Distinct conversation from CISO.
+
+| Wave | Module / Feature | What It Delivers |
+|------|-----------------|-----------------|
+| W270 | `squash/vendor_registry.py` extension — concentration analyser | `ConcentrationAnalyser.compute(registry, asset_registry)`: per-provider % of critical processes, single-point-of-failure flag, migration-cost matrix. |
+| W271 | CLI: `squash vendor-concentration` + CRO report | Markdown + JSON output mapped to NIST AI RMF GOVERN-1.1 + GOVERN-6.1; ZIP bundle with executive summary + per-provider deep dive. |
+
+**Sprint 38 exit criteria:**
+- 0 new modules (extension)
+- Concentration metric deterministic across fixture registries
+- NIST AI RMF GOVERN field mapping verified
+
+---
+
+### Sprint 39 — Model Genealogy + Copyright Contamination (`squash genealogy`) · **Track C / C11**
+
+**Goal:** `squash genealogy --model ./model --memorisation-probe ./probes/copyright/` traces model derivation chain, identifies base-model family + known training-data composition, flags known copyright-heavy sources (Books3, copyleft code, news-heavy Common Crawl), runs a memorisation probe (verbatim-reproduction test on copyrighted texts), generates a signed copyright-contamination-risk cert tiered by deployment domain.
+
+**The stat:** NYT v. OpenAI established the legal theory · MIT research: hallucinating models use 34% more confident language than factual ones · hundreds of US court rulings on AI hallucination in legal filings during 2025 · $67.4B in losses links back to the same root.
+
+**The new buyer:** General Counsel. Approving an AI deployment for content generation, legal drafting, or code assistance is a contract-and-liability decision; squash gives the GC the certificate they currently lack.
+
+| Wave | Module / Feature | What It Delivers |
+|------|-----------------|-----------------|
+| W272 | `squash/genealogy.py` (NEW) | Derivation-chain extractor: walks model card + lineage cert + base-model registry to produce a signed `Genealogy` record (`base → fine-tune-1 → fine-tune-2 → adapter`). |
+| W273 | `genealogy.py` — memorisation probe engine | Loads a curated probe set of known copyrighted passages (configurable per legal jurisdiction); prompts the model in a way that triggers verbatim-completion if memorised; scores reproduction rate. |
+| W274 | CLI: `squash genealogy` + tiered contamination cert | `squash genealogy --deployment-domain content-generation` (tiered thresholds: legal-drafting strictest, internal-summarisation laxest); cert auto-included in Trust Package; `--block-on-contamination` flag for CI. |
+
+**Sprint 39 exit criteria:**
+- 1 new module (`genealogy.py`); module count tracked
+- Memorisation probe deterministic against fixture probes
+- Tiered thresholds documented per deployment-domain category
+
+---
+
 ### Sprint 6 — Launch (July 11–August 2)
 
 | Date | Action |
@@ -1480,17 +1719,24 @@ distraction until August 2 ships.
 | **May 2** | A1 `fly deploy` (2 hrs) | — | — | — | — |
 | **May 3** | A2 PyPI publish (1 hr) | — | — | — | — |
 | **May 5–6** | A3 Domain + Stripe (1d) | B1 HF Scanner (4d) ↑ | **C1 `squash freeze` ★** (2d) | — | — |
-| **May 7–10** | A4 Website live (3d) | B1 cont. · B2 Branded PDF (2d) | C2 AI Washing Detection (5d) | — | — |
-| **May 12–19** | ✅ Track A done | B3 Email Digest (2d) | C3 Approval Workflow (5d) | — | — |
-| **May 15–28** | — | B4 Terraform/Pulumi (10d) | C4 Regulatory Watch (7d) | — | — |
-| **May 27–Jun 13** | — | B5 API Gateway · B6 Blockchain | C5 Audit Simulation (10d) | D1 GitHub App (15d) · D2 Identity Attest (8d) | — |
-| **Jun 16–24** | — | — | C6 Insurance Package (7d) | D2 cont. | — |
-| **Jul 1–28** | — | — | — | D3 Procurement API · D4 Multi-Jurisdiction · D5 Benchmarking | Pre-launch staging |
+| **May 7–10** | A4 Website live (3d) | B1 cont. · B2 Branded PDF (2d) | C2 AI Washing Detection (5d) · **C7 Hallucination Attest ★ ($67.4B)** | — | — |
+| **May 12–19** | ✅ Track A done | B3 Email Digest (2d) | C3 Approval Workflow · C7 cont. | — | — |
+| **May 15–26** | — | B4 Terraform/Pulumi (10d) | C4 Regulatory Watch (7d) | — | — |
+| **May 18–23** | — | **B10 License Conflict (OMB)** (5d) | — | — | — |
+| **May 27–Jun 5** | — | B5 API Gateway · **B7 Drift SLA** (4d) | C5 Audit Simulation kickoff | — | — |
+| **Jun 5–13** | — | B6 Blockchain · **B8 LoRA Poisoning** (5d) | C5 cont. | D1 GitHub App (15d) · D2 Identity Attest (8d) | — |
+| **Jun 12–22** | — | **B9 Data Poisoning + Pipeline** (7d) | — | D2 cont. | — |
+| **Jun 16–30** | — | — | C6 Insurance · **C8 Deprecation Watch** (4d) | D2 cont. | — |
+| **Jul 1–9** | — | — | **C9 Carbon Attest (CSRD)** (6d) | D3 Procurement API kickoff | — |
+| **Jul 7–15** | — | — | **C10 Runtime Hallucination Mon** (6d) | D3 cont. · D4 Multi-Jurisdiction kickoff | — |
+| **Jul 16–28** | — | — | — | D4 cont. · D5 Benchmarking | Pre-launch staging |
+| **Jul 21–30** | — | — | **C11 Genealogy/Copyright Cert** (7d) | D5 cont. | — |
 | **Jul 11** | — | — | — | — | **L1 Public Beta** |
 | **Jul 14, 9am ET** | — | — | — | — | **L2 Show HN** |
 | **Jul 21** | — | — | — | — | **L3 Product Hunt** |
 | **Aug 2 — T+0** | — | — | — | — | **L4 EU Enforcement Day** |
-| **Aug 2 → 2027** | — | — | R1/R2 (Red-Team · Cost) | D6 SOC 2 (6 mo) | Post-launch hardening |
+| **Aug 5–11** | — | — | — | **D7 Vendor Concentration** (5d) | Post-launch surge |
+| **Aug 2 → 2027** | — | — | R1/R2 (Red-Team · Cost) | D6 SOC 2 (6 mo) | Hardening |
 
 ### Critical-Path Gates (date-locked dependencies)
 
@@ -1498,6 +1744,10 @@ distraction until August 2 ships.
 - **B1 + B2 + C1 (by May 10) → unblock L1.** Public Beta Launch (Jul 11) requires the HF scanner live, the branded PDF as sales leave-behind, and `squash freeze` as the headline demo.
 - **C1 live by mid-May → headline asset for L2 (Show HN, Jul 14, 9am ET).** `squash freeze` IS the HN demo. The post body GIF should show the red-button command. Draft already in `docs/launch/hn-post.md`.
 - **Track D D3/D4/D5 (by Jul 31) → unblock the Aug 2 narrative.** Procurement scoring API, multi-jurisdiction matrix, and industry benchmarking each turn squash from "tool" to "infrastructure" — the framing of the Aug 2 press surge.
+- **C7 Hallucination Attestation (by mid-May) → unblocks the $67.4B headline arc** for HN, LinkedIn, every CFO conversation. The single most-quoted statistic in the squash story should be the lead, not a footnote.
+- **B10 License Conflict (by May 23) → unblocks federal procurement.** OMB M-26-04 deadline already passed (March 2026) — every federal customer is non-compliant by default until squash gives them the certificate. First-mover lock on the federal segment.
+- **B9 Pipeline Integrity + B7 Drift SLA (by Jun 22) → unblock the regulated-industries narrative** (BFSI, healthcare): pre-deploy pipeline integrity + post-deploy drift SLA = closed-loop continuous-compliance evidence.
+- **C10 Runtime Hallucination Monitor (by Jul 15) → unblocks the EU AI Act Article 9 post-market-monitoring narrative**, which is the regulator's explicit ongoing-obligation pillar.
 
 ### Parallelisation Discipline
 
@@ -1513,6 +1763,6 @@ The legacy "Sprint 14 → Sprint 29" sequential numbering is preserved below as 
 
 ---
 
-**Document version:** 1.5 (Parallel Track restructure — A/B/C/D + Launch + Research)
-**Next review:** May 14, 2026 — review Track A completion + Track B/C/D progress against the parallel grid
+**Document version:** 1.6 (Tier 5 — 10 research-anchored sprints W251–W274 added)
+**Next review:** May 14, 2026 — review Track A completion + Track B/C/D progress against the parallel grid; assess C7 ($67.4B headline) as L2 demo asset
 **Owner:** Wesley Scholl, Konjo AI
