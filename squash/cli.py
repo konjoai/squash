@@ -2059,6 +2059,45 @@ def _build_parser() -> argparse.ArgumentParser:
     go_annotate.add_argument("--policy", default="eu-ai-act", help="Policy name (default: eu-ai-act)")
     go_annotate.add_argument("--passed", action="store_true", default=True)
 
+    # ── B5 (Track B) — gateway-config: Kong + AWS API Gateway runtime gate ───
+    gw_cmd = sub.add_parser(
+        "gateway-config",
+        help="Emit runtime API gateway gate config (Kong / AWS API Gateway)",
+        description=(
+            "Generate runtime gate configurations for Kong and AWS API Gateway.\n"
+            "Examples:\n"
+            "  squash gateway-config kong --min-score 0.8 > kong-config.yaml\n"
+            "  squash gateway-config kong --emit-plugin --output ./squash-attest/\n"
+            "  squash gateway-config aws-apigw --min-score 0.8 > template.yaml\n"
+            "  squash gateway-config aws-apigw --emit-handler > handler.py\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    gw_sub = gw_cmd.add_subparsers(dest="gateway_target", metavar="TARGET")
+    gw_kong = gw_sub.add_parser("kong", help="Emit Kong declarative config or plugin source")
+    gw_kong.add_argument("--min-score", type=float, default=0.8, dest="min_score")
+    gw_kong.add_argument("--header", default="X-Squash-Attestation", dest="header_name")
+    gw_kong.add_argument("--squash-api-url", default="https://api.getsquash.dev", dest="squash_api_url")
+    gw_kong.add_argument("--service-name", default="ai-inference", dest="service_name")
+    gw_kong.add_argument("--upstream-url", default="http://upstream-inference:8080", dest="upstream_url")
+    gw_kong.add_argument("--path", action="append", dest="route_paths")
+    gw_kong.add_argument("--max-age-days", type=int, default=30, dest="max_age_days")
+    gw_kong.add_argument("--require-framework", action="append", dest="required_frameworks")
+    gw_kong.add_argument("--emit-plugin", action="store_true", dest="emit_plugin")
+    gw_kong.add_argument("--output", dest="output")
+    gw_aws = gw_sub.add_parser("aws-apigw", help="Emit AWS SAM template or Lambda authorizer source")
+    gw_aws.add_argument("--min-score", type=float, default=0.8, dest="min_score")
+    gw_aws.add_argument("--header", default="X-Squash-Attestation", dest="header_name")
+    gw_aws.add_argument("--squash-api-url", default="https://api.getsquash.dev", dest="squash_api_url")
+    gw_aws.add_argument("--function-name", default="SquashAttestAuthorizer", dest="function_name")
+    gw_aws.add_argument("--max-age-days", type=int, default=30, dest="max_age_days")
+    gw_aws.add_argument("--require-framework", action="append", dest="required_frameworks")
+    gw_aws.add_argument("--runtime", default="python3.11", dest="runtime")
+    gw_aws.add_argument("--emit-handler", action="store_true", dest="emit_handler")
+    gw_aws.add_argument("--emit-authorizer-dir", action="store_true", dest="emit_authorizer_dir")
+    gw_aws.add_argument("--output", dest="output")
+
+
     # ── W197 (Sprint 11) — chain-attest: composite chain / pipeline attest ────
     chain_cmd = sub.add_parser(
         "chain-attest",
@@ -6731,6 +6770,70 @@ def _cmd_gitops(args: argparse.Namespace, quiet: bool) -> int:
         return 1
 
 
+def _cmd_gateway_config(args, quiet):
+    """B5 — Emit Kong / AWS API Gateway runtime gate config or source."""
+    from squash.integrations.gateway import (
+        emit_kong_config, emit_kong_plugin_dir,
+        emit_aws_apigw_sam, emit_aws_authorizer_dir,
+    )
+    target = getattr(args, "gateway_target", None)
+    output = getattr(args, "output", None)
+
+    def _write_or_print(text):
+        if output:
+            Path(output).write_text(text)
+            if not quiet:
+                print(f"[squash gateway-config] Written to {output}")
+        else:
+            print(text)
+        return 0
+
+    def _write_dir(files):
+        if not output:
+            print("squash gateway-config: --output DIR is required when emitting a source tree", file=sys.stderr)
+            return 2
+        out_dir = Path(output)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        for name, body in files.items():
+            (out_dir / name).write_text(body)
+        if not quiet:
+            print(f"[squash gateway-config] Wrote {len(files)} files into {out_dir}")
+            for name in files:
+                print(f"  - {out_dir / name}")
+        return 0
+
+    if target == "kong":
+        if getattr(args, "emit_plugin", False):
+            return _write_dir(emit_kong_plugin_dir())
+        text = emit_kong_config(
+            min_score=args.min_score, header_name=args.header_name,
+            squash_api_url=args.squash_api_url, service_name=args.service_name,
+            upstream_url=args.upstream_url,
+            route_paths=getattr(args, "route_paths", None),
+            max_age_days=args.max_age_days,
+            required_frameworks=getattr(args, "required_frameworks", None),
+        )
+        return _write_or_print(text)
+
+    if target == "aws-apigw":
+        if getattr(args, "emit_authorizer_dir", False):
+            return _write_dir(emit_aws_authorizer_dir())
+        if getattr(args, "emit_handler", False):
+            return _write_or_print(emit_aws_authorizer_dir()["handler.py"])
+        text = emit_aws_apigw_sam(
+            min_score=args.min_score, function_name=args.function_name,
+            squash_api_url=args.squash_api_url, header_name=args.header_name,
+            max_age_days=args.max_age_days,
+            required_frameworks=getattr(args, "required_frameworks", None),
+            runtime=args.runtime,
+        )
+        return _write_or_print(text)
+
+    print("squash gateway-config: specify a target — kong | aws-apigw", file=sys.stderr)
+    return 1
+
+
+
 def _cmd_board_report(args: argparse.Namespace, quiet: bool) -> int:
     """W174 — Board report generation."""
     from squash.board_report import BoardReportGenerator
@@ -6915,6 +7018,8 @@ def main() -> None:
         sys.exit(_cmd_telemetry(args, quiet))
     elif args.command == "gitops":
         sys.exit(_cmd_gitops(args, quiet))
+    elif args.command == "gateway-config":
+        sys.exit(_cmd_gateway_config(args, quiet))
     elif args.command == "chain-attest":
         sys.exit(_cmd_chain_attest(args, quiet))
     elif args.command == "registry-gate":
