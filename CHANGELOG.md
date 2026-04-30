@@ -5,6 +5,85 @@ Format: [Conventional Commits](https://www.conventionalcommits.org/) · [Keep a 
 
 ---
 
+## [1.8.0] — 2026-04-30 — Sprint 13: Startup Pricing Tier ($499/mo)
+
+### Added (W202–W204 — Sprint 13: Startup Pricing Tier — Tier 2 #19)
+
+Open the seed/Series A revenue band with a $499/mo Startup tier. The
+gap between Free → Pro ($299) → Team ($899) was exactly where the
+highest-velocity buyers sit. This sprint closes it and turns the Pro
+plan into a stepping stone rather than a ceiling.
+
+- **`squash/auth.py` — Plan registry expansion (W202)**:
+  - New `PLAN_LIMITS["startup"]` — 500 attestations/mo, 1200 req/min,
+    `max_seats: 3`, entitlements: annex_iv + drift_alerts + slack +
+    teams + **vex_read** + **github_issues**
+  - New `PLAN_LIMITS["team"]` — 1000 attestations/mo, 3000 req/min,
+    `max_seats: 10`, entitlements add jira + linear + saml_sso + hitl +
+    audit_export
+  - All five plans (free / pro / startup / team / enterprise) now
+    carry consistent `max_seats` and `entitlements` keys
+  - 13 named entitlement constants exported from `squash.auth`
+    (`ENTITLEMENT_VEX_READ`, `ENTITLEMENT_SLACK_DELIVERY`, etc.)
+  - `KeyRecord.max_seats`, `KeyRecord.entitlements`,
+    `KeyRecord.has_entitlement(name)` — three new properties / methods
+  - `to_dict()` now exposes `max_seats` + `entitlements` for API consumers
+
+- **`squash/auth.py` — `has_entitlement()` helper (W203)**:
+  - `has_entitlement(plan, name) -> bool` — central lookup function
+  - Empty plan returns False for everything (safe default for
+    unauthenticated callers); unknown plans behave like `free`
+  - `plan_max_seats(plan) -> int | None` — seat-cap lookup
+
+- **`squash/notifications.py` — gated dispatch (W203)**:
+  - `NotificationDispatcher.notify(..., plan="")` — new optional kwarg
+  - When `plan` is supplied AND lacks `slack_delivery` / `teams_delivery`,
+    that channel is silently skipped (logged at DEBUG)
+  - `plan=""` (default) preserves existing un-gated CLI / library behaviour
+
+- **`squash/ticketing.py` — gated dispatch (W203)**:
+  - `TicketDispatcher.create_ticket(..., plan="")` — new optional kwarg
+  - GitHub backend requires `github_issues` (startup+); Jira requires
+    `jira` (team+); Linear requires `linear` (team+)
+  - On entitlement miss: returns `TicketResult(success=False)` with a
+    structured `error` message naming the missing entitlement
+
+- **`squash/billing.py` — Stripe Startup checkout (W204)**:
+  - `create_checkout_session(plan="startup", ...)` flows through the
+    existing checkout flow using `SQUASH_STRIPE_PRICE_STARTUP` env var
+  - `POST /billing/checkout` (api.py W155) already accepted `startup` —
+    Sprint 13 adds test coverage to lock the behaviour
+  - Stripe webhook → plan sync via `_price_to_plan()` already mapped
+    Startup; tests cover the round-trip
+
+### Changed
+- **`tests/test_squash_w137.py`** — `TestPlanLimits.test_all_plans_present`
+  updated to recognise the 5-plan registry (was 3)
+- **`SQUASH_MASTER_PLAN.md`** — Sprint 13 marked complete; full
+  **Tier 3 sprint breakdown** added (Sprints 14–18, waves W205–W220)
+  covering all 8 Tier 3 features:
+  - Sprint 14: Public Security Scanner & HF Spaces (#23 + #27)
+  - Sprint 15: Branded PDF Reports & Compliance Email Digest (#24 + #25)
+  - Sprint 16: IaC & Runtime API Gates (#26 + #28)
+  - Sprint 17: Cryptographic Provenance: Blockchain Anchoring (#29)
+  - Sprint 18: SOC 2 Type II Readiness (#30)
+
+### Stats
+- **35 new tests** · **0 regressions** · **3987 total tests passing**
+- **0 new modules** (Sprint 13 is extensions only) · 71 modules unchanged
+- **2 new plans** (`startup`, `team`) · **13 named entitlement constants**
+- **Tier 2 of the master plan now 100% complete.**
+
+### Konjo notes
+The Konjo discipline this sprint: keep gating *additive*. Every dispatcher
+keeps its existing un-gated behaviour when `plan=""` (the default). Tests
+only see the gate when they explicitly pass a plan. No breaking changes,
+no migration required, no surface area for regression. Five plans now
+share one entitlement vocabulary — *建造* (the discipline of subtraction)
+applied to the policy surface.
+
+---
+
 ## [1.7.0] — 2026-04-29 — Sprint 12: Model Registry Auto-Attest Gates
 
 ### Added (W198–W201 — Sprint 12: Registry Auto-Attest Gates — Tier 2 #18)

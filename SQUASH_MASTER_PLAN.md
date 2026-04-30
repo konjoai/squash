@@ -36,12 +36,12 @@ That's the moat. Credo AI and OneTrust are form-filling tools. Squash is a pipel
 
 ---
 
-## ⚡ Situation Report (April 29, 2026) — Post Sprint 12 ✅ COMPLETE
+## ⚡ Situation Report (April 30, 2026) — Post Sprint 13 ✅ COMPLETE — Tier 2 100% DONE
 
 | Metric | Value |
 |--------|-------|
-| **EU AI Act enforcement deadline** | August 2, 2026 — **95 days** |
-| **Squash code maturity** | v1.7.0 · Sprint 12 complete · 3952 tests passing |
+| **EU AI Act enforcement deadline** | August 2, 2026 — **94 days** |
+| **Squash code maturity** | v1.8.0 · Sprint 13 complete · 3987 tests passing · **Tier 2 100% complete** |
 | **Python modules** | 71 standalone modules + VS Code extension · 100+ git commits |
 | **Annex IV coverage** | ✅ 100% — 12-section generator, completeness scoring, PDF export |
 | **ISO 42001 coverage** | ✅ — 38-control readiness assessment, gap analysis, remediation roadmap |
@@ -66,6 +66,7 @@ That's the moat. Credo AI and OneTrust are form-filling tools. Squash is a pipel
 | **Model Card First-Class CLI** | ✅ NEW (Sprint 10) — `squash model-card --validate / --validate-only / --push-to-hub`; Annex IV / bias / lineage data fusion; HF schema validator (`squash/model_card_validator.py`); 4 new HF sections (Training Data, Evaluation, Environmental Impact, Ethical Considerations) |
 | **Chain & Pipeline Attestation** | ✅ NEW (Sprint 11) — `squash/chain_attest.py` composite engine; `ChainAttestation` with HMAC-SHA256 signing + tamper detection; LangChain Runnable graph walker (`attest_chain()` — RAG / agent / multi-LLM ensemble shapes); `squash chain-attest <spec.json|module:var>` CLI with `--verify`, `--fail-on-component-violation` |
 | **Registry Auto-Attest Gates** | ✅ NEW (Sprint 12) — Active gates in MLflow / W&B / SageMaker integrations: `MLflowSquash.register_attested()`, `WandbSquash.log_artifact_attested()`, `SageMakerSquash.register_model_package_attested()` (raises `AttestationViolationError`, refuses registration on policy fail); `squash registry-gate` unified CLI for CI/CD with backend-specific URI validation and structured `registry-gate.json` decision output |
+| **Startup Pricing Tier** | ✅ NEW (Sprint 13) — `Plan.STARTUP` ($499/mo, 500 attestations, 3 seats) + `Plan.TEAM` ($899/mo, 1000 attestations, 10 seats) registered in `PLAN_LIMITS`; 13 named entitlement bits (`vex_read`, `slack_delivery`, `github_issues`, `jira`, `linear`, `saml_sso`, `hitl`, `audit_export`, `on_premise`, `air_gapped`, …); gating in `notifications.py` + `ticketing.py` via optional `plan=` kwarg; Stripe Startup checkout via `SQUASH_STRIPE_PRICE_STARTUP` |
 | **Repo status** | ✅ Separated from `konjoai/squish` — standalone Apache 2.0 repo |
 | **Production status** | Dockerfile + fly.toml written; **not yet deployed** |
 | **PyPI status** | `pyproject.toml` ready; **not yet published** |
@@ -710,23 +711,138 @@ Value/effort matrix drove this sprint: highest-value features with existing modu
 
 ---
 
-### Sprint 13 — Startup Pricing Tier (Tier 2 #19)
+### Sprint 13 — Startup Pricing Tier (April 30, 2026) ✅ COMPLETE
 
-**Goal:** Open the seed/Series A revenue band with a $499/mo Startup tier — too big for free, can't justify $899 Team. 500 attestations/mo, 3 users, VEX read entitlement, Slack delivery entitlement.
+**All code shipped 2026-04-30. 0 new modules (extensions only), 35 new tests, 0 regressions. Tier 2 is now 100% complete.**
+
+**Goal:** Open the seed/Series A revenue band with a $499/mo Startup tier — too big for free, can't justify $899 Team. 500 attestations/mo, 3 users, VEX read + GitHub Issues + Slack delivery entitlements.
 
 **Why now:** Free → $299 → $899 leaves a wide gap that is exactly where the highest-velocity buyers sit. A $499 tier captures them at the moment they first need an attestation feed, before they need SAML SSO.
 
+| Wave | Module / Feature | What It Delivers | Status |
+|------|-----------------|-----------------|--------|
+| W202 | `squash/auth.py` plan expansion | `PLAN_LIMITS` gains `startup` (500/mo, 3 seats, 1200 req/min) and `team` (1000/mo, 10 seats, 3000 req/min); every plan now carries consistent `max_seats` + `entitlements`. 13 named entitlement constants exported. `KeyRecord.has_entitlement(name)` + `.max_seats` + `.entitlements` properties; `to_dict()` exposes both. | ✅ |
+| W203 | Entitlement gating | `auth.has_entitlement(plan, name)` central helper. `NotificationDispatcher.notify(..., plan="")` and `TicketDispatcher.create_ticket(..., plan="")` accept optional plan; on entitlement miss the channel is silently skipped (notifications) or returns structured `TicketResult(success=False)` (ticketing). `plan=""` (default) preserves un-gated behaviour. | ✅ |
+| W204 | Stripe Startup checkout | `create_checkout_session(plan="startup", ...)` wired through `SQUASH_STRIPE_PRICE_STARTUP`; tests cover the happy path and the "price ID missing" error path. Webhook `_price_to_plan()` round-trips Startup price IDs. `POST /billing/checkout` accepts `startup` (was wired in W155, now test-locked). | ✅ |
+
+**Sprint 13 exit criteria: ALL MET**
+- `Plan.STARTUP` and `Plan.TEAM` registered with correct quota, rate, seats, entitlements ✅
+- `has_entitlement(plan, name)` returns False for free/pro on `vex_read` / `github_issues`; True on startup+ ✅
+- Slack delivery skipped silently when caller passes `plan` without `slack_delivery` entitlement ✅
+- GitHub-issue ticketing returns structured failure when caller passes a plan without `github_issues` ✅
+- `create_checkout_session(plan="startup")` returns valid Stripe URL with correct `metadata.squash_plan` ✅
+- 0 new modules; 71 module count unchanged ✅
+- 3987/3987 tests passing · 0 regressions ✅
+
+---
+
+## Tier 3 Sprint Breakdown — 12-Month Enterprise Moat (Sprints 14–18)
+
+The eight Tier 3 features (#23–#30) are batched into five sprints by proximity of work and shared dependencies. Sprints execute roughly once per month; the entire Tier 3 plan runs Sept 2026 → Apr 2027 and turns squash from product into infrastructure. Wave numbering continues unbroken: W205 → W220.
+
+---
+
+### Sprint 14 — Public Security Scanner & HF Spaces (Tier 3 #23 + #27)
+
+**Goal:** Top-of-funnel growth through a free, public-facing security tool. `squash scan hf://meta-llama/Llama-3.1-8B-Instruct` becomes the share-link asset for HuggingFace community + a HF Space that anyone can use without `pip install`. Brand build, organic acquisition, design-partner discovery.
+
+**Why now:** Tier 1 + Tier 2 made squash a paid product. Tier 3 needs a free top-of-funnel that scales without sales. HF has 1M+ public models — every one is a potential security demo.
+
 | Wave | Module / Feature | What It Delivers |
 |------|-----------------|-----------------|
-| W202 | `squash/billing.py` Startup tier | New `Plan.STARTUP` — 500 attestations/mo, 3 user seats; quota wiring through `squash/quota.py`; tier display in `squash status` and dashboard. |
-| W203 | Entitlement gating | `squash/billing.py` adds entitlement bits — `vex_read`, `slack_delivery`, `github_issues`; gated checks in `squash/vex.py`, `squash/notifications.py`, `squash/ticketing.py`. |
-| W204 | Stripe checkout link | `squash/billing.py` Stripe Checkout Session generator for Startup; `squash/api.py` exposes `POST /v1/billing/checkout` returning a Stripe-hosted URL. |
+| W205 | `squash/cli.py` — `squash scan hf://` | Resolves `hf://owner/model` to a temp download via `huggingface_hub.snapshot_download`; runs ModelScanner; emits `squash-hf-scan.json` + Markdown summary. |
+| W206 | `squash-hf-space/` directory (NEW) | Gradio app that wraps `squash scan hf://` for browser users; HF Spaces deployment manifest (`README.md` with HF YAML frontmatter, `app.py`, `requirements.txt`). |
+| W207 | `docs/hf-space.md` + deploy script | HF Spaces deploy script (`scripts/deploy_hf_space.py`); social-share asset (`docs/og-image-scan.png` placeholder); landing copy. |
 
-**Sprint 13 exit criteria:**
-- `Plan.STARTUP` registered with correct quota and seat caps
-- Entitlement check returns False for VEX / Slack / Issues on Community/Pro; True on Startup+
-- `POST /v1/billing/checkout` returns Stripe checkout URL for `plan=startup`
-- 0 new modules; 0 regressions
+**Sprint 14 exit criteria:**
+- `squash scan hf://meta-llama/Llama-3.1-8B-Instruct` succeeds for ≥3 well-known HF models without auth
+- `squash-hf-space/app.py` boots locally with `gradio` installed and produces structurally identical scan output
+- HF Spaces YAML frontmatter passes HF Spaces schema; deploy script is dry-runnable in CI
+- 0 new top-level squash modules (CLI subcommand only); module count stays at 71
+
+---
+
+### Sprint 15 — Branded PDF Reports & Compliance Email Digest (Tier 3 #24 + #25)
+
+**Goal:** Two passive-retention assets that land in the CISO's inbox without engineering effort. Branded PDF Annex IV report (cover page + exec summary + company logo hooks) is the deliverable that closes enterprise deals. Weekly/monthly portfolio digest email keeps squash present at the executive layer between attestation runs.
+
+**Why now:** Sprint 5 shipped Annex IV + Trust Package. Both produce Markdown by default. Branded PDF + email is the layer between "engineering can attest" and "executives notice we attest."
+
+| Wave | Module / Feature | What It Delivers |
+|------|-----------------|-----------------|
+| W208 | `squash/annex_iv_generator.py` extension | Branded PDF: cover page (org logo, system name, score, generated date, attestation-ID QR code), 1-page exec summary, full Annex IV body, signature block. WeasyPrint-based; CSS template under `squash/templates/annex_iv_branded.css`. |
+| W209 | `squash/notifications.py` extension — `ComplianceDigestBuilder` | Builds weekly/monthly portfolio digest from attestation history (`Squash dashboard.build()` data): 5-metric panel, top-5 risk movers, regulatory deadline countdown, links back to the Squash app. HTML + plain-text email bodies. |
+| W210 | `squash/cli.py` — `squash digest send` | Renders + emails the digest via SMTP (or any configured `notifications.py` channel). Cron-friendly: `squash digest send --period weekly --recipients ciso@acme.com`; supports `--dry-run` with stdout output. |
+
+**Sprint 15 exit criteria:**
+- `squash annex-iv generate ... --format pdf --branded` produces a PDF with cover, exec summary, body
+- `ComplianceDigestBuilder.build(period="weekly")` returns rendered HTML + plain text
+- `squash digest send --period weekly --dry-run` prints both bodies to stdout; non-dry-run hits SMTP
+- 0 new modules (extensions only); 0 regressions
+
+---
+
+### Sprint 16 — Infrastructure-as-Code & Runtime API Gates (Tier 3 #26 + #28)
+
+**Goal:** Move squash from "tool the engineer runs" to "infrastructure the org provisions." Terraform/Pulumi resources let DevOps embed squash attestation in IaC pipelines. Kong + AWS API Gateway plugins block inference requests at runtime if the served model's attestation is expired or its CVEs flagged.
+
+**Why now:** Tier 2 made the build-time gate. Tier 3 makes the *runtime* gate. Together they cover the whole lifecycle.
+
+| Wave | Module / Feature | What It Delivers |
+|------|-----------------|-----------------|
+| W211 | `terraform-provider-squash/` directory (NEW, Go) | TF provider scaffold with `squash_attestation` data source + `squash_policy_gate` resource; reads attestation via squash REST API; fails `terraform apply` on policy violation. Build instructions + minimal example under `examples/`. |
+| W212 | `squash/integrations/kong.py` (NEW Python) | Kong external auth plugin: validates `X-Squash-Attestation-ID` header on every inference request; rejects if attestation missing, expired, or below score threshold. Stateless: queries squash REST API. |
+| W213 | `squash/integrations/aws_api_gateway.py` (NEW) | AWS Lambda authorizer (`lambda_handler`) compatible with API Gateway custom authorizers; reads attestation ID from request, calls squash API, returns Allow/Deny IAM policy. CloudFormation template under `examples/`. |
+| W214 | `squash/cli.py` — `squash gateway-config` | Generates ready-to-use Kong plugin YAML + API Gateway authorizer JSON tailored to a given squash deployment URL + key. |
+
+**Sprint 16 exit criteria:**
+- `terraform-provider-squash` builds with `go build`; `terraform plan` works against a stubbed squash API
+- Kong plugin rejects a request with no `X-Squash-Attestation-ID`; allows a valid one (tested against an in-memory squash API)
+- AWS API Gateway authorizer returns Allow/Deny dicts matching the documented IAM-policy shape
+- 2 new Python modules (`kong.py`, `aws_api_gateway.py`); module count → 73; gates updated
+- `squash gateway-config` CLI emits valid Kong plugin YAML and API Gateway authorizer JSON
+
+---
+
+### Sprint 17 — Cryptographic Provenance: Blockchain Anchoring (Tier 3 #29)
+
+**Goal:** Immutable on-chain proof of attestation existence at a moment in time. Required for high-assurance verticals (BFSI, healthcare, defense) where regulators demand tamper-evident audit trails. Sigstore's transparency log is good but private-CA; a public chain (Ethereum mainnet via OP_RETURN-style data, or Bitcoin OP_RETURN) is the strongest available proof.
+
+**Why now:** Squash already produces signed CycloneDX BOMs. Anchoring is the last link. BFSI design partners are blocked on this — the regulator wants proof that cannot be forged by the vendor.
+
+| Wave | Module / Feature | What It Delivers |
+|------|-----------------|-----------------|
+| W215 | `squash/provenance.py` extension — `BlockchainAnchor` | `BlockchainAnchor.anchor(attestation_id)` writes the SHA-256 of the attestation JSON to Ethereum (transactions to a known squash registry contract) or Bitcoin OP_RETURN. Wallet provider abstraction supports `infura://`, `alchemy://`, and self-hosted RPC URLs. |
+| W216 | `squash/provenance.py` extension — `BlockchainAnchor.verify` | Given a tx hash + attestation file, retrieves the on-chain payload, recomputes the SHA-256, returns PASS/FAIL. Supports both block explorers (etherscan / blockchain.info) and direct RPC. |
+| W217 | `squash/cli.py` — `squash anchor` / `squash verify-anchor` | Two new CLI commands: `squash anchor ./squash-attest.json --chain ethereum` (returns tx hash); `squash verify-anchor --tx 0xabc --attestation ./squash-attest.json` (PASS/FAIL). Optional `--ens-name acme-prod` records a human-readable label. |
+
+**Sprint 17 exit criteria:**
+- `BlockchainAnchor.anchor()` produces a signed Ethereum transaction payload (mocked RPC in tests)
+- `BlockchainAnchor.verify()` round-trips a known anchored attestation back to PASS
+- `squash anchor` and `squash verify-anchor` CLI exit codes match (0 on PASS, 1 on FAIL, 2 on misconfig)
+- Test coverage uses mocked Web3.py / requests at the import boundary — no real chain calls in CI
+- 0 new modules (extension to `provenance.py`); module count unchanged at 73
+
+---
+
+### Sprint 18 — SOC 2 Type II Readiness (Tier 3 #30)
+
+**Goal:** Close the enterprise procurement loop. SOC 2 Type II is the single most-requested item in MEDDPICC — without it most $50K+ ACVs can't even start. Squash already has the building blocks (audit trail, signed attestations, policy engine, evidence packages); Sprint 18 wraps them in the SOC 2 control catalogue and produces an auditor-ready evidence bundle.
+
+**Why now:** Tier 2 + Tier 1 + Sprints 14–17 give us the technical surface. Sprint 18 turns that surface into SOC 2 evidence on demand.
+
+| Wave | Module / Feature | What It Delivers |
+|------|-----------------|-----------------|
+| W218 | `squash/soc2.py` (NEW) | SOC 2 Type II control catalogue (Trust Services Criteria — Security, Availability, Processing Integrity, Confidentiality, Privacy). 65 control objectives with squash-component mapping (e.g. CC6.1 → squash signing, CC7.2 → squash audit log). |
+| W219 | `squash/soc2.py` — `EvidenceCollector` | Pulls from `squash/governor.py` audit log + attestation history + policy results + RBAC config; produces per-control evidence dossiers (JSON + Markdown). Handles 1-year evidence collection windows for Type II vs. point-in-time for Type I. |
+| W220 | `squash/cli.py` — `squash soc2 readiness` / `squash soc2 evidence` | `squash soc2 readiness` produces a coverage report (% of controls with evidence, gaps, remediation steps); `squash soc2 evidence --output bundle.zip` builds an auditor-ready ZIP (controls index, dossiers, signed attestations, integrity manifest). |
+
+**Sprint 18 exit criteria:**
+- `squash soc2 readiness` produces a coverage report covering all 65 TSC controls; squash-mapped controls show evidence
+- `squash soc2 evidence --output ./bundle.zip` produces a valid ZIP with controls index, evidence dossiers, and a SHA-256 manifest
+- Evidence collection works against a 12-month attestation history fixture
+- 1 new module (`soc2.py`); module count → 74; gates updated
+- 0 regressions
 
 ---
 

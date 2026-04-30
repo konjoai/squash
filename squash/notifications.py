@@ -142,6 +142,7 @@ class NotificationDispatcher:
         details: dict[str, Any] | None = None,
         link: str = "",
         title: str = "",
+        plan: str = "",
     ) -> NotificationResult:
         """Fire a notification to all configured targets.
 
@@ -175,27 +176,51 @@ class NotificationDispatcher:
         details = details or {}
         auto_title = title or _make_title(event, model_id)
 
+        # Sprint 13 (W203) — entitlement gating. When `plan` is provided
+        # but does not grant the channel's entitlement, the dispatch is
+        # silently skipped and recorded as a no-op (plan="" preserves
+        # backward-compatible un-gated behaviour for CLI / library callers).
+        from squash.auth import (
+            has_entitlement,
+            ENTITLEMENT_SLACK_DELIVERY,
+            ENTITLEMENT_TEAMS_DELIVERY,
+        )
+        gate_slack = bool(plan) and not has_entitlement(plan, ENTITLEMENT_SLACK_DELIVERY)
+        gate_teams = bool(plan) and not has_entitlement(plan, ENTITLEMENT_TEAMS_DELIVERY)
+
         # ── Slack ──────────────────────────────────────────────────────────────
         if self.config.slack_webhook_url:
-            result.targets_attempted += 1
-            try:
-                self._post_slack(auto_title, event, model_id, details, link)
-                result.targets_succeeded += 1
-            except Exception as exc:  # noqa: BLE001
-                err = f"slack: {exc}"
-                result.errors.append(err)
-                log.warning("notifications: %s", err)
+            if gate_slack:
+                log.debug(
+                    "notifications: slack delivery requires entitlement %s "
+                    "(plan=%s) — skipping", ENTITLEMENT_SLACK_DELIVERY, plan,
+                )
+            else:
+                result.targets_attempted += 1
+                try:
+                    self._post_slack(auto_title, event, model_id, details, link)
+                    result.targets_succeeded += 1
+                except Exception as exc:  # noqa: BLE001
+                    err = f"slack: {exc}"
+                    result.errors.append(err)
+                    log.warning("notifications: %s", err)
 
         # ── Teams ──────────────────────────────────────────────────────────────
         if self.config.teams_webhook_url:
-            result.targets_attempted += 1
-            try:
-                self._post_teams(auto_title, event, model_id, details, link)
-                result.targets_succeeded += 1
-            except Exception as exc:  # noqa: BLE001
-                err = f"teams: {exc}"
-                result.errors.append(err)
-                log.warning("notifications: %s", err)
+            if gate_teams:
+                log.debug(
+                    "notifications: teams delivery requires entitlement %s "
+                    "(plan=%s) — skipping", ENTITLEMENT_TEAMS_DELIVERY, plan,
+                )
+            else:
+                result.targets_attempted += 1
+                try:
+                    self._post_teams(auto_title, event, model_id, details, link)
+                    result.targets_succeeded += 1
+                except Exception as exc:  # noqa: BLE001
+                    err = f"teams: {exc}"
+                    result.errors.append(err)
+                    log.warning("notifications: %s", err)
 
         # ── Generic webhook ────────────────────────────────────────────────────
         if self.config.generic_webhook_url:

@@ -36,12 +36,120 @@ log = logging.getLogger(__name__)
 KEY_PREFIX_LIVE = "sq_live_"
 KEY_PREFIX_TEST = "sq_test_"
 
-# Plan → monthly attestation quota and per-minute request rate
+# Sprint 13 (W202) — entitlement bits gate access to higher-tier features.
+# Each plan grants a frozenset of entitlements; downstream subsystems
+# (notifications, ticketing, vex) consult `has_entitlement()` before acting.
+ENTITLEMENT_VEX_READ = "vex_read"
+ENTITLEMENT_SLACK_DELIVERY = "slack_delivery"
+ENTITLEMENT_TEAMS_DELIVERY = "teams_delivery"
+ENTITLEMENT_GITHUB_ISSUES = "github_issues"
+ENTITLEMENT_JIRA = "jira"
+ENTITLEMENT_LINEAR = "linear"
+ENTITLEMENT_ANNEX_IV = "annex_iv"
+ENTITLEMENT_DRIFT_ALERTS = "drift_alerts"
+ENTITLEMENT_SAML_SSO = "saml_sso"
+ENTITLEMENT_HITL = "hitl"
+ENTITLEMENT_AUDIT_EXPORT = "audit_export"
+ENTITLEMENT_ON_PREMISE = "on_premise"
+ENTITLEMENT_AIR_GAPPED = "air_gapped"
+
+# Plan → quotas, rate limits, seat caps, and entitlement set.
+# Sprint 13 (W202): added `startup` and `team` tiers; added `max_seats`
+# (None = unlimited) and `entitlements` to every plan. Existing keys
+# (`monthly_quota`, `rate_per_min`, `export_scope`) preserved unchanged
+# for backward compatibility with W141/W142/W143 callers.
 PLAN_LIMITS: dict[str, dict[str, Any]] = {
-    "free":       {"monthly_quota": 10,   "rate_per_min": 60,   "export_scope": "summary"},
-    "pro":        {"monthly_quota": 500,  "rate_per_min": 600,  "export_scope": "compliance"},
-    "enterprise": {"monthly_quota": None, "rate_per_min": 6000, "export_scope": "full"},
+    "free": {
+        "monthly_quota": 10,
+        "rate_per_min": 60,
+        "export_scope": "summary",
+        "max_seats": 1,
+        "entitlements": frozenset(),
+    },
+    "pro": {
+        "monthly_quota": 500,
+        "rate_per_min": 600,
+        "export_scope": "compliance",
+        "max_seats": 1,
+        "entitlements": frozenset({
+            ENTITLEMENT_ANNEX_IV,
+            ENTITLEMENT_DRIFT_ALERTS,
+            ENTITLEMENT_SLACK_DELIVERY,
+            ENTITLEMENT_TEAMS_DELIVERY,
+        }),
+    },
+    "startup": {
+        "monthly_quota": 500,
+        "rate_per_min": 1200,
+        "export_scope": "compliance",
+        "max_seats": 3,
+        "entitlements": frozenset({
+            ENTITLEMENT_ANNEX_IV,
+            ENTITLEMENT_DRIFT_ALERTS,
+            ENTITLEMENT_SLACK_DELIVERY,
+            ENTITLEMENT_TEAMS_DELIVERY,
+            ENTITLEMENT_VEX_READ,
+            ENTITLEMENT_GITHUB_ISSUES,
+        }),
+    },
+    "team": {
+        "monthly_quota": 1000,
+        "rate_per_min": 3000,
+        "export_scope": "full",
+        "max_seats": 10,
+        "entitlements": frozenset({
+            ENTITLEMENT_ANNEX_IV,
+            ENTITLEMENT_DRIFT_ALERTS,
+            ENTITLEMENT_SLACK_DELIVERY,
+            ENTITLEMENT_TEAMS_DELIVERY,
+            ENTITLEMENT_VEX_READ,
+            ENTITLEMENT_GITHUB_ISSUES,
+            ENTITLEMENT_JIRA,
+            ENTITLEMENT_LINEAR,
+            ENTITLEMENT_SAML_SSO,
+            ENTITLEMENT_HITL,
+            ENTITLEMENT_AUDIT_EXPORT,
+        }),
+    },
+    "enterprise": {
+        "monthly_quota": None,
+        "rate_per_min": 6000,
+        "export_scope": "full",
+        "max_seats": None,
+        "entitlements": frozenset({
+            ENTITLEMENT_ANNEX_IV,
+            ENTITLEMENT_DRIFT_ALERTS,
+            ENTITLEMENT_SLACK_DELIVERY,
+            ENTITLEMENT_TEAMS_DELIVERY,
+            ENTITLEMENT_VEX_READ,
+            ENTITLEMENT_GITHUB_ISSUES,
+            ENTITLEMENT_JIRA,
+            ENTITLEMENT_LINEAR,
+            ENTITLEMENT_SAML_SSO,
+            ENTITLEMENT_HITL,
+            ENTITLEMENT_AUDIT_EXPORT,
+            ENTITLEMENT_ON_PREMISE,
+            ENTITLEMENT_AIR_GAPPED,
+        }),
+    },
 }
+
+
+def has_entitlement(plan: str, entitlement: str) -> bool:
+    """Sprint 13 (W203) — return True iff *plan* grants *entitlement*.
+
+    Empty plan ("") returns ``False`` for everything — the safe default for
+    unauthenticated callers. Unknown plans behave like ``"free"``.
+    """
+    if not plan:
+        return False
+    plan_def = PLAN_LIMITS.get(plan, PLAN_LIMITS["free"])
+    return entitlement in plan_def.get("entitlements", frozenset())
+
+
+def plan_max_seats(plan: str) -> int | None:
+    """Sprint 13 (W202) — return the seat cap for *plan*. ``None`` = unlimited."""
+    return PLAN_LIMITS.get(plan, PLAN_LIMITS["free"]).get("max_seats")
 
 # ---------------------------------------------------------------------------
 # KeyRecord
@@ -75,6 +183,24 @@ class KeyRecord:
             return None
         return max(0, quota - self.attestation_count)
 
+    # ── Sprint 13 (W202/W203) ────────────────────────────────────────────────
+
+    @property
+    def max_seats(self) -> int | None:
+        """Seat cap for this plan. ``None`` = unlimited (enterprise)."""
+        return plan_max_seats(self.plan)
+
+    @property
+    def entitlements(self) -> frozenset[str]:
+        """Frozenset of entitlement strings granted by this plan."""
+        return PLAN_LIMITS.get(self.plan, PLAN_LIMITS["free"]).get(
+            "entitlements", frozenset()
+        )
+
+    def has_entitlement(self, entitlement: str) -> bool:
+        """Return True iff this key's plan grants the named entitlement."""
+        return has_entitlement(self.plan, entitlement)
+
     def to_dict(self) -> dict[str, Any]:
         return {
             "key_id": self.key_id,
@@ -89,6 +215,8 @@ class KeyRecord:
             "monthly_quota": self.monthly_quota,
             "quota_remaining": self.quota_remaining,
             "rate_per_min": self.rate_per_min,
+            "max_seats": self.max_seats,
+            "entitlements": sorted(self.entitlements),
         }
 
 
