@@ -36,12 +36,12 @@ That's the moat. Credo AI and OneTrust are form-filling tools. Squash is a pipel
 
 ---
 
-## ⚡ Situation Report (April 29, 2026) — Post Sprint 11 ✅ COMPLETE
+## ⚡ Situation Report (April 29, 2026) — Post Sprint 12 ✅ COMPLETE
 
 | Metric | Value |
 |--------|-------|
 | **EU AI Act enforcement deadline** | August 2, 2026 — **95 days** |
-| **Squash code maturity** | v1.6.0 · Sprint 11 complete · 3924 tests passing |
+| **Squash code maturity** | v1.7.0 · Sprint 12 complete · 3952 tests passing |
 | **Python modules** | 71 standalone modules + VS Code extension · 100+ git commits |
 | **Annex IV coverage** | ✅ 100% — 12-section generator, completeness scoring, PDF export |
 | **ISO 42001 coverage** | ✅ — 38-control readiness assessment, gap analysis, remediation roadmap |
@@ -65,6 +65,7 @@ That's the moat. Credo AI and OneTrust are form-filling tools. Squash is a pipel
 | **SBOM Diff** | ✅ NEW (Sprint 9) — `squash diff v1.json v2.json`; score delta, component/policy/vuln drift; table/JSON/HTML |
 | **Model Card First-Class CLI** | ✅ NEW (Sprint 10) — `squash model-card --validate / --validate-only / --push-to-hub`; Annex IV / bias / lineage data fusion; HF schema validator (`squash/model_card_validator.py`); 4 new HF sections (Training Data, Evaluation, Environmental Impact, Ethical Considerations) |
 | **Chain & Pipeline Attestation** | ✅ NEW (Sprint 11) — `squash/chain_attest.py` composite engine; `ChainAttestation` with HMAC-SHA256 signing + tamper detection; LangChain Runnable graph walker (`attest_chain()` — RAG / agent / multi-LLM ensemble shapes); `squash chain-attest <spec.json|module:var>` CLI with `--verify`, `--fail-on-component-violation` |
+| **Registry Auto-Attest Gates** | ✅ NEW (Sprint 12) — Active gates in MLflow / W&B / SageMaker integrations: `MLflowSquash.register_attested()`, `WandbSquash.log_artifact_attested()`, `SageMakerSquash.register_model_package_attested()` (raises `AttestationViolationError`, refuses registration on policy fail); `squash registry-gate` unified CLI for CI/CD with backend-specific URI validation and structured `registry-gate.json` decision output |
 | **Repo status** | ✅ Separated from `konjoai/squish` — standalone Apache 2.0 repo |
 | **Production status** | Dockerfile + fly.toml written; **not yet deployed** |
 | **PyPI status** | `pyproject.toml` ready; **not yet published** |
@@ -684,25 +685,28 @@ Value/effort matrix drove this sprint: highest-value features with existing modu
 
 ---
 
-### Sprint 12 — Model Registry Auto-Attest Gates (Tier 2 #18)
+### Sprint 12 — Model Registry Auto-Attest Gates (April 29, 2026) ✅ COMPLETE
+
+**All code shipped 2026-04-29. 0 new modules (extensions only), 28 new tests, 0 regressions.**
 
 **Goal:** Make registration in MLflow / W&B / SageMaker Model Registry the enforcement gate for compliance. A model that fails attestation cannot be registered. Compliance is enforced at the moment of promotion to production, not discovered later.
 
 **Why now:** Model registries are the production gate of every serious ML org. Squash already has framework-aware integrations — this sprint turns them from passive observers into hard gates.
 
-| Wave | Module / Feature | What It Delivers |
-|------|-----------------|-----------------|
-| W198 | `squash/integrations/mlflow.py` extension | `register_attested(model_uri, policies, fail_on_violation=True)` — runs attest before MLflow `register_model`; on policy fail, raises and refuses registration. |
-| W199 | `squash/integrations/wandb.py` extension | `log_artifact_attested(artifact, ...)` — runs attest before `wandb.log_artifact`; tags artefact with attestation ID and score. |
-| W200 | `squash/integrations/sagemaker.py` extension | `register_model_package_attested(...)` — runs attest before SageMaker Model Registry promotion; blocks `Approved` status on policy fail. |
-| W201 | CLI: `squash registry-gate` (NEW) | Unified registry-aware gate command — `squash registry-gate mlflow models:/MyModel/Production --policy eu-ai-act` resolves URI, fetches model, attests, exits non-zero on fail. |
+| Wave | Module / Feature | What It Delivers | Status |
+|------|-----------------|-----------------|--------|
+| W198 | `squash/integrations/mlflow.py` extension | `MLflowSquash.register_attested(model_uri, name, model_path, policies, fail_on_violation=True)` — runs attest before `mlflow.register_model`; on policy fail raises `AttestationViolationError` and `register_model` is **never called**; tags new ModelVersion with `squash.attestation_id` + per-policy results. | ✅ |
+| W199 | `squash/integrations/wandb.py` extension | `WandbSquash.log_artifact_attested(run, artifact_name, model_path, ...)` — builds fresh `wandb.Artifact` on policy pass with attestation files included; metadata block carries `squash.attestation_id` + per-policy passed/errors/warnings; on fail raises and `run.log_artifact` is never called. | ✅ |
+| W200 | `squash/integrations/sagemaker.py` extension | `SageMakerSquash.register_model_package_attested(...)` — `create_model_package(...)` with `ModelApprovalStatus="Approved"` on pass; refuses creation on fail (or creates with `Rejected` / `PendingManualApproval` when `fail_on_violation=False`); `squash:gate_decision` tag captures intent. | ✅ |
+| W201 | CLI: `squash registry-gate` (NEW) | Unified pre-registration gate: `squash registry-gate --backend {mlflow|wandb|sagemaker|local} --uri <URI> --model-path ./model --policy <P>`. Backend-specific URI validation (mlflow `models:/...` or `runs:/...`; wandb `wandb://`; sagemaker `arn:aws:sagemaker:`). Always emits structured `registry-gate.json` with `decision: allow|refuse|record-only`. `--allow-on-fail` for soft-gate mode. | ✅ |
 
-**Sprint 12 exit criteria:**
-- All three registries gain `_attested` registration helpers that fail loudly on policy violation
-- `squash registry-gate <backend> <uri>` works for MLflow / W&B / SageMaker URIs
-- Each helper attaches attestation ID as registry-side tag/metadata
-- Tests cover happy path and refuse-to-register path for each backend (with backend libs mocked at the import boundary)
-- 0 new modules (extensions only); 0 regressions
+**Sprint 12 exit criteria: ALL MET**
+- All three registries gain `*_attested` helpers that fail loudly on policy violation ✅
+- `squash registry-gate <backend>` validates URI per backend; exits 2 on misconfig ✅
+- Each helper attaches `squash.attestation_id` + per-policy tags as registry-side metadata ✅
+- Tests cover happy path AND refuse-to-register path for all three backends; SDK libs (mlflow / wandb / boto3) mocked at the `sys.modules` import boundary ✅
+- 0 new modules (extensions only); 71 module count unchanged ✅
+- 3952/3952 tests passing · 0 regressions ✅
 
 ---
 

@@ -5,6 +5,89 @@ Format: [Conventional Commits](https://www.conventionalcommits.org/) · [Keep a 
 
 ---
 
+## [1.7.0] — 2026-04-29 — Sprint 12: Model Registry Auto-Attest Gates
+
+### Added (W198–W201 — Sprint 12: Registry Auto-Attest Gates — Tier 2 #18)
+
+Make registration in MLflow / W&B / SageMaker Model Registry the
+enforcement gate for compliance. A model that fails attestation cannot
+reach production. Compliance is enforced at the moment of promotion,
+not discovered later in audit.
+
+- **`squash/integrations/mlflow.py` — `MLflowSquash.register_attested()` (W198)**:
+  - Attest, then call `mlflow.register_model` only on policy success
+  - On policy fail (default `fail_on_violation=True`): raises
+    `AttestationViolationError` and **never calls `register_model`**
+  - On `fail_on_violation=False`: registers anyway, lets the failed
+    `squash.passed=false` tag drive downstream gates
+  - Tags new ModelVersion with `squash.passed`, `squash.attestation_id`,
+    `squash.scan_status`, `squash.policy.<name>.passed`, plus optional
+    user-supplied `tags={...}`
+  - 6 new tests (happy path, refuse path, import error, fail_on_violation
+    toggle, attestation tag, extra tags merged)
+
+- **`squash/integrations/wandb.py` — `WandbSquash.log_artifact_attested()` (W199)**:
+  - Attest, then build a fresh `wandb.Artifact` containing both model
+    files and squash artefacts, then call `run.log_artifact()` only on pass
+  - Artifact metadata block carries `squash.passed`, `squash.attestation_id`,
+    `squash.scan_status`, and per-policy pass/fail/error/warning counts
+  - On policy fail (default): raises `AttestationViolationError`,
+    `run.log_artifact` is **never called**
+  - `aliases=` argument forwarded to W&B (`["latest", "production"]` …)
+  - 6 new tests (happy path, refuse path, import error, metadata
+    contents, alias forwarding, soft-gate mode)
+
+- **`squash/integrations/sagemaker.py` — `SageMakerSquash.register_model_package_attested()` (W200)**:
+  - Attest, then `sagemaker.create_model_package(...)` with
+    `ModelApprovalStatus="Approved"` only on policy pass
+  - On policy fail (default): raises `AttestationViolationError`,
+    no ModelPackage is created
+  - On `fail_on_violation=False`: ModelPackage is created with
+    `approval_status_on_fail` (default `"Rejected"`,
+    `"PendingManualApproval"` also supported) so audit trail records the
+    attempt
+  - All squash attestation results recorded as AWS tags on the new
+    ModelPackage; `squash:gate_decision` tag captures the approval status
+  - 6 new tests (Approved on pass, Rejected on fail soft-mode,
+    PendingManualApproval custom status, refuse path, tag attachment,
+    import error)
+
+- **`squash/cli.py` — `squash registry-gate` first-class command (W201)**:
+  - Unified pre-registration gate for CI/CD pipelines:
+    `squash registry-gate --backend {mlflow|wandb|sagemaker|local} \
+       --uri <URI> --model-path ./model --policy <P>`
+  - Backend-specific URI validation (rejects ARNs for mlflow,
+    `models:/...` for sagemaker, etc.) — exits 2 on misconfig
+  - Always emits `registry-gate.json` under `--output-dir` containing
+    structured `decision: allow|refuse|record-only`, attestation_id,
+    per-policy pass/fail, scan_status
+  - `--allow-on-fail` for soft-gate mode (records but exits 0)
+  - `--json` for machine-readable stdout (CI parsing)
+  - 9 new tests (help, local backend, --allow-on-fail, JSON output,
+    URI validation per backend, missing model path)
+
+### Changed
+- **`squash/cli.py`** — added `registry-gate` top-level subcommand and
+  `_validate_registry_uri()` helper
+- **`squash/integrations/sagemaker.py`** — extracted `_result_to_tags()`
+  helper shared between `tag_model_package()` and
+  `register_model_package_attested()`
+
+### Stats
+- **28 new tests** · **0 regressions** · **3952 total tests passing**
+- **0 new modules** (Sprint 12 is extensions only) · 71 modules unchanged
+- **3 new in-process gate methods** (one per supported registry)
+- **1 new top-level CLI command** (`registry-gate`) with 9 flags
+
+### Konjo notes
+The gate-vs-record distinction is the core idea. Production model
+registries are the moment compliance becomes real. Sprint 12 turns
+squash from passive observer into an active gate at exactly that moment
+— without forcing it: `fail_on_violation=False` preserves the soft
+mode for orgs that want to record-and-route rather than block.
+
+---
+
 ## [1.6.0] — 2026-04-29 — Sprint 11: Chain & Pipeline Attestation
 
 ### Added (W195–W197 — Sprint 11: Chain & Pipeline Attestation — Tier 2 #16)

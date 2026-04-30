@@ -2068,6 +2068,77 @@ def _build_parser() -> argparse.ArgumentParser:
         "--quiet", action="store_true", help="Suppress non-error output",
     )
 
+    # ── W201 (Sprint 12) — registry-gate: pre-registration policy gate ───────
+    rg_cmd = sub.add_parser(
+        "registry-gate",
+        help="Pre-registration squash gate for model registries (mlflow / wandb / sagemaker / local)",
+        description=(
+            "Run squash attestation on a local model and produce a structured\n"
+            "gate decision suitable for blocking model-registry promotion in CI.\n\n"
+            "Exits 0 on policy pass, 1 on policy fail, 2 on configuration error.\n"
+            "Always writes a `registry-gate.json` file under --output-dir.\n\n"
+            "Examples:\n"
+            "  # Gate before MLflow register_model\n"
+            "  squash registry-gate --backend mlflow \\\n"
+            "      --uri models:/MyModel/Production \\\n"
+            "      --model-path ./output/model --policy eu-ai-act\n"
+            "\n"
+            "  # Gate before W&B log_artifact\n"
+            "  squash registry-gate --backend wandb \\\n"
+            "      --uri wandb://acme/my-project/llama:v1 \\\n"
+            "      --model-path ./model --policy enterprise-strict\n"
+            "\n"
+            "  # Gate before SageMaker create_model_package\n"
+            "  squash registry-gate --backend sagemaker \\\n"
+            "      --uri arn:aws:sagemaker:us-east-1:123:model-package-group/MyMPG \\\n"
+            "      --model-path ./model --policy nist-ai-rmf\n"
+            "\n"
+            "  # Local-only gate (no registry URI)\n"
+            "  squash registry-gate --backend local --model-path ./model\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    rg_cmd.add_argument(
+        "--backend", required=True,
+        choices=["mlflow", "wandb", "sagemaker", "local"],
+        help="Registry backend whose URI form is being gated",
+    )
+    rg_cmd.add_argument(
+        "--model-path", required=True, dest="rg_model_path",
+        help="Local path to the model artefact (file or directory)",
+    )
+    rg_cmd.add_argument(
+        "--uri", default="", dest="rg_uri",
+        help="Registry URI (informational; recorded in gate decision)",
+    )
+    rg_cmd.add_argument(
+        "--policy", action="append", default=None, dest="rg_policies",
+        help="Policy to evaluate (repeatable). Default: enterprise-strict",
+    )
+    rg_cmd.add_argument(
+        "--output-dir", default=None, dest="rg_output_dir",
+        help="Directory to write attestation artefacts + registry-gate.json",
+    )
+    rg_cmd.add_argument(
+        "--name", default="", dest="rg_name",
+        help="Logical model name (e.g. MLflow registered-model name)",
+    )
+    rg_cmd.add_argument(
+        "--allow-on-fail", action="store_true", dest="rg_allow_on_fail",
+        help="Exit 0 even on policy fail (record-only mode for soft gating)",
+    )
+    rg_cmd.add_argument(
+        "--json", action="store_true", dest="rg_json",
+        help="Print the registry-gate JSON to stdout",
+    )
+    rg_cmd.add_argument(
+        "--sign", action="store_true", dest="rg_sign",
+        help="Sigstore-sign the CycloneDX BOM during attest",
+    )
+    rg_cmd.add_argument(
+        "--quiet", action="store_true", help="Suppress non-error output",
+    )
+
     # ── W135 / W136 — Annex IV generate + validate ────────────────────────────
     annex_iv_cmd = sub.add_parser(
         "annex-iv",
@@ -4203,6 +4274,123 @@ def _cmd_chain_attest(args: argparse.Namespace, quiet: bool) -> int:
 
     if args.chain_fail_on_violation and not attestation.composite_passed:
         return 1
+    return 0
+
+
+def _cmd_registry_gate(args: argparse.Namespace, quiet: bool) -> int:
+    """W201 — `squash registry-gate`. Pre-registration policy gate.
+
+    Attests the local model and emits a structured gate decision. Exit 0 on
+    policy pass, 1 on policy fail (unless --allow-on-fail), 2 on misconfig.
+    """
+    try:
+        from squash.attest import AttestConfig, AttestPipeline
+    except ImportError as exc:
+        print(f"squash registry-gate unavailable: {exc}", file=sys.stderr)
+        return 2
+
+    model_path = Path(args.rg_model_path)
+    if not model_path.exists():
+        print(f"registry-gate: model not found: {model_path}", file=sys.stderr)
+        return 2
+
+    output_dir = (
+        Path(args.rg_output_dir) if args.rg_output_dir
+        else (model_path.parent / "squash")
+    )
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    policies = args.rg_policies or ["enterprise-strict"]
+    backend: str = args.backend
+    uri: str = args.rg_uri or ""
+
+    # ── Light backend-specific URI validation ────────────────────────────────
+    rc_validate = _validate_registry_uri(backend, uri)
+    if rc_validate != 0:
+        return rc_validate
+
+    config = AttestConfig(
+        model_path=model_path,
+        output_dir=output_dir,
+        policies=policies,
+        sign=getattr(args, "rg_sign", False),
+        fail_on_violation=False,  # gate decides exit code itself
+    )
+    result = AttestPipeline.run(config)
+
+    decision = "allow" if result.passed else "refuse"
+    if args.rg_allow_on_fail and not result.passed:
+        decision = "record-only"
+
+    gate = {
+        "squash_version": "registry_gate_v1",
+        "backend": backend,
+        "uri": uri,
+        "name": args.rg_name or "",
+        "model_path": str(model_path),
+        "passed": result.passed,
+        "decision": decision,
+        "attestation_id": result.model_id,
+        "scan_status": (
+            result.scan_result.status if result.scan_result else "skipped"
+        ),
+        "policies": {
+            n: {
+                "passed": pr.passed,
+                "errors": pr.error_count,
+                "warnings": pr.warning_count,
+            }
+            for n, pr in result.policy_results.items()
+        },
+        "summary": result.summary(),
+        "output_dir": str(output_dir),
+    }
+
+    gate_path = output_dir / "registry-gate.json"
+    gate_path.write_text(json.dumps(gate, indent=2, sort_keys=True), encoding="utf-8")
+
+    if args.rg_json:
+        print(json.dumps(gate, indent=2, sort_keys=True))
+    elif not quiet:
+        emoji = "✅" if result.passed else "❌"
+        print(f"{emoji} registry-gate [{backend}] decision={decision}")
+        print(f"   model: {model_path}")
+        if uri:
+            print(f"   uri:   {uri}")
+        print(f"   {result.summary()}")
+        print(f"   gate file: {gate_path}")
+
+    if not result.passed and not args.rg_allow_on_fail:
+        return 1
+    return 0
+
+
+def _validate_registry_uri(backend: str, uri: str) -> int:
+    """Light, opinionated URI sanity check per backend. Returns 0 or 2."""
+    if not uri or backend == "local":
+        return 0
+    if backend == "mlflow":
+        if not (uri.startswith("models:/") or uri.startswith("runs:/")):
+            print(
+                f"registry-gate: --uri for mlflow must start with 'models:/' "
+                f"or 'runs:/' — got {uri!r}", file=sys.stderr,
+            )
+            return 2
+    elif backend == "wandb":
+        if not uri.startswith("wandb://"):
+            print(
+                f"registry-gate: --uri for wandb must start with 'wandb://' "
+                f"— got {uri!r}", file=sys.stderr,
+            )
+            return 2
+    elif backend == "sagemaker":
+        if not uri.startswith("arn:aws:sagemaker:"):
+            print(
+                f"registry-gate: --uri for sagemaker must be an AWS ARN "
+                f"starting with 'arn:aws:sagemaker:' — got {uri!r}",
+                file=sys.stderr,
+            )
+            return 2
     return 0
 
 
@@ -6571,6 +6759,8 @@ def main() -> None:
         sys.exit(_cmd_gitops(args, quiet))
     elif args.command == "chain-attest":
         sys.exit(_cmd_chain_attest(args, quiet))
+    elif args.command == "registry-gate":
+        sys.exit(_cmd_registry_gate(args, quiet))
     else:
         parser.print_help()
         sys.exit(1)
