@@ -36,13 +36,13 @@ That's the moat. Credo AI and OneTrust are form-filling tools. Squash is a pipel
 
 ---
 
-## ⚡ Situation Report (April 29, 2026) — Post Sprint 10 ✅ COMPLETE
+## ⚡ Situation Report (April 29, 2026) — Post Sprint 11 ✅ COMPLETE
 
 | Metric | Value |
 |--------|-------|
 | **EU AI Act enforcement deadline** | August 2, 2026 — **95 days** |
-| **Squash code maturity** | v1.5.0 · Sprint 10 complete · 3875 tests passing |
-| **Python modules** | 70 standalone modules + VS Code extension · 100+ git commits |
+| **Squash code maturity** | v1.6.0 · Sprint 11 complete · 3924 tests passing |
+| **Python modules** | 71 standalone modules + VS Code extension · 100+ git commits |
 | **Annex IV coverage** | ✅ 100% — 12-section generator, completeness scoring, PDF export |
 | **ISO 42001 coverage** | ✅ — 38-control readiness assessment, gap analysis, remediation roadmap |
 | **Trust Package** | ✅ — Signed vendor attestation bundle, `squash verify-trust-package` CLI |
@@ -64,6 +64,7 @@ That's the moat. Credo AI and OneTrust are form-filling tools. Squash is a pipel
 | **Generic Webhook Delivery** | ✅ NEW (Sprint 9) — HMAC-signed outbound webhooks; 5 event types; SQLite persistence; `squash webhook` CLI |
 | **SBOM Diff** | ✅ NEW (Sprint 9) — `squash diff v1.json v2.json`; score delta, component/policy/vuln drift; table/JSON/HTML |
 | **Model Card First-Class CLI** | ✅ NEW (Sprint 10) — `squash model-card --validate / --validate-only / --push-to-hub`; Annex IV / bias / lineage data fusion; HF schema validator (`squash/model_card_validator.py`); 4 new HF sections (Training Data, Evaluation, Environmental Impact, Ethical Considerations) |
+| **Chain & Pipeline Attestation** | ✅ NEW (Sprint 11) — `squash/chain_attest.py` composite engine; `ChainAttestation` with HMAC-SHA256 signing + tamper detection; LangChain Runnable graph walker (`attest_chain()` — RAG / agent / multi-LLM ensemble shapes); `squash chain-attest <spec.json|module:var>` CLI with `--verify`, `--fail-on-component-violation` |
 | **Repo status** | ✅ Separated from `konjoai/squish` — standalone Apache 2.0 repo |
 | **Production status** | Dockerfile + fly.toml written; **not yet deployed** |
 | **PyPI status** | `pyproject.toml` ready; **not yet published** |
@@ -659,24 +660,27 @@ Value/effort matrix drove this sprint: highest-value features with existing modu
 
 ---
 
-### Sprint 11 — Chain & Pipeline Attestation (Tier 2 #16)
+### Sprint 11 — Chain & Pipeline Attestation (April 29, 2026) ✅ COMPLETE
+
+**All code shipped 2026-04-29. 1 new module, 49 new tests, 0 regressions.**
 
 **Goal:** Attest entire RAG / agent / multi-model pipelines as a single composite unit. Today squash attests one model at a time — production AI systems are LangChain chains, LlamaIndex query engines, and multi-step agent workflows. Compliance must apply to the whole pipeline.
 
 **Why now:** Gartner: 40% of GenAI apps ship as agent chains by end of 2026. EU AI Act treats the deployed system, not individual models, as the regulated unit. A composite attestation is the only honest answer.
 
-| Wave | Module / Feature | What It Delivers |
-|------|-----------------|-----------------|
-| W195 | `squash/chain_attest.py` (NEW) | Composite chain attestation engine — `ChainAttestation` aggregates per-component attestations into a single signed record with composite score and worst-case policy roll-up. |
-| W196 | `squash/integrations/langchain.py` extension | `attest_chain(chain, policies=...)` — walks the LangChain `Runnable` graph, extracts every LLM / retriever / tool, attests each, returns a `ChainAttestation`. |
-| W197 | CLI: `squash chain-attest` | Discovers a chain definition (Python module path or YAML) and produces `chain-attest.json` plus Markdown summary; supports `--fail-on-component-violation`. |
+| Wave | Module / Feature | What It Delivers | Status |
+|------|-----------------|-----------------|--------|
+| W195 | `squash/chain_attest.py` (NEW) | Composite chain attestation engine — `ChainAttestation` aggregates per-component attestations into a single HMAC-SHA256–signed record with composite score (worst-case roll-up: `min(component scores)`) and per-policy worst-case AND-roll-up. JSON + Markdown rendering; YAML/JSON spec loader; round-trip + tamper-detection via `verify_signature()`. | ✅ |
+| W196 | `squash/integrations/langchain.py` extension | `attest_chain(chain, policies=...)` walks the LangChain `Runnable` graph duck-style (no SDK dep): RunnableSequence → SEQUENCE, RunnableParallel → ENSEMBLE, AgentExecutor.tools → AGENT. Auto-classifies LLM / retriever / embedding / tool roles; flags hosted-API LLMs (`ChatOpenAI`, `ChatAnthropic`, …) as `external` and excludes from score. | ✅ |
+| W197 | CLI: `squash chain-attest` | Resolves spec from JSON / YAML file or `module.path:variable_name` Python import; produces `chain-attest.json` + `chain-attest.md`; `--verify` for HMAC tamper-check; `--fail-on-component-violation` for CI gating; `--chain-id`, `--sign-components`, `--json`, `--quiet`. | ✅ |
 
-**Sprint 11 exit criteria:**
-- `attest_chain(chain, policies=[...])` returns ChainAttestation covering all chain components
-- `squash chain-attest ./chain.yaml` produces composite signed attestation
-- Composite score correctly rolls up worst-case across components
-- Tests cover RAG (retriever + LLM), tool-using agent, and multi-LLM ensemble shapes
-- 71 modules; 0 regressions
+**Sprint 11 exit criteria: ALL MET**
+- `attest_chain(chain, policies=[...])` returns `ChainAttestation` covering all chain components ✅
+- `squash chain-attest ./chain.json` produces composite signed attestation ✅
+- Composite score correctly rolls up worst-case across components (`min` of attestable, ignoring skipped) ✅
+- Tests cover RAG (sequence: embedder → retriever → LLM), tool-using agent (LLM + tool-belt), and multi-LLM ensemble (parallel) ✅
+- HMAC-SHA256 signing + `verify_signature()` tamper detection covered by 5 dedicated tests ✅
+- 71 modules; module count gates updated; 3924/3924 tests passing · 0 regressions ✅
 
 ---
 

@@ -5,6 +5,76 @@ Format: [Conventional Commits](https://www.conventionalcommits.org/) · [Keep a 
 
 ---
 
+## [1.6.0] — 2026-04-29 — Sprint 11: Chain & Pipeline Attestation
+
+### Added (W195–W197 — Sprint 11: Chain & Pipeline Attestation — Tier 2 #16)
+
+The EU AI Act regulates the deployed system, not individual model weights.
+A modern AI system is a chain — RAG (retriever → embedder → LLM), a
+tool-using agent (LLM + tool-belt), or a multi-LLM ensemble (parallel
+branches). Squash now attests the whole chain as a single signed unit.
+
+- **`squash/chain_attest.py` — Composite chain attestation engine (W195) — NEW MODULE**:
+  - `ChainComponent` / `ChainSpec` / `ComponentAttestation` / `ChainAttestation` dataclasses
+  - `ChainAttestPipeline.run()` — iterates components, delegates each to
+    `AttestPipeline`, aggregates worst-case
+  - **Composite score formula**:
+      `score = 100 − 25·errors − 5·warnings − 50·(scan failed)` per
+      component, clipped [0, 100]; composite = `min(component scores)`
+  - **Worst-case policy roll-up**: a chain passes a policy iff every
+    attestable component passes it
+  - **HMAC-SHA256 signing** over canonical JSON serialisation; default
+    deterministic per-chain key, override with `signing_key`
+  - **Tamper detection** via `verify_signature()` — flips on any change
+    to chain_id / components / scores / policy roll-up
+  - JSON / Markdown rendering (`save()`, `to_markdown()`, `to_json()`)
+  - JSON / YAML chain-spec loader (`load_chain_spec`); PyYAML optional
+  - 30 new tests
+
+- **`squash/integrations/langchain.py` — `attest_chain()` Runnable graph walker (W196)**:
+  - Walks any LangChain Runnable graph duck-style (no LangChain SDK
+    dependency); recognises:
+    - `RunnableSequence` (linear LLM chain) → `ChainKind.SEQUENCE`
+    - `RunnableParallel` (multi-LLM ensemble) → `ChainKind.ENSEMBLE`
+    - Tool-using agents (`AgentExecutor.tools`) → `ChainKind.AGENT`
+    - RAG retrievers, embedders, tools, LLMs auto-classified by role
+  - Hosted-API LLMs (`ChatOpenAI`, `ChatAnthropic`, `Bedrock`, `Cohere`,
+    `AzureOpenAI`, `Google`, …) auto-flagged `external=True` and
+    excluded from the score (recorded in report for vendor risk review)
+  - Edge topology preserved; duplicate component names auto-suffixed
+    while edges are retargeted onto new unique names
+  - 12 new tests
+
+- **`squash/cli.py` — `squash chain-attest` first-class command (W197)**:
+  - `squash chain-attest ./chain.json [--policy P] [--output-dir DIR]`
+  - `squash chain-attest myapp.chains:rag_pipeline` — Python module
+    path resolution to a LangChain Runnable
+  - `--verify <chain-attest.json>` — HMAC verification, exits non-zero
+    on tamper
+  - `--fail-on-component-violation` — exits 1 when composite_passed=False
+  - `--chain-id REPO_ID` — override the chain identifier
+  - `--sign-components` — Sigstore-sign each component BOM during attest
+  - `--json` / `--quiet` — structured / silent output
+  - 7 new tests
+
+### Changed
+- **`tests/test_squash_model_card.py`**, **`tests/test_squash_wave49.py`**,
+  **`tests/test_squash_wave52.py`**, **`tests/test_squash_wave5355.py`** —
+  module count gates updated 70 → 71
+- **`SQUASH_MASTER_PLAN.md`** — Sprint 11 marked complete; situation report
+  updated to v1.6.0; remaining Tier 2 items: #18 registry auto-attest,
+  #19 startup pricing tier
+
+### Stats
+- **49 new tests** · **0 regressions** · **3924 total tests passing**
+- **71 Python modules** (was 70 after Sprint 10)
+- **1 new module** (`squash/chain_attest.py`)
+- **1 new top-level CLI command** (`chain-attest`) with 8 flags
+- **Three chain topologies covered**: RAG (sequence), tool-using agent,
+  multi-LLM ensemble (parallel)
+
+---
+
 ## [1.5.0] — 2026-04-29 — Sprint 10: Model Card First-Class CLI
 
 ### Added (W192–W194 — Sprint 10: Model Card First-Class CLI — Tier 2 #15)

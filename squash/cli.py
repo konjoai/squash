@@ -2013,6 +2013,61 @@ def _build_parser() -> argparse.ArgumentParser:
     go_annotate.add_argument("--policy", default="eu-ai-act", help="Policy name (default: eu-ai-act)")
     go_annotate.add_argument("--passed", action="store_true", default=True)
 
+    # ── W197 (Sprint 11) — chain-attest: composite chain / pipeline attest ────
+    chain_cmd = sub.add_parser(
+        "chain-attest",
+        help="Attest an entire RAG / agent / multi-LLM pipeline as a composite",
+        description=(
+            "Run composite chain attestation. The chain is defined either as a "
+            "JSON / YAML spec or as a Python module path that exposes a "
+            "LangChain Runnable.\n\n"
+            "Examples:\n"
+            "  squash chain-attest ./rag.json --policy eu-ai-act --output-dir ./out\n"
+            "  squash chain-attest myapp.chains:rag_pipeline --policy enterprise-strict\n"
+            "  squash chain-attest ./chain.yaml --fail-on-component-violation\n"
+            "  squash chain-attest --verify ./out/chain-attest.json\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    chain_cmd.add_argument(
+        "spec",
+        help="Chain spec — JSON / YAML file path or 'module.path:variable_name' "
+             "for a LangChain Runnable",
+    )
+    chain_cmd.add_argument(
+        "--policy", action="append", default=None,
+        dest="chain_policies",
+        help="Policy to evaluate (repeatable). Default: enterprise-strict",
+    )
+    chain_cmd.add_argument(
+        "--output-dir", default=None, dest="chain_output_dir",
+        help="Directory to write chain-attest.json + chain-attest.md",
+    )
+    chain_cmd.add_argument(
+        "--chain-id", default="", dest="chain_id_override",
+        help="Override chain_id (defaults to spec file stem or class name)",
+    )
+    chain_cmd.add_argument(
+        "--fail-on-component-violation",
+        action="store_true", dest="chain_fail_on_violation",
+        help="Exit non-zero on the first component policy violation",
+    )
+    chain_cmd.add_argument(
+        "--sign-components", action="store_true", dest="chain_sign_components",
+        help="Sigstore-sign each component BOM during attest",
+    )
+    chain_cmd.add_argument(
+        "--verify", action="store_true", dest="chain_verify_only",
+        help="Verify the HMAC signature of an existing chain-attest.json and exit",
+    )
+    chain_cmd.add_argument(
+        "--json", action="store_true", dest="chain_json",
+        help="Print the chain attestation JSON to stdout",
+    )
+    chain_cmd.add_argument(
+        "--quiet", action="store_true", help="Suppress non-error output",
+    )
+
     # ── W135 / W136 — Annex IV generate + validate ────────────────────────────
     annex_iv_cmd = sub.add_parser(
         "annex-iv",
@@ -4053,6 +4108,123 @@ def _model_card_validate(card_path: Path, json_out: bool, quiet: bool) -> int:
             print(f"  {f.render()}")
 
     return 0 if report.is_valid else 1
+
+
+def _cmd_chain_attest(args: argparse.Namespace, quiet: bool) -> int:
+    """W197 — `squash chain-attest`. Composite chain / pipeline attestation."""
+    try:
+        from squash.chain_attest import (
+            ChainAttestConfig, ChainAttestPipeline,
+            attestation_from_dict, load_chain_spec, verify_signature,
+        )
+    except ImportError as exc:
+        print(f"squash chain-attest unavailable: {exc}", file=sys.stderr)
+        return 2
+
+    spec_arg: str = args.spec
+    output_dir = Path(args.chain_output_dir) if args.chain_output_dir else None
+    policies = args.chain_policies or ["enterprise-strict"]
+
+    # ── Verify-only short-circuit ────────────────────────────────────────────
+    if getattr(args, "chain_verify_only", False):
+        target = Path(spec_arg)
+        if not target.exists():
+            print(f"chain-attest: file not found: {target}", file=sys.stderr)
+            return 1
+        try:
+            raw = json.loads(target.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            print(f"chain-attest: not a valid JSON file: {exc}", file=sys.stderr)
+            return 1
+        try:
+            attestation = attestation_from_dict(raw)
+        except KeyError as exc:
+            print(f"chain-attest: file missing required field: {exc}", file=sys.stderr)
+            return 1
+        ok = verify_signature(attestation)
+        if not quiet:
+            status = "✅ VALID" if ok else "❌ TAMPERED"
+            print(f"{status} {target} — chain_id={attestation.chain_id}")
+        return 0 if ok else 1
+
+    # ── Resolve spec: file path or 'module.path:variable' ───────────────────
+    if ":" in spec_arg and not Path(spec_arg).exists():
+        # Python import form: chain attestation via attest_chain()
+        try:
+            chain_obj = _resolve_python_chain(spec_arg)
+        except Exception as exc:  # noqa: BLE001 — surface import errors verbatim
+            print(f"chain-attest: could not resolve {spec_arg!r}: {exc}",
+                  file=sys.stderr)
+            return 1
+        try:
+            from squash.integrations.langchain import attest_chain
+        except ImportError as exc:
+            print(f"chain-attest: langchain integration unavailable: {exc}",
+                  file=sys.stderr)
+            return 2
+        attestation = attest_chain(
+            chain_obj,
+            chain_id=args.chain_id_override or "",
+            policies=policies,
+            output_dir=output_dir,
+            fail_on_component_violation=args.chain_fail_on_violation,
+            sign_components=args.chain_sign_components,
+        )
+    else:
+        # File path: JSON or YAML chain spec
+        spec_path = Path(spec_arg)
+        if not spec_path.exists():
+            print(f"chain-attest: spec not found: {spec_path}", file=sys.stderr)
+            return 1
+        try:
+            spec = load_chain_spec(spec_path)
+        except (ValueError, ImportError, json.JSONDecodeError) as exc:
+            print(f"chain-attest: could not load spec {spec_path}: {exc}",
+                  file=sys.stderr)
+            return 1
+        if args.chain_id_override:
+            spec.chain_id = args.chain_id_override
+        cfg = ChainAttestConfig(
+            spec=spec,
+            policies=policies,
+            output_dir=output_dir,
+            fail_on_component_violation=args.chain_fail_on_violation,
+            sign_components=args.chain_sign_components,
+        )
+        attestation = ChainAttestPipeline.run(cfg)
+
+    # ── Output ───────────────────────────────────────────────────────────────
+    if getattr(args, "chain_json", False):
+        print(attestation.to_json())
+    elif not quiet:
+        print(attestation.to_markdown())
+        if output_dir:
+            print(f"✓ chain-attest.json + chain-attest.md → {output_dir}")
+
+    if args.chain_fail_on_violation and not attestation.composite_passed:
+        return 1
+    return 0
+
+
+def _resolve_python_chain(spec: str) -> Any:
+    """Resolve a 'module.path:attr' or 'module.path:attr.nested' string to an object."""
+    import importlib
+    if ":" not in spec:
+        raise ValueError(f"Expected 'module:attribute' form, got {spec!r}")
+    module_path, attr_path = spec.split(":", 1)
+    mod = importlib.import_module(module_path)
+    obj: Any = mod
+    for part in attr_path.split("."):
+        if not part:
+            continue
+        obj = getattr(obj, part)
+    if callable(obj) and not hasattr(obj, "steps") and not hasattr(obj, "tools"):
+        # Treat zero-arg factories as builders — call them
+        try:
+            obj = obj()
+        except TypeError:
+            pass
+    return obj
 
 
 def _model_card_push(
@@ -6397,6 +6569,8 @@ def main() -> None:
         sys.exit(_cmd_telemetry(args, quiet))
     elif args.command == "gitops":
         sys.exit(_cmd_gitops(args, quiet))
+    elif args.command == "chain-attest":
+        sys.exit(_cmd_chain_attest(args, quiet))
     else:
         parser.print_help()
         sys.exit(1)
