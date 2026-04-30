@@ -5,6 +5,82 @@ Format: [Conventional Commits](https://www.conventionalcommits.org/) · [Keep a 
 
 ---
 
+## [1.9.0] — 2026-04-30 — B10: License Conflict Detection (W196)
+
+### Added
+
+- **`squash/license_conflict.py`** — SPDX licence conflict engine (W196 / B10):
+
+  **Knowledge Base** (`LicenseKnowledgeBase` / `resolve_spdx`)
+  73 SPDX identifiers + 9 AI model custom licences fully described: permissive
+  (MIT, Apache-2.0, BSD variants, CC0), weak copyleft (LGPL, MPL-2.0),
+  strong copyleft (GPL-2.0/3.0), network copyleft (AGPL-3.0), ShareAlike
+  (CC-BY-SA-4.0, ODbL-1.0), non-commercial (CC-BY-NC family), and AI custom
+  licences (LLaMA 2/3, Gemma, Mistral, BLOOM/OpenRAIL, Falcon, Code Llama).
+  Canonical alias map normalises variant spellings (gpl3, apache2, llama2, etc.)
+  and gracefully falls back to `LicenseRef-unknown` for unresolved identifiers.
+
+  **SPDX Expression Parser** (`LicenseExpression`)
+  Compound SPDX expressions: `MIT OR Apache-2.0`, `GPL-2.0-only WITH
+  Classpath-exception-2.0`. Picks the most permissive option from OR-joined
+  choices using a kind-score ordering — no regex abuse, explicit token split.
+
+  **12 Conflict Rules** (`ConflictChecker`)
+  | Rule | Description |
+  |------|-------------|
+  | LC-001 | Non-commercial licence in commercial/SaaS deployment (CRITICAL) |
+  | LC-002 | AGPL network-copyleft trigger in SaaS API (HIGH) |
+  | LC-003 | Strong copyleft in closed-source commercial product (HIGH) |
+  | LC-004 | ShareAlike dataset may contaminate model weights (MEDIUM, unsettled law) |
+  | LC-005 | NoDerivatives licence — fine-tuning prohibited (HIGH) |
+  | LC-006 | LLaMA 2 commercial use threshold (MEDIUM, flagged for awareness) |
+  | LC-007 | LLaMA 2/3 competing-product prohibition (HIGH) |
+  | LC-008 | Gemma competing-model prohibition (MEDIUM) |
+  | LC-009 | BLOOM/OpenRAIL use-restriction clauses (MEDIUM) |
+  | LC-010 | Unknown/unresolved licence — all rights reserved (HIGH) |
+  | LC-011 | GPL-2.0-only incompatible with Apache-2.0 (HIGH) |
+  | LC-012 | Version-locked copyleft mixing (e.g. GPL-2.0-only + GPL-3.0-only) (HIGH) |
+
+  **Scanner** (`LicenseScanner`)
+  Walks project trees extracting licences from: `requirements.txt`,
+  `pyproject.toml`, `package.json`, `Cargo.toml`, `LICENSE`/`COPYING`
+  files (text-sniffing), model card `README.md` (YAML frontmatter), model
+  `config.json`/`master_record.json`, `dataset_infos.json`, and provenance
+  JSON. `tomllib` (Python 3.11+) or `tomli` for TOML; graceful skip on Python
+  3.9/3.10 without it. Curated licence map for 45+ well-known packages.
+
+  **Obligation Extractor** (`extract_obligations`)
+  Attribution requirements, source-disclosure obligations, AGPL network-user
+  source rights, LLaMA "Built with Meta Llama" attribution — all surfaced as
+  actionable strings in the report.
+
+  **Report** (`LicenseConflictReport`)
+  Schema `squash.license.conflict.report/v1`; CLEAN/LOW/MEDIUM/HIGH/CRITICAL
+  risk; `to_json()`, `to_markdown()`, `summary()`; JSON round-trip via
+  `load_report()`.
+
+- **CLI: `squash license-check`** — 3 subcommands:
+  - `scan <path> [--use-case research|commercial|open_source|saas_api|internal|government] [--format text|json|md] [--fail-on medium|high|critical]`
+  - `explain <SPDX_ID>` — print full metadata for any known licence
+  - `report <report.json>` — render a saved report
+
+- **`tests/test_license_conflict.py`** — 55 tests covering all 12 conflict
+  rules, knowledge base, expression parser, scanner, obligations, end-to-end
+  clean/conflicted projects, JSON round-trip, and CLI smoke.
+
+### Konjo notes
+
+- 건조 — no external SPDX library; the knowledge base is a Python data
+  structure. TOML parsing is stdlib-first with a graceful skip — no hard dep.
+- ᨀᨚᨐᨚ — every conflict finding names its rule_id, legal basis, and specific
+  remediation. An auditor can trace LC-011 to the FSF licence compatibility
+  list in a single step.
+- 康宙 — read-only scan; no network; no model execution. Safe in air-gap.
+- 根性 — the compatibility matrix is conservative: when in doubt, flag. A
+  false positive costs a legal consultation; a missed conflict costs production.
+
+---
+
 ## [1.8.0] — 2026-04-30 — B9: Training Data Poisoning Detection (W195)
 
 ### Added

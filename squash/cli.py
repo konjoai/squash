@@ -1979,6 +1979,49 @@ def _build_parser() -> argparse.ArgumentParser:
     go_annotate.add_argument("--policy", default="eu-ai-act", help="Policy name (default: eu-ai-act)")
     go_annotate.add_argument("--passed", action="store_true", default=True)
 
+    # ── W196 / B10 — License Conflict Detection ───────────────────────────────
+    lc_cmd = sub.add_parser(
+        "license-check",
+        help="License conflict detection — SPDX compatibility matrix + AI model licences",
+        description=(
+            "Scan a project for licence conflicts across model weights, training\n"
+            "datasets, and code dependencies. Checks 12 conflict rules covering\n"
+            "copyleft, NC restrictions, AGPL SaaS triggers, ShareAlike contamination,\n"
+            "and AI model custom licences (LLaMA, Gemma, Mistral, BLOOM/RAIL).\n\n"
+            "Examples:\n"
+            "  squash license-check scan ./my-model-project\n"
+            "  squash license-check scan ./project --use-case commercial --format md\n"
+            "  squash license-check scan ./project --use-case saas_api --fail-on medium\n"
+            "  squash license-check explain Apache-2.0\n"
+            "  squash license-check report ./license-report.json\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    lc_sub = lc_cmd.add_subparsers(dest="lc_command")
+
+    lc_scan = lc_sub.add_parser("scan", help="Scan a project directory for licence conflicts")
+    lc_scan.add_argument("project_path", help="Path to project directory")
+    lc_scan.add_argument(
+        "--use-case", default="commercial",
+        choices=["research", "commercial", "open_source", "saas_api", "internal", "government"],
+        dest="use_case", help="Intended deployment scenario (default: commercial)",
+    )
+    lc_scan.add_argument("--format", default="text", choices=["text", "json", "md"], dest="lc_format")
+    lc_scan.add_argument("--out", default=None, help="Write report to PATH instead of stdout")
+    lc_scan.add_argument(
+        "--fail-on", default="high",
+        choices=["low", "medium", "high", "critical"],
+        dest="fail_on",
+        help="Exit non-zero if overall risk meets or exceeds this level (default: high)",
+    )
+
+    lc_explain = lc_sub.add_parser("explain", help="Explain a single SPDX licence identifier")
+    lc_explain.add_argument("spdx_id", help="SPDX licence identifier (e.g. Apache-2.0, CC-BY-NC-4.0)")
+
+    lc_report = lc_sub.add_parser("report", help="Render a previously saved licence conflict report")
+    lc_report.add_argument("report_path", help="Path to licence-conflict report JSON")
+    lc_report.add_argument("--format", default="text", choices=["text", "json", "md"], dest="lc_format")
+
     # ── W195 / B9 — Data Poisoning Detection ──────────────────────────────────
     dp_cmd = sub.add_parser(
         "data-poison",
@@ -6205,6 +6248,88 @@ def _cmd_gitops(args: argparse.Namespace, quiet: bool) -> int:
         return 1
 
 
+def _cmd_license_check(args: argparse.Namespace, quiet: bool) -> int:
+    """W196 / B10 — Licence conflict detection."""
+    from squash.license_conflict import (
+        LicenseConflictScanner,
+        OverallRisk,
+        UseCase,
+        load_report,
+        resolve_spdx,
+    )
+
+    sub = getattr(args, "lc_command", None)
+
+    if sub == "scan":
+        p = Path(args.project_path)
+        if not p.exists():
+            print(f"error: {p} not found", file=sys.stderr)
+            return 1
+        use_case = UseCase(args.use_case)
+        report = LicenseConflictScanner().scan(p, use_case=use_case)
+        _output_lc_report(report, args.lc_format, args.out, quiet)
+        fail_level = OverallRisk(args.fail_on)
+        if report.overall_risk >= fail_level:
+            if not quiet and args.lc_format == "text":
+                print(
+                    f"error: overall risk {report.overall_risk.value.upper()} "
+                    f">= --fail-on {fail_level.value.upper()}",
+                    file=sys.stderr,
+                )
+            return 2
+        return 0
+
+    if sub == "explain":
+        info = resolve_spdx(args.spdx_id)
+        print(f"SPDX ID:       {info.spdx_id}")
+        print(f"Name:          {info.name}")
+        print(f"Kind:          {info.kind.value}")
+        print(f"OSI approved:  {info.osi_approved}")
+        print(f"Patent grant:  {info.patent_grant}")
+        print(f"Commercial OK: {info.commercial_ok}")
+        print(f"Copyleft/SA:   {info.source_required or info.share_alike}")
+        print(f"SaaS trigger:  {info.saas_triggers}")
+        if info.legal_basis:
+            print(f"Legal basis:   {info.legal_basis}")
+        return 0
+
+    if sub == "report":
+        try:
+            report = load_report(Path(args.report_path))
+        except Exception as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 1
+        _output_lc_report(report, args.lc_format, None, quiet)
+        return 0
+
+    print("squash license-check: specify a subcommand — scan | explain | report")
+    return 1
+
+
+def _output_lc_report(report: Any, fmt: str, out_path: str | None, quiet: bool) -> None:
+    if fmt == "json":
+        text = report.to_json()
+    elif fmt == "md":
+        text = report.to_markdown()
+    else:
+        lines = [report.summary(), ""]
+        for f in report.findings:
+            lines.append(f"  [{f.severity.value.upper()}] {f.rule_id}: {f.title}")
+            lines.append(f"      {f.component_a.name} ({f.component_a.spdx_id})")
+            lines.append(f"      → {f.remediation[:100]}")
+        if report.obligations:
+            lines += ["", "Obligations:"]
+            for o in report.obligations[:5]:
+                lines.append(f"  • {o[:120]}")
+        text = "\n".join(lines)
+    if out_path:
+        Path(out_path).write_text(text, encoding="utf-8")
+        if not quiet:
+            print(f"✓ licence conflict report written to {out_path}")
+    else:
+        print(text)
+
+
 def _cmd_data_poison(args: argparse.Namespace, quiet: bool) -> int:
     """W195 / B9 — Training data poisoning detection."""
     from squash.data_poison import (
@@ -6708,6 +6833,8 @@ def main() -> None:
         sys.exit(_cmd_telemetry(args, quiet))
     elif args.command == "gitops":
         sys.exit(_cmd_gitops(args, quiet))
+    elif args.command == "license-check":
+        sys.exit(_cmd_license_check(args, quiet))
     elif args.command == "data-poison":
         sys.exit(_cmd_data_poison(args, quiet))
     elif args.command == "drift-cert":
