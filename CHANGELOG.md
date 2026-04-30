@@ -5,6 +5,123 @@ Format: [Conventional Commits](https://www.conventionalcommits.org/) · [Keep a 
 
 ---
 
+## [1.10.0] — 2026-04-30 — Sprint 15 W209/W210 / Track B-3: Compliance Digest
+
+### Added (W209/W210 — Track B / B3 — Weekly / Monthly Email Digest)
+
+The passive-retention surface. Squash stays in front of the CISO's eyes
+between active sessions. A weekly or monthly portfolio email lands in
+the inbox with five-metric posture, top-5 risk movers, and the August 2
+countdown — no dashboard login required.
+
+```
+# Cron-friendly stdout dump (no SMTP needed)
+squash digest send --period weekly --dry-run --models-dir ./models
+
+# Render-only preview (text / HTML / JSON)
+squash digest preview --models-dir ./models --format html --output ./digest.html
+
+# Send via any SMTP (Resend / Mailgun / SES / direct)
+SQUASH_SMTP_HOST=smtp.resend.com SQUASH_SMTP_FROM=ciso-digest@acme.com \
+  squash digest send --period weekly --org "Acme ML" \
+    --recipients ciso@acme.com --recipients vp-eng@acme.com \
+    --dashboard-url https://app.getsquash.dev/acme
+```
+
+- **`squash/notifications.py` extension — `ComplianceDigestBuilder` (W209)**:
+  - `ComplianceDigest` dataclass — period, subject, summary, top_movers,
+    deadlines, html_body, text_body, dashboard_url, org_name
+  - `DigestMover` — model_id, score, score_delta, violations, CVEs,
+    risk tier, drift flag, last_attested
+  - `DigestDeadline` — label, ISO date, days_remaining; sorted
+    soonest-first; past deadlines bury at the end
+  - `ComplianceDigestBuilder.build(period, models_dir|dashboard, org_name,
+    dashboard_url, score_history, deadlines, now)`:
+    1. consumes the existing `dashboard.Dashboard` (no new data sources)
+    2. ranks the worst 5 model rows (violations DESC, score ASC, cves DESC)
+    3. computes per-model score deltas when `score_history` is supplied
+    4. counts down EU AI Act Aug 2, Colorado Jun 1, ISO 42001 Jan 1, 2027
+    5. renders deterministic HTML + plain-text bodies
+  - **HTML body is email-client safe** — inlined styles only, no
+    `<style>` / `<link>` / `<script>` / `javascript:`, table-based
+    layout, no remote images, no JS, defensive Outlook-friendly
+  - HTML organisation: org header → H1 (period digest) → H2 Portfolio
+    summary table → H2 Top 5 risk movers table (drift pill, score
+    delta arrows ▲/▼/→) → H2 Regulatory deadlines table → footer
+  - Plain-text body mirrors the same content in Markdown shape
+    (cron-friendly stdout dump)
+
+- **`squash/notifications.py` — SMTP send path (W209)**:
+  - `SmtpConfig` dataclass with env-var fallbacks (`SQUASH_SMTP_HOST`,
+    `_PORT`, `_USER`, `_PASSWORD`, `_FROM`, `_TLS`); `is_configured`
+    property gates the live send
+  - `send_email_digest(digest, recipients, smtp, dry_run)`:
+    - dry-run path returns success without opening any socket
+    - live path builds a `multipart/alternative` MIME message with
+      both bodies, opens stdlib `smtplib.SMTP` with optional STARTTLS,
+      sends to all recipients, surfaces SMTP errors as a structured
+      `DigestSendResult`
+  - **Resend / Mailgun / SES / Postmark all "supported"** by pointing
+    `SQUASH_SMTP_*` at the provider's SMTP relay — zero
+    provider-specific code in squash
+
+- **`squash/cli.py` — `squash digest preview` / `squash digest send` (W210)**:
+  - Two subcommands under a new top-level `digest` command
+  - **`preview`** — renders to stdout (default text) or to file;
+    `--format text|html|json`; `--output FILE`
+  - **`send`** — emails via SMTP; `--recipients` (repeatable),
+    `--dry-run`, `--smtp-host`, `--smtp-port`, `--smtp-from`,
+    `--no-tls`
+  - Common flags shared via `_add_common_digest_args`:
+    `--period {weekly,monthly}`, `--models-dir`, `--org`,
+    `--dashboard-url`, `--score-history JSON_FILE`, `--quiet`
+  - Exit codes: 0 success / 1 send failed (SMTP / no recipients) /
+    2 misconfig (bad period, bad score-history file, missing dep)
+
+- **`tests/test_squash_w209_w210_digest.py` (NEW)** — 37 tests covering:
+  - Builder: period validation, summary aggregation, top-mover
+    ranking, top-5 cap, score-delta arrows, deadline soonest-first
+    sort, past-deadline burial, subject-line composition,
+    text/HTML/JSON serialisation, drift pill rendering, score-arrow
+    rendering, `to_dict()` round-trip
+  - SmtpConfig: env-var fallback, explicit-arg override,
+    `is_configured` predicate
+  - send_email_digest: no-recipients failure, dry-run path,
+    unconfigured-SMTP failure, **`smtplib.SMTP` mocked at the import
+    boundary** to verify `starttls`+`login`+`sendmail` calls,
+    no-credentials path, error propagation
+  - CLI: help surface, preview text/html/json formats, `--output`
+    file write, `--score-history` happy + bad-input paths, `send
+    --dry-run` with and without recipients, unconfigured SMTP exits 1
+
+### Changed
+- **`squash/notifications.py`** — adds digest types + SMTP path at the
+  end of file; existing `NotificationDispatcher` semantics unchanged
+- **`squash/cli.py`** — adds `digest` command with two subcommands
+- **`SQUASH_MASTER_PLAN.md`** — Track B / B3 marked **shipped** alongside
+  Sprint 15 W209/W210
+
+### Stats
+- **37 new tests** · **0 regressions** · **4064 total tests passing**
+  (verified on a B3-only working tree; B5 in-flight work stashed aside
+  for the verification)
+- **0 new modules** — both waves are extensions to `notifications.py`
+  and `cli.py`. Module count unchanged.
+- **5 new CLI flags** (shared) + **5 send-only flags**
+
+### Konjo notes
+The Konjo discipline this sprint: **0 new modules.** The dashboard
+already had every metric needed; B3 is purely a render layer + a
+delivery layer over the existing telemetry. No graveyards, no parallel
+data path, no provider-specific code (Resend / Mailgun / SES are all
+SMTP relays — no need to write a Resend adapter when stdlib smtplib
+already works against any of them). The `--dry-run` flag exposes the
+exact same render the live send produces — "preview" and "send" are
+the same code path branching on whether to hit the network. *건조*
+applied to the surface area: one builder, two delivery paths, one CLI.
+
+---
+
 ## [1.9.0] — 2026-04-30 — Sprint 14 W205 / Track B-1: Public HF Scanner
 
 ### Added (W205 — Track B / B1 — Public HuggingFace Model Scanner)

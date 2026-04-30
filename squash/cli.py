@@ -2059,6 +2059,81 @@ def _build_parser() -> argparse.ArgumentParser:
     go_annotate.add_argument("--policy", default="eu-ai-act", help="Policy name (default: eu-ai-act)")
     go_annotate.add_argument("--passed", action="store_true", default=True)
 
+    # ── B3 (Sprint 15 W209/W210) — compliance digest ──────────────────────────
+    digest_cmd = sub.add_parser(
+        "digest",
+        help="Compose + send the weekly/monthly compliance portfolio digest",
+        description=(
+            "Render and (optionally) email a portfolio compliance digest:\n"
+            "  · 5-metric summary panel\n"
+            "  · top-5 risk movers (score, violations, CVEs, drift, Δ vs prior)\n"
+            "  · regulatory deadline countdown (EU Aug 2 · CO Jun 1 · ISO 42001)\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    digest_sub = digest_cmd.add_subparsers(dest="digest_command", metavar="SUBCOMMAND")
+    digest_sub.required = True
+
+    def _add_common_digest_args(p: argparse.ArgumentParser) -> None:
+        p.add_argument("--period", default="weekly",
+                       choices=["weekly", "monthly"],
+                       help="Digest period. Default: weekly.")
+        p.add_argument("--models-dir", default=None, dest="digest_models_dir",
+                       help="Directory containing per-model attestation subdirs.")
+        p.add_argument("--org", default="", dest="digest_org",
+                       help="Org name shown in the digest header.")
+        p.add_argument("--dashboard-url", default="", dest="digest_dashboard_url",
+                       help="URL to the live dashboard (footer link).")
+        p.add_argument("--score-history", default=None,
+                       dest="digest_score_history", metavar="JSON_FILE",
+                       help="JSON file mapping model_id → previous score.")
+        p.add_argument("--quiet", action="store_true",
+                       help="Suppress non-essential output")
+
+    digest_preview = digest_sub.add_parser(
+        "preview", help="Render the digest and print to stdout. No email.",
+    )
+    _add_common_digest_args(digest_preview)
+    digest_preview.add_argument(
+        "--format", default="text", choices=["text", "html", "json"],
+        dest="digest_preview_format",
+        help="Render text body, HTML body, or JSON. Default: text.",
+    )
+    digest_preview.add_argument(
+        "--output", default=None, dest="digest_preview_output",
+        help="Write to FILE instead of stdout.",
+    )
+
+    digest_send = digest_sub.add_parser(
+        "send", help="Render + email the digest via SMTP.",
+    )
+    _add_common_digest_args(digest_send)
+    digest_send.add_argument(
+        "--recipients", "--recipient", action="append", default=None,
+        dest="digest_recipients",
+        help="Email recipient (repeatable). Required unless --dry-run.",
+    )
+    digest_send.add_argument(
+        "--dry-run", action="store_true", dest="digest_dry_run",
+        help="Render and print both bodies; skip the SMTP send.",
+    )
+    digest_send.add_argument(
+        "--smtp-host", default="", dest="digest_smtp_host",
+        help="SMTP host. Default: SQUASH_SMTP_HOST env var.",
+    )
+    digest_send.add_argument(
+        "--smtp-port", default=0, type=int, dest="digest_smtp_port",
+        help="SMTP port. Default: 587 (or SQUASH_SMTP_PORT env).",
+    )
+    digest_send.add_argument(
+        "--smtp-from", default="", dest="digest_smtp_from",
+        help="From address. Default: SQUASH_SMTP_FROM env var.",
+    )
+    digest_send.add_argument(
+        "--no-tls", action="store_true", dest="digest_no_tls",
+        help="Disable STARTTLS (use only on localhost test relays).",
+    )
+
     # ── B5 (Track B) — gateway-config: Kong + AWS API Gateway runtime gate ───
     gw_cmd = sub.add_parser(
         "gateway-config",
@@ -4472,6 +4547,104 @@ def _cmd_chain_attest(args: argparse.Namespace, quiet: bool) -> int:
     if args.chain_fail_on_violation and not attestation.composite_passed:
         return 1
     return 0
+
+
+def _cmd_digest(args: argparse.Namespace, quiet: bool) -> int:
+    """B3 (Sprint 15 W209/W210) — `squash digest preview|send`."""
+    try:
+        from squash.notifications import (
+            ComplianceDigestBuilder, SmtpConfig, send_email_digest,
+        )
+    except ImportError as exc:
+        print(f"squash digest unavailable: {exc}", file=sys.stderr)
+        return 2
+
+    score_history: dict[str, float] = {}
+    sh_path = getattr(args, "digest_score_history", None)
+    if sh_path:
+        try:
+            raw = json.loads(Path(sh_path).read_text(encoding="utf-8"))
+            if isinstance(raw, dict):
+                score_history = {str(k): float(v) for k, v in raw.items()}
+            else:
+                print(f"squash digest: --score-history must be a JSON object "
+                      f"(model_id → score), got {type(raw).__name__}",
+                      file=sys.stderr)
+                return 2
+        except (OSError, ValueError, TypeError) as exc:
+            print(f"squash digest: could not load --score-history: {exc}",
+                  file=sys.stderr)
+            return 2
+
+    models_dir_arg = getattr(args, "digest_models_dir", None)
+    models_dir = Path(models_dir_arg) if models_dir_arg else None
+    quiet = quiet or getattr(args, "quiet", False)
+
+    try:
+        digest = ComplianceDigestBuilder().build(
+            period=args.period, models_dir=models_dir,
+            org_name=args.digest_org,
+            dashboard_url=args.digest_dashboard_url,
+            score_history=score_history,
+        )
+    except ValueError as exc:
+        print(f"squash digest: {exc}", file=sys.stderr)
+        return 2
+    except Exception as exc:  # noqa: BLE001
+        print(f"squash digest: build failed: {exc}", file=sys.stderr)
+        return 1
+
+    sub_cmd = getattr(args, "digest_command", "")
+
+    if sub_cmd == "preview":
+        fmt = getattr(args, "digest_preview_format", "text")
+        if fmt == "text":
+            payload = digest.text_body
+        elif fmt == "html":
+            payload = digest.html_body
+        else:
+            payload = json.dumps(digest.to_dict(), indent=2, sort_keys=True)
+        out_path = getattr(args, "digest_preview_output", None)
+        if out_path:
+            Path(out_path).write_text(payload, encoding="utf-8")
+            if not quiet:
+                print(f"✓ digest written to {out_path}")
+        else:
+            print(payload)
+        return 0
+
+    if sub_cmd == "send":
+        recipients = list(getattr(args, "digest_recipients", None) or [])
+        dry_run = bool(getattr(args, "digest_dry_run", False))
+        if not recipients and not dry_run:
+            print("squash digest send: --recipients required unless --dry-run",
+                  file=sys.stderr)
+            return 2
+        if dry_run:
+            if not quiet:
+                print(f"Subject: {digest.subject}")
+                print()
+                print(digest.text_body)
+                print(f"[dry-run] would email {len(recipients)} recipient(s): "
+                      f"{', '.join(recipients) or '(none — preview only)'}")
+            return 0
+        smtp = SmtpConfig(
+            host=getattr(args, "digest_smtp_host", "") or "",
+            port=int(getattr(args, "digest_smtp_port", 0) or 0) or 587,
+            from_addr=getattr(args, "digest_smtp_from", "") or "",
+            use_tls=not bool(getattr(args, "digest_no_tls", False)),
+        )
+        result = send_email_digest(digest, recipients, smtp=smtp, dry_run=False)
+        if not result.success:
+            print(f"squash digest send: {result.error}", file=sys.stderr)
+            return 1
+        if not quiet:
+            print(f"✓ digest emailed to {result.delivered} recipient(s) "
+                  f"({', '.join(recipients)})")
+        return 0
+
+    print(f"squash digest: unknown subcommand {sub_cmd!r}", file=sys.stderr)
+    return 2
 
 
 def _cmd_registry_gate(args: argparse.Namespace, quiet: bool) -> int:
@@ -7024,6 +7197,8 @@ def main() -> None:
         sys.exit(_cmd_chain_attest(args, quiet))
     elif args.command == "registry-gate":
         sys.exit(_cmd_registry_gate(args, quiet))
+    elif args.command == "digest":
+        sys.exit(_cmd_digest(args, quiet))
     else:
         parser.print_help()
         sys.exit(1)
