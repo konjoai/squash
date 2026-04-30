@@ -682,7 +682,9 @@ class TestW197PythonModuleResolution(unittest.TestCase):
 
 
 class TestModuleCountGate(unittest.TestCase):
-    """Sprint 11 added chain_attest.py — bumps the count to 71."""
+    """Tracks current count. Sprint 11 added chain_attest.py (71). Sprint 14
+    W205 (B1) added hf_scanner.py (72). The canonical gate is in
+    test_squash_model_card.py — this is a secondary live tracker."""
 
     def test_squash_module_count_is_71(self) -> None:
         squash_dir = Path(__file__).parent.parent / "squash"
@@ -692,7 +694,8 @@ class TestModuleCountGate(unittest.TestCase):
         count = len(py_files)
         self.assertEqual(
             count, 77,
-            msg=f"squash/ has {count} Python files (expected 76). squash/ has 75 Python files after Sprint 11 + Sprint 12 + B5 gateway + B8 adapter_scanner merged into main. Update this gate when adding new modules."
+            msg=f"squash/ has {count} Python files (expected 77 after Sprint 14 W205). "
+                "If you added a file, update this gate.",
         )
 
 

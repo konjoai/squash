@@ -3874,3 +3874,46 @@ async def cloud_get_remediation_plan(tenant_id: str) -> JSONResponse:
             **_enforcement_signal(),
         }
     )
+
+
+# ── B5 (Track B) — gateway runtime gate verifier endpoint ────────────────────
+
+@app.post("/v1/gateway/verify")
+async def gateway_verify(request: Request) -> JSONResponse:
+    """Inspect a presented squash attestation token and return an allow/deny.
+
+    Used by the Kong plugin (handler.lua POSTs here) and the AWS Lambda
+    authorizer (handler.py urllib POSTs here). Body shape:
+        {"token": "att://...", "min_score": 0.8,
+         "max_age_days": 30, "required_frameworks": ["eu-ai-act"]}
+    """
+    from squash.attestation_registry import AttestationRegistry
+    from squash.integrations.gateway import evaluate_token
+
+    try:
+        body = await request.json()
+    except Exception:  # noqa: BLE001 — malformed JSON → 400
+        return JSONResponse(status_code=400, content={
+            "allow": False, "reason": "BAD_REQUEST",
+            "http_status": 400, "detail": "Body must be JSON",
+        })
+
+    token               = body.get("token")
+    min_score           = float(body.get("min_score", 0.8))
+    max_age_days        = body.get("max_age_days")
+    required_frameworks = body.get("required_frameworks") or None
+    if max_age_days is not None:
+        try:
+            max_age_days = int(max_age_days)
+        except (TypeError, ValueError):
+            max_age_days = None
+
+    with AttestationRegistry() as registry:
+        decision = evaluate_token(
+            token=token,
+            registry=registry,
+            min_score=min_score,
+            max_age_days=max_age_days,
+            required_frameworks=required_frameworks,
+        )
+    return JSONResponse(content=decision.to_dict())

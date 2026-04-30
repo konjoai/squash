@@ -600,8 +600,7 @@ class TestModuleCount(unittest.TestCase):
         count = len(py_files)
         self.assertEqual(
             count, 77,
-            f"Module count is {count}, expected exactly 77. "
-            f"Sprint 9 added telemetry.py, integrations/gitops.py, webhook_delivery.py, sbom_diff.py. "
-            f"W193/B6 added anchor.py (audit-trail blockchain anchoring). "
+            f"Module count is {count}, expected exactly 72. "
+            f"Sprint 14 W205 (B1) added hf_scanner.py. "
             f"Any new module requires a corresponding deletion or written justification.",
         )

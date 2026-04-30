@@ -6,6 +6,502 @@ Format: [Conventional Commits](https://www.conventionalcommits.org/) · [Keep a 
 ---
 
 ## [2.0.0] — 2026-04-30 — C2: AI Washing Detection (W223-W225)
+## [1.14.0] — 2026-04-30 — Sprint 22 W229–W231 / Track C-5: Regulatory Examination Simulation
+
+### Added (W229–W231 — Track C / C5 — Regulatory Examination Simulation)
+
+78% of executives can't pass an AI governance audit in 90 days.
+`squash simulate-audit` closes that gap in 60 seconds. Mock regulatory
+examination from the examiner's perspective — answers pulled from squash
+attestation data, gaps flagged, prioritised remediation roadmap included.
+
+```bash
+squash simulate-audit --regulator EU-AI-Act --models-dir ./model
+squash simulate-audit --regulator NIST-RMF --json
+squash simulate-audit --regulator SEC --output-dir ./compliance/
+squash simulate-audit --regulator FDA --fail-below 60
+```
+
+- **`squash/audit_sim.py`** (NEW MODULE — W229–W230):
+  - `ExamQuestion` — q_id, article, question, answer_sources, answer_cli, weight (1–3), category, days_to_close
+  - `ExamAnswer` — status (PASS/PARTIAL/FAIL/N/A), evidence_found/missing, gap_description, remediation
+  - `ReadinessReport` — overall_score, readiness_tier, answers, roadmap, executive summary; `to_json()`, `to_markdown()`, `save()`
+  - `AuditSimulator.simulate(model_path, regulator)` → `ReadinessReport`
+  - **Scoring:** score = 100 × Σ(earned) / Σ(max), where PASS=2/PARTIAL=1/FAIL=0 × weight; **critical-gate cap** — any weight-3 fail caps score at 74 regardless of other results
+  - **Tiers:** AUDIT_READY ≥80 · SUBSTANTIAL 60–79 · DEVELOPING 40–59 · EARLY_STAGE <40
+  - **Evidence detection** — file-presence scan of model_path/ and model_path/squash/ against canonical squash artefact names; instant, no network calls
+
+- **4 regulator profiles** (W230):
+  - **EU-AI-Act (38 questions)** — Art. 9 (risk management system), Art. 10 (data governance + bias), Art. 11 (Annex IV technical documentation), Art. 12 (record-keeping + logs), Art. 13 (transparency + model card), Art. 14 (human oversight), Art. 15 (accuracy / robustness / cybersecurity), Art. 17/16 (QMS + conformity), Art. 25/53/61/72/73 (supply chain / GPAI / post-market / incident reporting)
+  - **NIST-RMF (30 questions)** — GOVERN 1.1–6.1 (policies, accountability, roles, training, monitoring, third-party, concentration), MAP 1.1–5.1 (context, risk tolerance, benefits/harms, scientific basis), MEASURE 1.1–4.1 (metrics, test sets, bias, drift, cybersecurity, societal effects), MANAGE 1.1–5.1 (risk plans, responses, monitoring, residual risk, improvement)
+  - **SEC (22 questions)** — AI disclosure, OMB M-26-04 model cards, investment-adviser oversight, AI capability claim verification, cybersecurity disclosures, data governance, bias testing, operational controls, audit trail, AI-washing, concentration risk, change management
+  - **FDA (20 questions)** — SaMD risk classification, 510(k) clearance, analytical/clinical validation, PCCP (change control plan), QMS 21 CFR 820, intended use, labelling §801, adverse event reporting, training data demographics, subgroup performance (bias), cybersecurity §524B, version control, post-market monitoring, FMEA, 21 CFR Part 11, human factors, supply chain, transparency
+
+- **`squash/cli.py`** — `squash simulate-audit` first-class command (W231):
+  - `--regulator {EU-AI-Act,NIST-RMF,SEC,FDA}` (default: EU-AI-Act)
+  - `--models-dir PATH` (default: cwd)
+  - `--output-dir DIR` (writes `audit-readiness.{json,md}`)
+  - `--json` (structured JSON to stdout)
+  - `--fail-below N` (exit 1 if score < N — CI gate)
+  - `--quiet`
+
+- **`tests/test_squash_sprint22.py`** (NEW) — 48 tests:
+  - ExamQuestion / ExamAnswer field assertions
+  - Scoring maths: all-pass=100, all-fail=0, critical-gate cap at 74, partial=50, all 4 tier transitions
+  - Profile size assertions (38/30/22/20 questions)
+  - EU-AI-Act profile: unique IDs, all fields non-empty, critical gates present, categories covered
+  - AuditSimulator: all 4 regulators run without error, empty score=0/EARLY_STAGE, answer count matches, bad regulator raises ValueError, executive summary populated
+  - Populated dir: score>0, passing+partial>0, scores in 0–100, roadmap order (weight desc)
+  - ReadinessReport: valid JSON, all markdown sections, score in Markdown, question IDs in Markdown, remediation commands present, save() writes both files, answers count in JSON, tier in JSON
+  - CLI: help surface (6 flags + 4 regulators), default run writes artefacts, JSON output structure (squash_version/regulator/remediation_roadmap), NIST-RMF 30 questions, SEC 22, FDA 20, fail-below gates (score<1→1, score<100→1, 0→0), Markdown has roadmap, populated dir scores higher than empty
+
+### Changed
+- **Module count gates** (8 files) bumped 76 → 77 for `audit_sim.py`
+- **`SQUASH_MASTER_PLAN.md`** — Track C / C5 marked **shipped**
+
+### Stats
+- **48 new tests** · **0 regressions** · **4308 total tests passing**
+- **1 new module** (`audit_sim.py`) · 76 → 77 modules
+- **1 new top-level CLI command** (`simulate-audit`) with 6 flags
+- **4 regulatory profiles** · 110 examiner questions total
+
+---
+
+## [1.13.0] — 2026-04-30 — Sprint 27 W243–W245 / Track C-4: Continuous Regulatory Watch Daemon
+
+### Added (W243–W245 — Track C / C4 — Continuous Regulatory Watch Daemon)
+
+Turns squash from a quarterly compliance tool into a daily intelligence service. Poll SEC.gov, NIST.gov, EUR-Lex, and any custom RSS feed for new AI governance requirements, map them to squash policy controls, and surface gap analysis against the local model portfolio — all from a single cron-friendly command.
+
+```bash
+# One-shot poll (add to cron)
+squash watch-regulatory --once --models-dir ./models --alert-channel slack
+
+# 6-hour daemon
+squash watch-regulatory --interval 6h --alert-channel slack
+
+# Custom state legislature feed
+squash watch-regulatory --once --extra-feed name=legiscan,url=https://...,keywords=artificial+intelligence
+
+# Dry run — see what would surface without persisting
+squash watch-regulatory --once --dry-run --json
+```
+
+- **`squash/regulatory_watch.py`** (NEW MODULE — W243–W244):
+  - `RegulatoryEvent` — event_id, source, title, url, published, summary, severity, fetched_at
+  - `GapAnalysisResult` — maps event → matched_reg_ids, squash_controls, models_to_re_attest, recommended_actions
+  - `WatcherConfig` — sources, extra_feeds, timeout, max_events, alert_channel, db_path
+  - **Source adapters** (duck-typed, graceful per-source failure):
+    - `SecAdapter` — SEC press-release RSS; AI-relevance filtered
+    - `NistAdapter` — NIST CSRC publications RSS; AI-relevance filtered
+    - `EurLexAdapter` — EUR-Lex Official Journal RSS; AI-relevance filtered
+    - `GenericRssAdapter` — any RSS 2.0 or Atom feed with configurable keyword filter
+  - **RSS engine** (`_parse_rss`): namespace-aware Atom + RSS 2.0 parser (stdlib only); AI-relevance keyword filter (18 terms); severity scoring (HIGH/MEDIUM/LOW) from title + source
+  - **SQLite deduplication** (`~/.squash/regulatory_events.db`): event IDs persisted; second poll returns 0 new events for already-seen items; `mark_all_seen()` for bulk catch-up
+  - **Gap analysis** (`gap_analysis(event, models_dir)`):
+    - 32-keyword → framework-ID mapping (EU_AI_ACT, NIST_AI_RMF, SEC_AI, FTC, FDA, CMMC, FEDRAMP, EU_GDPR, NYC_LL144, COLORADO_AI_ACT, …)
+    - pulls squash CLI controls from `regulatory_feed.py` per matched regulation
+    - discovers attested models in `models_dir` that should be re-attested
+    - derives `days_to_act` from the regulation's enforcement deadline
+  - **Alert routing** via `squash.notifications` for Slack/Teams/webhook channels
+  - `parse_interval()` — parse `'6h'`, `'1d'`, `'30m'`, bare seconds
+
+- **`squash/cli.py`** — `squash watch-regulatory` first-class command (W245):
+  - `--once` / `--interval INTERVAL` (cron-friendly / continuous-daemon)
+  - `--sources {sec,nist,eurlex}` (repeatable; default: all three)
+  - `--extra-feed name=NAME,url=URL[,keywords=k1+k2]` (repeatable)
+  - `--models-dir DIR` (gap analysis against local attestations)
+  - `--alert-channel {stdout,slack,teams,webhook}`
+  - `--db-path PATH` (override default `~/.squash/regulatory_events.db`)
+  - `--dry-run` (fetch without persist; shows what would surface)
+  - `--json` (structured JSON: new_events count + full gap_results array)
+  - `--max-events N` (per-poll cap; default 50)
+  - `--quiet`
+
+- **`tests/test_squash_sprint27.py`** (NEW) — 63 tests:
+  - RSS + Atom parsing; AI-relevance filter; severity scoring; event ID stability
+  - `parse_interval` (6h, 1d, 30m, plain seconds, empty, invalid)
+  - All 4 adapters with mocked `_http_get`; per-source graceful failure
+  - `RegulatoryWatcher`: first-poll returns all, second-poll deduplicates, new event on third poll surfaces, `mark_all_seen`, `load_history`
+  - Gap analysis: EU_AI_ACT match, NIST_AI_RMF match, squash controls from feed, attested models discovered, no-match has actions, `summary_text`, `to_dict`
+  - Regulatory ID mapping: EU_AI_ACT, NIST_AI_RMF, multi-reg, no-keyword-returns-empty
+  - CLI: help surface (10 flags), misconfig exit 2, once/no-events→0, event-summary printed, JSON output, dry-run, default-sources config
+
+### Changed
+- **Module count gates** (8 files) bumped 75 → 76 for `regulatory_watch.py`
+- **`SQUASH_MASTER_PLAN.md`** — Track C / C4 marked **shipped**
+
+### Stats
+- **63 new tests** · **0 regressions** · **4260 total tests passing**
+- **1 new module** (`regulatory_watch.py`) · 75 → 76 modules
+- **1 new top-level CLI command** (`watch-regulatory`) with 10 flags
+- **4 source adapters** covering the primary AI governance regulatory sources
+
+---
+
+## [1.12.0] — 2026-04-30 — Sprint 15 W208 / Track B-2: Branded PDF Compliance Report
+
+### Added (W208 — Track B / B2 — Branded PDF Compliance Report)
+
+The CISO leave-behind that closes deals. A fully branded executive PDF from `squash annex-iv generate --branded` with cover page, KPI scorecard, exec summary, full Annex IV body, and signature block. WeasyPrint-based; degrades to an HTML preview when WeasyPrint is absent.
+
+```
+squash annex-iv generate --root ./model \
+  --system-name "BERT Sentiment Classifier" \
+  --format pdf \
+  --branded \
+  --org "Acme Corp" \
+  --author "ML Platform Team" \
+  --output-dir ./compliance/
+```
+
+- **`squash/pdf_report.py`** (NEW MODULE) — complete branded PDF engine:
+  - `BrandedPDFConfig(org_name, author, logo_path, accent_color, include_cover, include_exec_summary, include_signature, confidentiality_label)`
+  - `PDFReportBuilder(config).build_html(doc)` → full HTML string (preview without WeasyPrint)
+  - `PDFReportBuilder(config).build_from_document(doc)` → raw PDF bytes
+  - `PDFReportBuilder(config).save(doc, output_dir, stem)` → writes `*.pdf` + `*.html`; degrades to HTML-only when WeasyPrint is absent
+  - **Cover page** — dark navy background (#0a0f1a), Squash wordmark SVG embedded inline, system name, version, compliance score (colour-coded: ≥80% green / ≥40% amber / <40% red), attestation ID, metadata table, organisation + author
+  - **Executive summary page** — 4-KPI scorecard (overall score, sections complete, sections missing, total gaps), full section completion table with status badges (✓ Complete / ⚠ Partial / ✗ Missing), per-section gap callout blocks
+  - **Full Annex IV body** — all sections with dark-navy section headers, completeness badges, gap notes, attestation ID banner
+  - **Signature block** — three approval lines (Legal Review / Compliance Officer / Engineering Lead)
+  - HTML/XSS escaping throughout; `<script>`, `<style>` injection impossible
+  - Logo fallback chain: custom path → Squash dark SVG → inline wordmark
+
+- **`squash/templates/annex_iv_branded.css`** (NEW) — 370-line WeasyPrint-compatible CSS:
+  - `@page` rules with running headers (`@top-right` confidentiality label, `@bottom-right` page counter, `@bottom-center` document title)
+  - Named pages: `cover` (zero margins), `exec-summary` (custom top margin), default body
+  - Brand design system: Inter + JetBrains Mono, `#22c55e` accent, `#0a0f1a` navy
+  - Table-based layout for email-client-safe rendering
+  - Email-client fallback CSS also included for HTML preview mode
+
+- **`squash/templates/squash-logo-dark.svg`** + **`squash-logo-light.svg`** + **`squash-logo-mark.svg`** (NEW brand assets) — Squash wordmark extracted from marketing site design; embedded inline in the cover page
+
+- **`squash/cli.py`** — `squash annex-iv generate` gains `--branded`, `--org`, `--author`, `--logo`, `--accent` flags:
+  - `--branded` — triggers `PDFReportBuilder` after the normal save; WeasyPrint absence is a warning, not an error
+  - `--org NAME` — organisation name on cover
+  - `--author NAME` — preparer name on cover
+  - `--logo PATH` — custom SVG/PNG logo (replaces Squash wordmark)
+  - `--accent HEX` — brand accent override (default `#22c55e`)
+
+- **`tests/test_squash_w208_pdf_report.py`** (NEW) — 47 tests:
+  - BrandedPDFConfig defaults + coercion
+  - Cover page: score colour classes, org/author, attestation ID, logo embedding, disable flag
+  - Exec summary: KPI table, gap highlights, section badges, disable flag
+  - Body: section blocks, gap notes, attestation ID banner
+  - Signature block: three sig lines, labels, disable flag
+  - Custom accent colour injection
+  - HTML/XSS escaping
+  - `save()`: WeasyPrint mock path, graceful degradation
+  - Template files: CSS exists, contains brand green + @page rule + .cover-page
+  - CLI: all 5 new flags in help, branded flow with WeasyPrint absent
+
+**Module count:** 74 → 75 (`pdf_report.py` + `templates/` directory with 3 SVGs + 1 CSS — only `pdf_report.py` counts as a Python module)
+
+---
+
+## [1.11.0] — 2026-04-30 — Sprint 32 W257–W258 / Track B-8: LoRA / Adapter Poisoning Detection
+
+### Added (W257–W258 — Track B / B8 — LoRA / Adapter Poisoning Detection)
+
+LoRA adapters are perceived as "small therefore low-risk." They are not.
+A LoRA adapter is a complete behavioural rewrite in megabytes. JFrog Security
+(2024) found ~100 malicious models on HuggingFace, several establishing
+reverse-shell on load. This sprint ships the first dedicated adapter security
+gate in the compliance-as-code ecosystem.
+
+```
+# Block any non-safetensors adapter outright (policy gate)
+squash scan-adapter --lora ./adapter.pt --require-safetensors
+# → rc=2, CRITICAL: --require-safetensors violated
+
+# Scan a safetensors adapter with signed certificate
+squash scan-adapter --lora ./adapter.safetensors --sign
+# → CLEAN · 2 tensors · 0 findings · Certificate: adapter-squash-adapter-scan.json
+
+# Full JSON report for CI integration
+squash scan-adapter --lora ./adapter.safetensors --json
+# → {"risk_level": "CLEAN", "findings": [], "adapter_hash": "...", ...}
+```
+
+- **`squash/adapter_scanner.py`** (new module) — complete standalone adapter scanner:
+  - `detect_format(path)` — magic-byte detection of safetensors vs. pickle vs. unknown
+  - `scan_pickle_opcodes(path)` — GLOBAL, REDUCE, STACK_GLOBAL, NEWOBJ scan without deserialisation
+  - `scan_shell_patterns(path)` — text-pattern sweep for injection strings (safe on any format)
+  - `parse_safetensors_header(path)` — header integrity + out-of-bounds offset detection
+  - `_analyse_tensors(path, tensors)` — per-tensor stats: mean, std, kurtosis, l2_norm, NaN/Inf
+  - `_compute_concentration(stats)` — layer-concentration score (single layer > 85% of total L2 norm)
+  - `scan_adapter(path, require_safetensors, sign, output_path)` → `AdapterScanReport`
+  - Signed `squash-adapter-scan.json` certificate (HMAC-SHA256 of report payload)
+
+- **`squash/cli.py`** — `squash scan-adapter` command:
+  - `--lora <path>` — adapter file to scan
+  - `--require-safetensors` — exit rc=2 if adapter is not safetensors format
+  - `--sign` — embed HMAC-SHA256 signature in certificate JSON
+  - `--output <path>` — custom certificate output path
+  - `--json` — emit full JSON report to stdout for CI parsing
+
+**Threat model covered (W257):**
+
+| Threat | Detection | Severity |
+|--------|-----------|----------|
+| Pickle / PyTorch format | PK-001 GLOBAL/REDUCE/STACK_GLOBAL opcodes | CRITICAL |
+| Pickle without explicit opcodes | PK-002 inherent execution risk | HIGH |
+| `--require-safetensors` policy violation | PK-003 format gate | CRITICAL |
+| Shell injection strings in any format | SH-001 pattern sweep | CRITICAL |
+| safetensors OOB read vector | ST-006 offset > file size | CRITICAL |
+| Malformed safetensors header | ST-001–ST-004 integrity checks | CRITICAL |
+| NaN / Inf weights | WD-001/WD-002 float sentinel check | HIGH |
+| Kurtosis anomaly (spike weights) | WD-003 excess kurtosis > 8 | HIGH/MEDIUM |
+| High-value target (embed_tokens/lm_head) large magnitude | WD-004 | HIGH |
+| Layer concentration (backdoor in one layer) | WD-005 > 85% L2 in single tensor | MEDIUM |
+
+**Statistical thresholds tuned against (W258):**
+- ≥3 known-clean adapter fixtures (F32 Gaussian, BF16 QLoRA, multi-layer)
+- ≥1 known-malicious fixture per threat class (pickle+opcodes, kurtosis spike, NaN, OOB, shell injection)
+- Clean kurtosis threshold: |kurtosis| < 8 for all 3 clean fixtures
+
+**Module count:** 73 → 74 (adapter_scanner.py)
+
+---
+
+## [1.10.0] — 2026-04-30 — Sprint 15 W209/W210 / Track B-3: Compliance Digest
+
+### Added (W209/W210 — Track B / B3 — Weekly / Monthly Email Digest)
+
+The passive-retention surface. Squash stays in front of the CISO's eyes
+between active sessions. A weekly or monthly portfolio email lands in
+the inbox with five-metric posture, top-5 risk movers, and the August 2
+countdown — no dashboard login required.
+
+```
+# Cron-friendly stdout dump (no SMTP needed)
+squash digest send --period weekly --dry-run --models-dir ./models
+
+# Render-only preview (text / HTML / JSON)
+squash digest preview --models-dir ./models --format html --output ./digest.html
+
+# Send via any SMTP (Resend / Mailgun / SES / direct)
+SQUASH_SMTP_HOST=smtp.resend.com SQUASH_SMTP_FROM=ciso-digest@acme.com \
+  squash digest send --period weekly --org "Acme ML" \
+    --recipients ciso@acme.com --recipients vp-eng@acme.com \
+    --dashboard-url https://app.getsquash.dev/acme
+```
+
+- **`squash/notifications.py` extension — `ComplianceDigestBuilder` (W209)**:
+  - `ComplianceDigest` dataclass — period, subject, summary, top_movers,
+    deadlines, html_body, text_body, dashboard_url, org_name
+  - `DigestMover` — model_id, score, score_delta, violations, CVEs,
+    risk tier, drift flag, last_attested
+  - `DigestDeadline` — label, ISO date, days_remaining; sorted
+    soonest-first; past deadlines bury at the end
+  - `ComplianceDigestBuilder.build(period, models_dir|dashboard, org_name,
+    dashboard_url, score_history, deadlines, now)`:
+    1. consumes the existing `dashboard.Dashboard` (no new data sources)
+    2. ranks the worst 5 model rows (violations DESC, score ASC, cves DESC)
+    3. computes per-model score deltas when `score_history` is supplied
+    4. counts down EU AI Act Aug 2, Colorado Jun 1, ISO 42001 Jan 1, 2027
+    5. renders deterministic HTML + plain-text bodies
+  - **HTML body is email-client safe** — inlined styles only, no
+    `<style>` / `<link>` / `<script>` / `javascript:`, table-based
+    layout, no remote images, no JS, defensive Outlook-friendly
+  - HTML organisation: org header → H1 (period digest) → H2 Portfolio
+    summary table → H2 Top 5 risk movers table (drift pill, score
+    delta arrows ▲/▼/→) → H2 Regulatory deadlines table → footer
+  - Plain-text body mirrors the same content in Markdown shape
+    (cron-friendly stdout dump)
+
+- **`squash/notifications.py` — SMTP send path (W209)**:
+  - `SmtpConfig` dataclass with env-var fallbacks (`SQUASH_SMTP_HOST`,
+    `_PORT`, `_USER`, `_PASSWORD`, `_FROM`, `_TLS`); `is_configured`
+    property gates the live send
+  - `send_email_digest(digest, recipients, smtp, dry_run)`:
+    - dry-run path returns success without opening any socket
+    - live path builds a `multipart/alternative` MIME message with
+      both bodies, opens stdlib `smtplib.SMTP` with optional STARTTLS,
+      sends to all recipients, surfaces SMTP errors as a structured
+      `DigestSendResult`
+  - **Resend / Mailgun / SES / Postmark all "supported"** by pointing
+    `SQUASH_SMTP_*` at the provider's SMTP relay — zero
+    provider-specific code in squash
+
+- **`squash/cli.py` — `squash digest preview` / `squash digest send` (W210)**:
+  - Two subcommands under a new top-level `digest` command
+  - **`preview`** — renders to stdout (default text) or to file;
+    `--format text|html|json`; `--output FILE`
+  - **`send`** — emails via SMTP; `--recipients` (repeatable),
+    `--dry-run`, `--smtp-host`, `--smtp-port`, `--smtp-from`,
+    `--no-tls`
+  - Common flags shared via `_add_common_digest_args`:
+    `--period {weekly,monthly}`, `--models-dir`, `--org`,
+    `--dashboard-url`, `--score-history JSON_FILE`, `--quiet`
+  - Exit codes: 0 success / 1 send failed (SMTP / no recipients) /
+    2 misconfig (bad period, bad score-history file, missing dep)
+
+- **`tests/test_squash_w209_w210_digest.py` (NEW)** — 37 tests covering:
+  - Builder: period validation, summary aggregation, top-mover
+    ranking, top-5 cap, score-delta arrows, deadline soonest-first
+    sort, past-deadline burial, subject-line composition,
+    text/HTML/JSON serialisation, drift pill rendering, score-arrow
+    rendering, `to_dict()` round-trip
+  - SmtpConfig: env-var fallback, explicit-arg override,
+    `is_configured` predicate
+  - send_email_digest: no-recipients failure, dry-run path,
+    unconfigured-SMTP failure, **`smtplib.SMTP` mocked at the import
+    boundary** to verify `starttls`+`login`+`sendmail` calls,
+    no-credentials path, error propagation
+  - CLI: help surface, preview text/html/json formats, `--output`
+    file write, `--score-history` happy + bad-input paths, `send
+    --dry-run` with and without recipients, unconfigured SMTP exits 1
+
+### Changed
+- **`squash/notifications.py`** — adds digest types + SMTP path at the
+  end of file; existing `NotificationDispatcher` semantics unchanged
+- **`squash/cli.py`** — adds `digest` command with two subcommands
+- **`SQUASH_MASTER_PLAN.md`** — Track B / B3 marked **shipped** alongside
+  Sprint 15 W209/W210
+
+### Stats
+- **37 new tests** · **0 regressions** · **4064 total tests passing**
+  (verified on a B3-only working tree; B5 in-flight work stashed aside
+  for the verification)
+- **0 new modules** — both waves are extensions to `notifications.py`
+  and `cli.py`. Module count unchanged.
+- **5 new CLI flags** (shared) + **5 send-only flags**
+
+### Konjo notes
+The Konjo discipline this sprint: **0 new modules.** The dashboard
+already had every metric needed; B3 is purely a render layer + a
+delivery layer over the existing telemetry. No graveyards, no parallel
+data path, no provider-specific code (Resend / Mailgun / SES are all
+SMTP relays — no need to write a Resend adapter when stdlib smtplib
+already works against any of them). The `--dry-run` flag exposes the
+exact same render the live send produces — "preview" and "send" are
+the same code path branching on whether to hit the network. *건조*
+applied to the surface area: one builder, two delivery paths, one CLI.
+
+---
+
+## [1.9.0] — 2026-04-30 — Sprint 14 W205 / Track B-1: Public HF Scanner
+
+### Added (W205 — Track B / B1 — Public HuggingFace Model Scanner)
+
+The first Track B parallel item. The free top-of-funnel growth tool any
+ML engineer can run against any public HuggingFace model in one
+command — no login, no enterprise SaaS, no sales call. Squash's
+brand-builder on the platform with the largest concentration of ML
+engineers in the world.
+
+```
+squash scan hf://meta-llama/Llama-3.1-8B-Instruct
+squash scan hf://microsoft/phi-3@v2.0 --policy enterprise-strict --output-dir ./out
+squash scan hf://acme/private --hf-token $HF_TOKEN --download-weights
+```
+
+- **`squash/hf_scanner.py` (NEW MODULE — W205)**:
+  - `HFRef` / `RepoMetadata` / `HFScanReport` dataclasses
+  - `parse_hf_uri(uri)` — strict URI parser supporting
+    `hf://owner/model[@revision]` form (revisions can include `/` for
+    branch names like `feat/my-branch`)
+  - `is_hf_uri(s)` — cheap predicate, no network call
+  - `HFScanner.scan(uri, ...)` — orchestrator that:
+    1. parses the URI,
+    2. lazily imports `huggingface_hub`,
+    3. calls `snapshot_download` to a temp directory (light mode by
+       default — skips weight files; opt-in via `download_weights=True`),
+    4. fetches repo metadata via `HfApi.model_info` (license,
+       downloads, last_modified, library_name, pipeline_tag, tags, sha),
+    5. runs `ModelScanner.scan_directory` against the snapshot,
+    6. optionally runs a policy preview via `PolicyEngine.evaluate`,
+    7. flags license warnings (unknown / restricted / non-permissive),
+    8. detects weight format from observed file suffixes,
+    9. returns a structured `HFScanReport` with `to_json()` /
+       `to_markdown()` / `save()` methods,
+    10. cleans up the temp directory unless `keep_download=True`
+  - License-warning logic with three buckets:
+    - **Permissive** (apache-2.0, mit, bsd-3-clause, cc-by, openrail) —
+      no warning
+    - **Restricted** (llama2/3/3.1/3.2/3.3, gemma, deepseek, openrail-m) —
+      warns about deployment-specific commercial / MAU restrictions
+    - **Unknown / non-listed** — warns to verify manually
+  - Markdown report includes repo metadata table, scan status
+    (✅/⚠️/❌), findings table (truncates at 25 with "+N more" footer),
+    license warnings, policy-preview table, link back to
+    `getsquash.dev` for self-serve install
+
+- **`squash/cli.py` — `squash scan hf://...` integration (W205)**:
+  - `_cmd_scan` now detects `hf://` prefix on the positional argument
+    and routes to a new `_cmd_scan_hf` handler — no new subcommand,
+    just a transparent extension of the existing `squash scan`
+  - 6 new flags applicable to `hf://` mode:
+    - `--policy POLICY` (repeatable) — policy preview to evaluate
+    - `--output-dir DIR` — where to write `squash-hf-scan.{json,md}`
+      (default: cwd)
+    - `--download-weights` — opt into full weight download (default
+      light mode skips weights — keeps the public scanner fast and cheap)
+    - `--keep-download` — retain the temp directory after scan
+    - `--hf-token TOKEN` — HF Hub token for private/gated repos;
+      falls back to `HUGGING_FACE_HUB_TOKEN` / `HF_TOKEN` env
+    - `--quiet` — suppress non-essential output
+  - Pass-through `--json-result` and `--sarif` flags now also apply
+    to the hf:// path
+  - Local-path scanning preserved verbatim (regression test included)
+  - Exit-code matrix:
+    - 0  scan clean
+    - 1  scan unsafe (or malformed URI when not also using `--exit-2-on-unsafe`)
+    - 2  configuration / dependency error / malformed URI / missing huggingface_hub
+
+- **`tests/test_squash_w205_hf_scanner.py` (NEW)** — 40 tests covering:
+  - URI parsing edge cases (basic, with revision, slash-revision,
+    missing prefix, malformed, owner-only, `is_hf_uri` predicate)
+  - `RepoMetadata.to_dict` + `HFScanReport` JSON / Markdown
+    serialisation including findings-table truncation at 25 + policy
+    preview table
+  - `save()` writes both JSON + Markdown
+  - License-warning logic for all 4 license buckets
+  - Weight-format detection (safetensors / gguf / pickle /
+    metadata-only fallback)
+  - End-to-end `HFScanner.scan()` with `huggingface_hub` mocked at the
+    `sys.modules` import boundary — tests `revision` is forwarded,
+    light-mode default skips weights, `--download-weights` lifts the
+    filter, `keep_download=True` preserves the temp dir, missing
+    `huggingface_hub` raises clean ImportError
+  - CLI dispatch via subprocess + a runtime shim that injects the
+    mocked `huggingface_hub` before `squash.cli` imports it — tests
+    help surface, malformed URI rc=2, clean scan writes both
+    artefacts, policy preview lands in the JSON, `@revision` carried
+    through, **local-path regression guard** confirms existing
+    behaviour is untouched
+
+### Changed
+- **Module count gates** (5 files: `test_squash_model_card.py`,
+  `test_squash_wave49.py`, `test_squash_wave52.py`,
+  `test_squash_wave5355.py`, `test_squash_sprint11/12/13.py`) all bumped
+  71 → 72 with explanatory comments noting the gate now tracks current
+  count rather than sprint-snapshot count.
+- **`SQUASH_MASTER_PLAN.md`** — Track B / B1 marked **shipped**
+  alongside Sprint 14 W205.
+
+### Stats
+- **40 new tests** · **0 regressions** · **4027 total tests passing**
+- **1 new module** (`squash/hf_scanner.py`) · 71 → 72 modules
+- **6 new CLI flags** on `squash scan` (hf:// mode)
+- **First Track B item shipped** — the parallel-track operating model
+  is now active.
+
+### Konjo notes
+The Konjo discipline this sprint: B1 is the highest-leverage parallel
+item that depends only on the existing scanner + policy modules. Same
+calendar week ships A1/A2 (Track A) + C1 (Track C) too — exactly the
+parallelisation insight the master plan codifies. The hf:// path
+extends `squash scan` rather than introducing a new top-level
+subcommand: one user-facing entry point, two backends, zero learning
+overhead. Light-mode default (no weight download) keeps the public
+scanner fast & cheap; `--download-weights` is opt-in for users who
+want the full security audit. *건조* applied to the surface area.
+
+---
+
+## [1.8.0] — 2026-04-30 — Sprint 13: Startup Pricing Tier ($499/mo)
 
 ### Added
 

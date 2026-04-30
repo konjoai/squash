@@ -51,13 +51,13 @@ That's the moat. Credo AI and OneTrust are form-filling tools. Squash is a pipel
 
 ---
 
-## ⚡ Situation Report (April 30, 2026) — Post Sprint 13 ✅ COMPLETE — Tier 2 100% DONE
+## ⚡ Situation Report (April 30, 2026) — Post Sprint 22 ✅ — Track C at 3/11
 
 | Metric | Value |
 |--------|-------|
 | **EU AI Act enforcement deadline** | August 2, 2026 — **94 days** |
-| **Squash code maturity** | v1.8.0 · Sprint 13 complete · 3987 tests passing · **Tier 2 100% complete** |
-| **Python modules** | 71 standalone modules + VS Code extension · 100+ git commits |
+| **Squash code maturity** | v1.14.0 · Sprint 22 C5 shipped · 4308 tests passing · **Tier 2 100% · Track B 5/6 · Track C 3/11** |
+| **Python modules** | 77 standalone modules + VS Code extension + templates/ dir · 100+ git commits |
 | **Annex IV coverage** | ✅ 100% — 12-section generator, completeness scoring, PDF export |
 | **ISO 42001 coverage** | ✅ — 38-control readiness assessment, gap analysis, remediation roadmap |
 | **Trust Package** | ✅ — Signed vendor attestation bundle, `squash verify-trust-package` CLI |
@@ -148,14 +148,14 @@ Pure engineering that has zero dependency on Track A once A1 is live. Each item 
 
 | ID | Item | Effort | Date | ∥ With | Foundation | Sprint Spec |
 |---|---|---|---|---|---|---|
-| **B1** | **HF Public Scanner** — `squash scan hf://owner/model` | 4 days | **May 5–8** | A3, C1, C2 | `scanner.py` + `policy.py` exist; new HF API fetch layer | Sprint 14 (W205) |
-| **B2** | **Branded PDF Report** — cover + exec summary on existing `to_pdf()` | 2 days | May 8–10 | A4, C2, C3 | `annex_iv_generator.to_pdf()` works; design + template only | Sprint 15 (W208) |
-| **B3** | **Email Digest** — Weekly/monthly portfolio posture | 2 days | May 12–14 | C3, C4 | `notifications.py` + Resend already configured | Sprint 15 (W209–W210) |
+| **B1** ✅ | **HF Public Scanner** — `squash scan hf://owner/model` | 4 days → **shipped** | ✅ 2026-04-30 | A3, C1, C2 | `scanner.py` + `policy.py` + new `hf_scanner.py` (W205) | Sprint 14 (W205) ✅ v1.9.0 |
+| **B2** ✅ | **Branded PDF Report** — cover page, KPI scorecard, exec summary, full Annex IV body, signature block | 2 days → **shipped** | ✅ 2026-04-30 | A4, C2, C3 | `pdf_report.py` (NEW) + WeasyPrint CSS + brand SVG logos from design handoff | Sprint 15 (W208) ✅ v1.12.0 |
+| **B3** ✅ | **Email Digest** — Weekly/monthly portfolio posture | 2 days → **shipped** | ✅ 2026-04-30 | C3, C4 | `notifications.py` extension + stdlib smtplib (Resend / Mailgun / SES via SMTP relay) | Sprint 15 (W209–W210) ✅ v1.10.0 |
 | **B4** | **Terraform/Pulumi Provider** — Go provider + Pulumi component | 10 days | May 15–26 | C3, C4, D1 | API stable after A1; new repo `terraform-provider-squash/` | Sprint 16 (W211–W214) |
 | **B5** | **API Gateway Plugin** — Kong + AWS Lambda authorizer | 8 days | May 27–Jun 5 | D1, C5 | Two packages (Kong Go/Lua + AWS Python) | (de-scoped Tier 3 #28; reinstated as B5) |
 | **B6** | **Blockchain Anchoring** — Ethereum OP_RETURN of attestation hash | 6 days | Jun 6–13 | D1, C5 | `provenance.py` exists; new web3.py + tx builder | Sprint 17 (W215–W217) |
 | **B7** | **Drift SLA Certificate** — `squash drift-sla --threshold 0.05 --window 30d` | 4 days | May 28–Jun 2 | B5, C4 | `drift.py` already computes PSI/KS; new SLA cert + breach event | Sprint 31 (W253–W254) |
-| **B8** | **LoRA / Adapter Poisoning Detection** — `squash scan-adapter --lora ./adapter.safetensors` | 5 days | Jun 5–11 | B6, D1 | `scanner.py` + ModelScan; new behavioural-comparison + weight-delta anomaly | Sprint 32 (W257–W258) |
+| **B8** ✅ | **LoRA / Adapter Poisoning Detection** — `squash scan-adapter --lora ./adapter.safetensors` | 5 days | Jun 5–11 | B6, D1 | `scanner.py` + ModelScan; new behavioural-comparison + weight-delta anomaly | Sprint 32 (W257–W258) |
 | **B9** | **Data Poisoning + Pipeline Integrity Attestation** — `squash attest-pipeline --datasets ./data/` | 7 days | Jun 12–22 | C5, D2 | `data_lineage.py` + `scanner.py`; new dataset hash verifier + label-distribution anomaly | Sprint 34 (W262–W264) |
 | **B10** | **License Conflict Detector** — `squash license-check --deployment-type commercial-saas` | 5 days | May 18–23 | B4, C3 | `data_lineage.py` SPDX layer; new 200+ LLM license DB + deployment-type rules | Sprint 33 (W255–W256) — OMB M-26-04 deadline |
 
@@ -170,6 +170,10 @@ High-ROI items derived from market research. Each operationalises a specific anc
 | **C3** ✅ | **Approval Workflow** — `squash approve` (signed reviewer record) | 5 days | May 13–19 | B2, B3, B4 | EU AI Act Art. 9 human-oversight requirement | Sprint 23 (W232–W234) |
 | **C4** | **Regulatory Watch Daemon** — primary-source polling + gap analysis | 7 days | May 20–28 | B4, D1 | Daily-touch product = retention | Sprint 27 (W243–W245) |
 | **C5** | **Audit Simulation** — `squash simulate-audit --regulator EU-AI-Act` | 10 days | Jun 2–13 | D1, D2, B5 | 78% can't pass audit in 90 days | Sprint 22 (W229–W231) |
+| **C2** | **AI Washing Detection** — `squash detect-washing` | 5 days | May 7–12 | B1, B2 | SEC #1 AI exam priority 2026 | Sprint 20 (W223–W225) |
+| **C3** | **Approval Workflow** — `squash approve` (signed reviewer record) | 5 days | May 13–19 | B2, B3, B4 | EU AI Act Art. 9 human-oversight requirement | Sprint 23 (W232–W234) |
+| **C4** ✅ | **Regulatory Watch Daemon** — `squash watch-regulatory --interval 6h` | 7 days → **shipped** | ✅ 2026-04-30 | B4, D1 | `regulatory_watch.py` (NEW) — SEC/NIST/EUR-Lex + generic RSS, SQLite dedup, gap analysis, 10-flag CLI | Sprint 27 ✅ v1.13.0 |
+| **C5** ✅ | **Audit Simulation** — `squash simulate-audit --regulator EU-AI-Act` | 10 days → **shipped** | ✅ 2026-04-30 | D1, D2, B5 | `audit_sim.py` (NEW) — 4 regulator profiles, 110 questions, critical-gate scoring, 90-day roadmap | Sprint 22 ✅ v1.14.0 |
 | **C6** | **Insurance Risk Package** — Munich Re / Coalition format | 7 days | Jun 16–24 | D2, D3 | AI cyber-insurance market crystallising late 2026 | Sprint 24 (W235–W237) |
 | **C7 ★** | **Hallucination Rate Attestation** — `squash hallucination-attest --domain legal` | 5 days | **May 9–15** | C2, B2 | **$67.4B in 2024 losses · 47% decisions on hallucinated content** | Sprint 30 (W251–W252) |
 | **C8** | **Model Deprecation Watch** — `squash deprecation-watch` cross-references registry vs provider sunsets | 4 days | Jun 25–30 | C6, D2 | OpenAI / Anthropic / Google sunsets break attested deployments quarterly | Sprint 35 (W265–W266) |
@@ -1353,7 +1357,7 @@ deliverable is one more proof artefact.
 
 ---
 
-### Sprint 32 — LoRA / Adapter Poisoning Detection (`squash scan-adapter`) · **Track B / B8**
+### Sprint 32 — LoRA / Adapter Poisoning Detection (`squash scan-adapter`) · **Track B / B8** ✅ COMPLETE
 
 **Goal:** `squash scan-adapter --lora ./adapter.safetensors --base-model ./model` runs behavioural-comparison testing between the base model and the LoRA-applied model, flags statistical anomalies in the weight-delta distribution that could indicate backdoor injection, checks adapter provenance + signing, generates a signed adapter safety certificate. Includes `--require-safetensors` to block pickle-format adapters outright.
 

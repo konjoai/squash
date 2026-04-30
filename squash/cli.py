@@ -226,8 +226,26 @@ def _build_parser() -> argparse.ArgumentParser:
     )
 
     # ── squash scan ────────────────────────────────────────────────────────────
-    scan_cmd = sub.add_parser("scan", help="Run security scanner only (no SBOM generation)")
-    scan_cmd.add_argument("model_path", help="Path to model directory or file")
+    scan_cmd = sub.add_parser(
+        "scan",
+        help="Run security scanner only (no SBOM generation). Accepts a local "
+             "path or an hf://owner/model URI for the public HF scanner.",
+        description=(
+            "Run the security scanner against a local model directory or a "
+            "public HuggingFace model.\n\n"
+            "Examples:\n"
+            "  squash scan ./my-model\n"
+            "  squash scan hf://microsoft/phi-3-mini-4k-instruct\n"
+            "  squash scan hf://meta-llama/Llama-3.1-8B-Instruct@main \\\n"
+            "        --policy enterprise-strict --output-dir ./out\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    scan_cmd.add_argument(
+        "model_path",
+        help="Path to model directory/file, OR `hf://owner/model[@revision]` "
+             "for the public HF scanner.",
+    )
     scan_cmd.add_argument("--json-result", default=None, metavar="PATH")
     scan_cmd.add_argument(
         "--sarif",
@@ -240,6 +258,34 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         default=False,
         help="Exit 2 on critical/high findings; exit 1 on other unsafe statuses",
+    )
+
+    # ── B1 (Sprint 14, W205) — hf:// public scanner flags ─────────────────────
+    scan_cmd.add_argument(
+        "--policy", action="append", default=None, dest="hf_policies",
+        help="(hf:// only) Policy preview to evaluate (repeatable).",
+    )
+    scan_cmd.add_argument(
+        "--output-dir", default=None, dest="hf_output_dir",
+        help="(hf:// only) Directory to write `squash-hf-scan.{json,md}`.",
+    )
+    scan_cmd.add_argument(
+        "--download-weights", action="store_true", dest="hf_download_weights",
+        help="(hf:// only) Fetch full weight files. Default fetches small "
+             "artefacts only — keeps the public scanner fast & cheap.",
+    )
+    scan_cmd.add_argument(
+        "--keep-download", action="store_true", dest="hf_keep_download",
+        help="(hf:// only) Retain the downloaded snapshot directory after scan.",
+    )
+    scan_cmd.add_argument(
+        "--hf-token", default="", dest="hf_token",
+        help="(hf:// only) HF Hub token for private/gated repos. Falls back "
+             "to HUGGING_FACE_HUB_TOKEN / HF_TOKEN env.",
+    )
+    scan_cmd.add_argument(
+        "--quiet", action="store_true", dest="hf_quiet",
+        help="(hf:// only) Suppress non-essential output.",
     )
 
     # ── squash diff ───────────────────────────────────────────────────────────
@@ -2227,6 +2273,146 @@ def _build_parser() -> argparse.ArgumentParser:
     an_status = anchor_sub.add_parser("status", help="Show staged batch + last anchor")
     an_status.add_argument("--ledger-dir", default=None)
     an_status.add_argument("--json", action="store_true", dest="output_json")
+    # ── B3 (Sprint 15 W209/W210) — compliance digest ──────────────────────────
+    digest_cmd = sub.add_parser(
+        "digest",
+        help="Compose + send the weekly/monthly compliance portfolio digest",
+        description=(
+            "Render and (optionally) email a portfolio compliance digest:\n"
+            "  · 5-metric summary panel\n"
+            "  · top-5 risk movers (score, violations, CVEs, drift, Δ vs prior)\n"
+            "  · regulatory deadline countdown (EU Aug 2 · CO Jun 1 · ISO 42001)\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    digest_sub = digest_cmd.add_subparsers(dest="digest_command", metavar="SUBCOMMAND")
+    digest_sub.required = True
+
+    def _add_common_digest_args(p: argparse.ArgumentParser) -> None:
+        p.add_argument("--period", default="weekly",
+                       choices=["weekly", "monthly"],
+                       help="Digest period. Default: weekly.")
+        p.add_argument("--models-dir", default=None, dest="digest_models_dir",
+                       help="Directory containing per-model attestation subdirs.")
+        p.add_argument("--org", default="", dest="digest_org",
+                       help="Org name shown in the digest header.")
+        p.add_argument("--dashboard-url", default="", dest="digest_dashboard_url",
+                       help="URL to the live dashboard (footer link).")
+        p.add_argument("--score-history", default=None,
+                       dest="digest_score_history", metavar="JSON_FILE",
+                       help="JSON file mapping model_id → previous score.")
+        p.add_argument("--quiet", action="store_true",
+                       help="Suppress non-essential output")
+
+    digest_preview = digest_sub.add_parser(
+        "preview", help="Render the digest and print to stdout. No email.",
+    )
+    _add_common_digest_args(digest_preview)
+    digest_preview.add_argument(
+        "--format", default="text", choices=["text", "html", "json"],
+        dest="digest_preview_format",
+        help="Render text body, HTML body, or JSON. Default: text.",
+    )
+    digest_preview.add_argument(
+        "--output", default=None, dest="digest_preview_output",
+        help="Write to FILE instead of stdout.",
+    )
+
+    digest_send = digest_sub.add_parser(
+        "send", help="Render + email the digest via SMTP.",
+    )
+    _add_common_digest_args(digest_send)
+    digest_send.add_argument(
+        "--recipients", "--recipient", action="append", default=None,
+        dest="digest_recipients",
+        help="Email recipient (repeatable). Required unless --dry-run.",
+    )
+    digest_send.add_argument(
+        "--dry-run", action="store_true", dest="digest_dry_run",
+        help="Render and print both bodies; skip the SMTP send.",
+    )
+    digest_send.add_argument(
+        "--smtp-host", default="", dest="digest_smtp_host",
+        help="SMTP host. Default: SQUASH_SMTP_HOST env var.",
+    )
+    digest_send.add_argument(
+        "--smtp-port", default=0, type=int, dest="digest_smtp_port",
+        help="SMTP port. Default: 587 (or SQUASH_SMTP_PORT env).",
+    )
+    digest_send.add_argument(
+        "--smtp-from", default="", dest="digest_smtp_from",
+        help="From address. Default: SQUASH_SMTP_FROM env var.",
+    )
+    digest_send.add_argument(
+        "--no-tls", action="store_true", dest="digest_no_tls",
+        help="Disable STARTTLS (use only on localhost test relays).",
+    )
+
+    # ── B5 (Track B) — gateway-config: Kong + AWS API Gateway runtime gate ───
+    gw_cmd = sub.add_parser(
+        "gateway-config",
+        help="Emit runtime API gateway gate config (Kong / AWS API Gateway)",
+        description=(
+            "Generate runtime gate configurations for Kong and AWS API Gateway.\n"
+            "Examples:\n"
+            "  squash gateway-config kong --min-score 0.8 > kong-config.yaml\n"
+            "  squash gateway-config kong --emit-plugin --output ./squash-attest/\n"
+            "  squash gateway-config aws-apigw --min-score 0.8 > template.yaml\n"
+            "  squash gateway-config aws-apigw --emit-handler > handler.py\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    gw_sub = gw_cmd.add_subparsers(dest="gateway_target", metavar="TARGET")
+    gw_kong = gw_sub.add_parser("kong", help="Emit Kong declarative config or plugin source")
+    gw_kong.add_argument("--min-score", type=float, default=0.8, dest="min_score")
+    gw_kong.add_argument("--header", default="X-Squash-Attestation", dest="header_name")
+    gw_kong.add_argument("--squash-api-url", default="https://api.getsquash.dev", dest="squash_api_url")
+    gw_kong.add_argument("--service-name", default="ai-inference", dest="service_name")
+    gw_kong.add_argument("--upstream-url", default="http://upstream-inference:8080", dest="upstream_url")
+    gw_kong.add_argument("--path", action="append", dest="route_paths")
+    gw_kong.add_argument("--max-age-days", type=int, default=30, dest="max_age_days")
+    gw_kong.add_argument("--require-framework", action="append", dest="required_frameworks")
+    gw_kong.add_argument("--emit-plugin", action="store_true", dest="emit_plugin")
+    gw_kong.add_argument("--output", dest="output")
+    gw_aws = gw_sub.add_parser("aws-apigw", help="Emit AWS SAM template or Lambda authorizer source")
+    gw_aws.add_argument("--min-score", type=float, default=0.8, dest="min_score")
+    gw_aws.add_argument("--header", default="X-Squash-Attestation", dest="header_name")
+    gw_aws.add_argument("--squash-api-url", default="https://api.getsquash.dev", dest="squash_api_url")
+    gw_aws.add_argument("--function-name", default="SquashAttestAuthorizer", dest="function_name")
+    gw_aws.add_argument("--max-age-days", type=int, default=30, dest="max_age_days")
+    gw_aws.add_argument("--require-framework", action="append", dest="required_frameworks")
+    gw_aws.add_argument("--runtime", default="python3.11", dest="runtime")
+    gw_aws.add_argument("--emit-handler", action="store_true", dest="emit_handler")
+    gw_aws.add_argument("--emit-authorizer-dir", action="store_true", dest="emit_authorizer_dir")
+    gw_aws.add_argument("--output", dest="output")
+
+
+
+    # ── B8 (Track B) — scan-adapter: LoRA / Adapter poisoning detection ─────
+    sa_cmd = sub.add_parser(
+        "scan-adapter",
+        help="Scan a LoRA / adapter file for poisoning, backdoors, and format risks",
+        description=(
+            "Analyse a LoRA or fine-tuning adapter file for indicators of\n"
+            "backdoor injection, weight-delta anomalies, and unsafe serialisation.\n\n"
+            "Examples:\n"
+            "  squash scan-adapter --lora ./adapter.safetensors\n"
+            "  squash scan-adapter --lora ./adapter.safetensors --require-safetensors\n"
+            "  squash scan-adapter --lora ./adapter.pt --sign --output report.json\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    sa_cmd.add_argument("--lora", required=True, dest="lora_path",
+                        help="Path to the LoRA / adapter file to scan")
+    sa_cmd.add_argument("--require-safetensors", action="store_true",
+                        dest="require_safetensors",
+                        help="Fail (rc=2) if adapter is not in safetensors format")
+    sa_cmd.add_argument("--sign", action="store_true", dest="sign_cert",
+                        help="Embed HMAC-SHA256 signature in the certificate JSON")
+    sa_cmd.add_argument("--output", dest="cert_output",
+                        help="Path to write signed certificate JSON (default: <adapter>-squash-adapter-scan.json)")
+    sa_cmd.add_argument("--json", action="store_true", dest="output_json",
+                        help="Print full report JSON to stdout")
 
 
     # ── W197 (Sprint 11) — chain-attest: composite chain / pipeline attest ────
@@ -2425,6 +2611,141 @@ def _build_parser() -> argparse.ArgumentParser:
     appr_export_cmd.add_argument("--quiet", "-q", action="store_true")
 
 
+    # ── Sprint 22 W229-W231 (Track C / C5) — simulate-audit ───────────────────
+    sa_cmd = sub.add_parser(
+        "simulate-audit",
+        help="Run a mock regulatory examination — pulls answers from squash attestation data",
+        description=(
+            "Simulate a regulatory examination from the examiner's perspective.\n"
+            "78% of executives can't pass an AI governance audit in 90 days.\n"
+            "This command closes that gap in 60 seconds.\n\n"
+            "Supported regulators:\n"
+            "  EU-AI-Act   38 questions (Art. 9-15, 17, 73, Annex IV)\n"
+            "  NIST-RMF    30 questions (GOVERN, MAP, MEASURE, MANAGE)\n"
+            "  SEC         22 questions (AI disclosure, OMB M-26-04)\n"
+            "  FDA         20 questions (SaMD, clinical validation)\n\n"
+            "Examples:\n"
+            "  squash simulate-audit --regulator EU-AI-Act --models-dir ./model\n"
+            "  squash simulate-audit --regulator NIST-RMF --json\n"
+            "  squash simulate-audit --regulator SEC --output-dir ./compliance/\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    sa_cmd.add_argument(
+        "--regulator", "-r",
+        default="EU-AI-Act",
+        choices=["EU-AI-Act", "NIST-RMF", "SEC", "FDA"],
+        dest="sa_regulator",
+        help="Regulatory framework to simulate. Default: EU-AI-Act",
+    )
+    sa_cmd.add_argument(
+        "--models-dir", "--model-path",
+        default=".",
+        dest="sa_models_dir",
+        help="Path to model directory containing squash attestation artefacts. "
+             "Default: current directory.",
+    )
+    sa_cmd.add_argument(
+        "--output-dir",
+        default=None,
+        dest="sa_output_dir",
+        help="Directory to write audit-readiness.json + audit-readiness.md. "
+             "Default: write to --models-dir.",
+    )
+    sa_cmd.add_argument(
+        "--json",
+        action="store_true",
+        dest="sa_json",
+        help="Print structured JSON report to stdout.",
+    )
+    sa_cmd.add_argument(
+        "--fail-below",
+        type=int,
+        default=0,
+        dest="sa_fail_below",
+        help="Exit non-zero if readiness score is below this threshold (0–100).",
+    )
+    sa_cmd.add_argument(
+        "--quiet",
+        action="store_true",
+        help="Suppress non-essential output.",
+    )
+
+    # ── Sprint 27 W243-W245 (Track C / C4) — watch-regulatory daemon ──────────
+    wr_cmd = sub.add_parser(
+        "watch-regulatory",
+        help="Continuous regulatory watch daemon — polls SEC, NIST, EUR-Lex for AI governance updates",
+        description=(
+            "Poll live regulatory sources for new AI governance requirements, "
+            "map them to squash policy controls, and surface gap analysis "
+            "against your attested model portfolio.\n\n"
+            "Examples:\n"
+            "  # One-shot poll (cron-friendly)\n"
+            "  squash watch-regulatory --once --models-dir ./models\n"
+            "\n"
+            "  # Continuous daemon (every 6 hours)\n"
+            "  squash watch-regulatory --interval 6h --alert-channel slack\n"
+            "\n"
+            "  # Dry-run: show what would be fetched without persisting\n"
+            "  squash watch-regulatory --once --dry-run\n"
+            "\n"
+            "  # Add custom RSS feed\n"
+            "  squash watch-regulatory --once \\\n"
+            "      --extra-feed name=legiscan,url=https://example.com/rss,keywords=artificial+intelligence\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    wr_cmd.add_argument(
+        "--once", action="store_true", dest="wr_once",
+        help="Poll once, print results, and exit (default behaviour; use without --interval).",
+    )
+    wr_cmd.add_argument(
+        "--interval", default="0", dest="wr_interval",
+        metavar="INTERVAL",
+        help="Polling interval as integer hours or string '6h', '1d', etc. "
+             "When set, runs continuously until interrupted. Default: poll once.",
+    )
+    wr_cmd.add_argument(
+        "--sources", action="append", default=None, dest="wr_sources",
+        choices=["sec", "nist", "eurlex"],
+        help="Sources to poll (repeatable). Default: sec nist eurlex.",
+    )
+    wr_cmd.add_argument(
+        "--extra-feed", action="append", default=None, dest="wr_extra_feeds",
+        metavar="KEY=VAL,...",
+        help="Add a custom RSS feed. Format: name=NAME,url=URL[,keywords=k1+k2]. "
+             "Repeatable.",
+    )
+    wr_cmd.add_argument(
+        "--models-dir", default=None, dest="wr_models_dir",
+        help="Directory of attested model subdirectories for gap analysis.",
+    )
+    wr_cmd.add_argument(
+        "--alert-channel", default="stdout",
+        choices=["stdout", "slack", "teams", "webhook"],
+        dest="wr_alert_channel",
+        help="Where to send new-event alerts. Default: stdout.",
+    )
+    wr_cmd.add_argument(
+        "--db-path", default=None, dest="wr_db_path",
+        help="SQLite store path for seen events. Default: ~/.squash/regulatory_events.db",
+    )
+    wr_cmd.add_argument(
+        "--dry-run", action="store_true", dest="wr_dry_run",
+        help="Fetch events but skip persistence and alert dispatch.",
+    )
+    wr_cmd.add_argument(
+        "--json", action="store_true", dest="wr_json",
+        help="Emit structured JSON output (gap analysis results).",
+    )
+    wr_cmd.add_argument(
+        "--max-events", type=int, default=50, dest="wr_max_events",
+        help="Maximum new events to process per poll cycle (default: 50).",
+    )
+    wr_cmd.add_argument(
+        "--quiet", action="store_true", help="Suppress non-error output",
+    )
+
     # ── W135 / W136 — Annex IV generate + validate ────────────────────────────
     annex_iv_cmd = sub.add_parser(
         "annex-iv",
@@ -2523,6 +2844,43 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Output filename stem (default: annex_iv → annex_iv.md, annex_iv.json, …)",
     )
     aiv_gen.add_argument("--no-validate", action="store_true", help="Skip post-generation validation report")
+
+    # ── B2 (Sprint 15 W208) — branded PDF flags ────────────────────────────
+    aiv_gen.add_argument(
+        "--branded",
+        action="store_true",
+        dest="annex_iv_branded",
+        help=(
+            "When --format pdf is specified, produce a branded executive PDF "
+            "with cover page, KPI scorecard, and signature block in addition "
+            "to the plain PDF. Requires: pip install weasyprint"
+        ),
+    )
+    aiv_gen.add_argument(
+        "--org",
+        default="",
+        dest="annex_iv_org",
+        help="Organisation name shown on the cover page (branded PDF).",
+    )
+    aiv_gen.add_argument(
+        "--author",
+        default="",
+        dest="annex_iv_author",
+        help="Preparer name / role shown on the cover page (branded PDF).",
+    )
+    aiv_gen.add_argument(
+        "--logo",
+        default=None,
+        dest="annex_iv_logo",
+        metavar="PATH",
+        help="Custom logo file (SVG or PNG) to embed on the cover page.",
+    )
+    aiv_gen.add_argument(
+        "--accent",
+        default="#22c55e",
+        dest="annex_iv_accent",
+        help="Brand accent colour (hex) for the branded PDF. Default: #22c55e (Squash green).",
+    )
     aiv_gen.add_argument("--fail-on-warning", action="store_true", help="Exit 1 if validation produces warnings")
     aiv_gen.add_argument("--quiet", action="store_true", help="Suppress informational output")
 
@@ -2744,6 +3102,10 @@ def _cmd_policies(args: argparse.Namespace, quiet: bool) -> int:
 
 
 def _cmd_scan(args: argparse.Namespace, quiet: bool) -> int:
+    # B1 (Sprint 14, W205) — `squash scan hf://owner/model` public scanner
+    if isinstance(args.model_path, str) and args.model_path.startswith("hf://"):
+        return _cmd_scan_hf(args, quiet)
+
     try:
         from squash.scanner import ModelScanner
     except ImportError as e:
@@ -2795,6 +3157,114 @@ def _cmd_scan(args: argparse.Namespace, quiet: bool) -> int:
         return 0
 
     return 0 if result.is_safe else 2
+
+
+def _cmd_scan_hf(args: argparse.Namespace, quiet: bool) -> int:
+    """B1 (Sprint 14, W205) — public `squash scan hf://...` handler.
+
+    Routes from `_cmd_scan` when the positional argument is an hf:// URI.
+    Builds an HFScanReport and writes squash-hf-scan.{json,md} to
+    --output-dir (default: cwd).
+
+    Exit codes:
+      0  scan clean
+      1  scan unsafe
+      2  configuration / dependency error
+    """
+    try:
+        from squash.hf_scanner import HFScanner
+    except ImportError as e:
+        print(f"squash hf scanner unavailable: {e}", file=sys.stderr)
+        return 2
+
+    quiet = quiet or getattr(args, "hf_quiet", False)
+
+    import os as _os
+    token = (
+        getattr(args, "hf_token", "")
+        or _os.environ.get("HUGGING_FACE_HUB_TOKEN", "")
+        or _os.environ.get("HF_TOKEN", "")
+    )
+
+    output_dir = Path(args.hf_output_dir) if getattr(args, "hf_output_dir", None) \
+        else Path.cwd()
+    policies = getattr(args, "hf_policies", None)
+    download_weights = bool(getattr(args, "hf_download_weights", False))
+    keep_download = bool(getattr(args, "hf_keep_download", False))
+
+    scanner = HFScanner()
+    try:
+        report = scanner.scan(
+            uri=args.model_path,
+            policies=policies,
+            download_weights=download_weights,
+            keep_download=keep_download,
+            token=token,
+        )
+    except ValueError as exc:
+        print(f"squash scan: {exc}", file=sys.stderr)
+        return 2
+    except ImportError as exc:
+        print(f"squash scan: {exc}", file=sys.stderr)
+        return 2
+    except Exception as exc:  # noqa: BLE001 — surface fetch errors to user
+        print(f"squash scan: hf fetch failed: {exc}", file=sys.stderr)
+        return 1
+
+    # Write artefacts
+    paths = report.save(output_dir)
+
+    # ── Optional pass-through outputs honoured for hf:// path ────────────────
+    if getattr(args, "json_result", None):
+        Path(args.json_result).write_text(report.to_json(), encoding="utf-8")
+    if getattr(args, "sarif", None):
+        try:
+            from squash.sarif import SarifBuilder
+            from squash.scanner import ScanFinding, ScanResult
+        except ImportError:
+            pass
+        else:
+            findings = [
+                ScanFinding(
+                    severity=f.get("severity", "info"),
+                    finding_id=f.get("finding_id", ""),
+                    title=f.get("title", ""),
+                    detail=f.get("detail", ""),
+                    file_path=f.get("file_path", ""),
+                    cve=f.get("cve", ""),
+                )
+                for f in report.findings
+            ]
+            sr = ScanResult(
+                scanned_path=f"hf://{report.metadata.repo_id}",
+                status=report.scan_status,
+                findings=findings,
+            )
+            SarifBuilder.write(sr, Path(args.sarif))
+
+    # ── Console output ───────────────────────────────────────────────────────
+    if not quiet:
+        emoji = "✅" if report.is_safe else "❌"
+        print(f"{emoji} hf://{report.metadata.repo_id} — scan {report.scan_status}"
+              f" ({len(report.findings)} findings, {report.file_count} files)")
+        if report.metadata.license:
+            print(f"   license: {report.metadata.license}  "
+                  f"downloads: {report.metadata.downloads:,}")
+        for w in report.license_warnings:
+            print(f"   ⚠️  {w}")
+        for fmt, p in paths.items():
+            print(f"   {fmt}: {p}")
+
+    if getattr(args, "exit_2_on_unsafe", False):
+        critical = sum(1 for f in report.findings
+                       if f.get("severity") == "critical")
+        high = sum(1 for f in report.findings if f.get("severity") == "high")
+        if critical or high:
+            return 2
+        if not report.is_safe:
+            return 1
+        return 0
+    return 0 if report.is_safe else 1
 
 
 def _cmd_diff(args: argparse.Namespace, quiet: bool) -> int:
@@ -4759,6 +5229,285 @@ def _cmd_chain_attest(args: argparse.Namespace, quiet: bool) -> int:
     return 0
 
 
+def _cmd_digest(args: argparse.Namespace, quiet: bool) -> int:
+    """B3 (Sprint 15 W209/W210) — `squash digest preview|send`."""
+    try:
+        from squash.notifications import (
+            ComplianceDigestBuilder, SmtpConfig, send_email_digest,
+        )
+    except ImportError as exc:
+        print(f"squash digest unavailable: {exc}", file=sys.stderr)
+        return 2
+
+    score_history: dict[str, float] = {}
+    sh_path = getattr(args, "digest_score_history", None)
+    if sh_path:
+        try:
+            raw = json.loads(Path(sh_path).read_text(encoding="utf-8"))
+            if isinstance(raw, dict):
+                score_history = {str(k): float(v) for k, v in raw.items()}
+            else:
+                print(f"squash digest: --score-history must be a JSON object "
+                      f"(model_id → score), got {type(raw).__name__}",
+                      file=sys.stderr)
+                return 2
+        except (OSError, ValueError, TypeError) as exc:
+            print(f"squash digest: could not load --score-history: {exc}",
+                  file=sys.stderr)
+            return 2
+
+    models_dir_arg = getattr(args, "digest_models_dir", None)
+    models_dir = Path(models_dir_arg) if models_dir_arg else None
+    quiet = quiet or getattr(args, "quiet", False)
+
+    try:
+        digest = ComplianceDigestBuilder().build(
+            period=args.period, models_dir=models_dir,
+            org_name=args.digest_org,
+            dashboard_url=args.digest_dashboard_url,
+            score_history=score_history,
+        )
+    except ValueError as exc:
+        print(f"squash digest: {exc}", file=sys.stderr)
+        return 2
+    except Exception as exc:  # noqa: BLE001
+        print(f"squash digest: build failed: {exc}", file=sys.stderr)
+        return 1
+
+    sub_cmd = getattr(args, "digest_command", "")
+
+    if sub_cmd == "preview":
+        fmt = getattr(args, "digest_preview_format", "text")
+        if fmt == "text":
+            payload = digest.text_body
+        elif fmt == "html":
+            payload = digest.html_body
+        else:
+            payload = json.dumps(digest.to_dict(), indent=2, sort_keys=True)
+        out_path = getattr(args, "digest_preview_output", None)
+        if out_path:
+            Path(out_path).write_text(payload, encoding="utf-8")
+            if not quiet:
+                print(f"✓ digest written to {out_path}")
+        else:
+            print(payload)
+        return 0
+
+    if sub_cmd == "send":
+        recipients = list(getattr(args, "digest_recipients", None) or [])
+        dry_run = bool(getattr(args, "digest_dry_run", False))
+        if not recipients and not dry_run:
+            print("squash digest send: --recipients required unless --dry-run",
+                  file=sys.stderr)
+            return 2
+        if dry_run:
+            if not quiet:
+                print(f"Subject: {digest.subject}")
+                print()
+                print(digest.text_body)
+                print(f"[dry-run] would email {len(recipients)} recipient(s): "
+                      f"{', '.join(recipients) or '(none — preview only)'}")
+            return 0
+        smtp = SmtpConfig(
+            host=getattr(args, "digest_smtp_host", "") or "",
+            port=int(getattr(args, "digest_smtp_port", 0) or 0) or 587,
+            from_addr=getattr(args, "digest_smtp_from", "") or "",
+            use_tls=not bool(getattr(args, "digest_no_tls", False)),
+        )
+        result = send_email_digest(digest, recipients, smtp=smtp, dry_run=False)
+        if not result.success:
+            print(f"squash digest send: {result.error}", file=sys.stderr)
+            return 1
+        if not quiet:
+            print(f"✓ digest emailed to {result.delivered} recipient(s) "
+                  f"({', '.join(recipients)})")
+        return 0
+
+    print(f"squash digest: unknown subcommand {sub_cmd!r}", file=sys.stderr)
+    return 2
+
+
+def _cmd_simulate_audit(args: argparse.Namespace, quiet: bool) -> int:
+    """Sprint 22 W231 — `squash simulate-audit`. Regulatory exam simulation.
+
+    Exit codes:
+      0   success (score meets --fail-below threshold if set)
+      1   score below --fail-below threshold
+      2   configuration error
+    """
+    try:
+        from squash.audit_sim import AuditSimulator
+    except ImportError as exc:
+        print(f"squash simulate-audit unavailable: {exc}", file=sys.stderr)
+        return 2
+
+    model_path = Path(getattr(args, "sa_models_dir", ".") or ".")
+    if not model_path.exists():
+        print(f"simulate-audit: path not found: {model_path}", file=sys.stderr)
+        return 2
+
+    regulator = getattr(args, "sa_regulator", "EU-AI-Act") or "EU-AI-Act"
+    quiet = quiet or getattr(args, "quiet", False)
+
+    try:
+        report = AuditSimulator().simulate(model_path, regulator)
+    except ValueError as exc:
+        print(f"simulate-audit: {exc}", file=sys.stderr)
+        return 2
+    except Exception as exc:  # noqa: BLE001
+        print(f"simulate-audit: failed: {exc}", file=sys.stderr)
+        return 1
+
+    output_dir_arg = getattr(args, "sa_output_dir", None)
+    output_dir = Path(output_dir_arg) if output_dir_arg else model_path
+    written = report.save(output_dir)
+
+    emit_json = getattr(args, "sa_json", False)
+    if emit_json:
+        print(report.to_json())
+    elif not quiet:
+        tier_emoji = {
+            "AUDIT_READY":  "✅",
+            "SUBSTANTIAL":  "🟡",
+            "DEVELOPING":   "🟠",
+            "EARLY_STAGE":  "🔴",
+        }.get(report.readiness_tier, "⚪")
+        print(
+            f"{tier_emoji} {regulator} readiness: "
+            f"{report.overall_score}/100 · {report.readiness_tier.replace('_', ' ')}"
+        )
+        print(
+            f"   {report.passing} PASS · {report.partial} PARTIAL · "
+            f"{report.failing} FAIL ({report.critical_fails} critical)"
+        )
+        for fmt, p in written.items():
+            print(f"   [{fmt}] {p}")
+
+    fail_below = int(getattr(args, "sa_fail_below", 0) or 0)
+    if fail_below and report.overall_score < fail_below:
+        if not quiet:
+            print(
+                f"simulate-audit: score {report.overall_score} < "
+                f"threshold {fail_below} — failing",
+                file=sys.stderr,
+            )
+        return 1
+    return 0
+
+
+def _cmd_watch_regulatory(args: argparse.Namespace, quiet: bool) -> int:
+    """Sprint 27 W245 — `squash watch-regulatory`.
+
+    Poll live regulatory sources, run gap analysis, and route alerts.
+
+    Exit codes:
+      0  success (no new events, or new events processed and notified)
+      1  one or more source adapters failed (partial results still shown)
+      2  configuration error
+    """
+    try:
+        from squash.regulatory_watch import (
+            WatcherConfig, RegulatoryWatcher,
+        )
+    except ImportError as exc:
+        print(f"squash watch-regulatory unavailable: {exc}", file=sys.stderr)
+        return 2
+
+    quiet = quiet or getattr(args, "quiet", False)
+
+    # ── Build config ──────────────────────────────────────────────────────────
+    sources = list(getattr(args, "wr_sources", None) or ["sec", "nist", "eurlex"])
+    db_path_arg = getattr(args, "wr_db_path", None)
+
+    # Parse extra feed configs: "name=foo,url=https://...,keywords=ai+act"
+    extra_feeds: list[dict] = []
+    for raw_feed in (getattr(args, "wr_extra_feeds", None) or []):
+        parts = dict(item.split("=", 1) for item in raw_feed.split(",") if "=" in item)
+        if "name" not in parts or "url" not in parts:
+            print(
+                f"watch-regulatory: --extra-feed must have name= and url= keys: {raw_feed!r}",
+                file=sys.stderr,
+            )
+            return 2
+        keywords = parts.get("keywords", "").replace("+", " ").split() or None
+        extra_feeds.append({
+            "name": parts["name"],
+            "url": parts["url"],
+            "keywords": keywords,
+        })
+
+    cfg = WatcherConfig(
+        sources=sources,
+        extra_feeds=extra_feeds,
+        max_events=getattr(args, "wr_max_events", 50),
+        alert_channel=getattr(args, "wr_alert_channel", "stdout"),
+    )
+    if db_path_arg:
+        cfg.db_path = Path(db_path_arg)
+
+    watcher = RegulatoryWatcher(cfg)
+    models_dir = Path(args.wr_models_dir) if getattr(args, "wr_models_dir", None) else None
+    dry_run = bool(getattr(args, "wr_dry_run", False))
+    emit_json = bool(getattr(args, "wr_json", False))
+    channel = getattr(args, "wr_alert_channel", "stdout")
+
+    # ── Determine polling interval ────────────────────────────────────────────
+    from squash.regulatory_watch import parse_interval as _parse_interval
+    interval_arg = getattr(args, "wr_interval", "0") or "0"
+    interval_seconds = _parse_interval(interval_arg)
+    continuous = interval_seconds > 0
+
+    # ── Main loop ─────────────────────────────────────────────────────────────
+    had_error = False
+    iterations = 0
+    while True:
+        iterations += 1
+        try:
+            new_events, gap_results = watcher.poll(models_dir=models_dir)
+        except Exception as exc:  # noqa: BLE001
+            print(f"watch-regulatory: poll failed: {exc}", file=sys.stderr)
+            had_error = True
+            new_events, gap_results = [], []
+
+        if not quiet and not emit_json:
+            if new_events:
+                print(f"✓ {len(new_events)} new regulatory event(s) detected")
+            else:
+                if not continuous or iterations == 1:
+                    print("✓ No new regulatory events since last poll")
+
+        if emit_json:
+            print(json.dumps(
+                {
+                    "new_events": len(new_events),
+                    "gap_results": [g.to_dict() for g in gap_results],
+                },
+                indent=2, sort_keys=True,
+            ))
+        elif gap_results and not quiet:
+            for gap in gap_results:
+                print()
+                print(gap.summary_text())
+
+        if gap_results and not dry_run and channel != "stdout":
+            watcher.notify(gap_results, channel=channel)
+
+        if dry_run and new_events and not quiet:
+            print(f"[dry-run] {len(new_events)} event(s) not persisted")
+
+        if not continuous or getattr(args, "wr_once", False):
+            break
+
+        if not quiet:
+            next_poll = datetime.datetime.now(datetime.timezone.utc) + \
+                datetime.timedelta(seconds=interval_seconds)
+            print(f"Next poll at {next_poll.strftime('%H:%M UTC')} "
+                  f"({interval_seconds // 3600}h interval)")
+        time.sleep(interval_seconds)
+
+    return 1 if had_error else 0
+
+
 def _cmd_registry_gate(args: argparse.Namespace, quiet: bool) -> int:
     """W201 — `squash registry-gate`. Pre-registration policy gate.
 
@@ -5738,6 +6487,30 @@ def _cmd_annex_iv_generate(args: argparse.Namespace, quiet: bool) -> int:  # noq
 
     # ── Phase 6: save to disk ─────────────────────────────────────────────────
     written = doc.save(output_dir, formats=list(args.formats), stem=args.stem)
+
+    # ── B2 (Sprint 15 W208) — branded PDF ────────────────────────────────────
+    if getattr(args, "annex_iv_branded", False):
+        try:
+            from squash.pdf_report import BrandedPDFConfig, PDFReportBuilder
+            from pathlib import Path as _Path
+            logo_path = _Path(args.annex_iv_logo) if getattr(args, "annex_iv_logo", None) else None
+            branded_cfg = BrandedPDFConfig(
+                org_name=getattr(args, "annex_iv_org", "") or "",
+                author=getattr(args, "annex_iv_author", "") or "",
+                logo_path=logo_path,
+                accent_color=getattr(args, "annex_iv_accent", "#22c55e") or "#22c55e",
+            )
+            branded_stem = (args.stem or "annex_iv") + "_branded"
+            branded_written = PDFReportBuilder(branded_cfg).save(
+                doc, output_dir, stem=branded_stem,
+            )
+            written.update({f"branded_{k}": v for k, v in branded_written.items()})
+        except ImportError as exc:
+            print(
+                f"squash: branded PDF requires WeasyPrint — install with: "
+                f"pip install weasyprint ({exc})",
+                file=sys.stderr,
+            )
 
     if not quiet:
         score_icon = "✅" if doc.overall_score >= 80 else ("⚠️" if doc.overall_score >= 40 else "❌")
@@ -7496,6 +8269,20 @@ def _cmd_anchor(args: argparse.Namespace, quiet: bool) -> int:
             Path(args.out).write_text(text)
             if not quiet:
                 print(f"✓ proof written to {args.out}")
+def _cmd_gateway_config(args, quiet):
+    """B5 — Emit Kong / AWS API Gateway runtime gate config or source."""
+    from squash.integrations.gateway import (
+        emit_kong_config, emit_kong_plugin_dir,
+        emit_aws_apigw_sam, emit_aws_authorizer_dir,
+    )
+    target = getattr(args, "gateway_target", None)
+    output = getattr(args, "output", None)
+
+    def _write_or_print(text):
+        if output:
+            Path(output).write_text(text)
+            if not quiet:
+                print(f"[squash gateway-config] Written to {output}")
         else:
             print(text)
         return 0
@@ -7537,6 +8324,98 @@ def _cmd_anchor(args: argparse.Namespace, quiet: bool) -> int:
 
     print("squash anchor: specify a subcommand — add | commit | verify | proof | list | status")
     return 1
+
+
+    def _write_dir(files):
+        if not output:
+            print("squash gateway-config: --output DIR is required when emitting a source tree", file=sys.stderr)
+            return 2
+        out_dir = Path(output)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        for name, body in files.items():
+            (out_dir / name).write_text(body)
+        if not quiet:
+            print(f"[squash gateway-config] Wrote {len(files)} files into {out_dir}")
+            for name in files:
+                print(f"  - {out_dir / name}")
+        return 0
+
+    if target == "kong":
+        if getattr(args, "emit_plugin", False):
+            return _write_dir(emit_kong_plugin_dir())
+        text = emit_kong_config(
+            min_score=args.min_score, header_name=args.header_name,
+            squash_api_url=args.squash_api_url, service_name=args.service_name,
+            upstream_url=args.upstream_url,
+            route_paths=getattr(args, "route_paths", None),
+            max_age_days=args.max_age_days,
+            required_frameworks=getattr(args, "required_frameworks", None),
+        )
+        return _write_or_print(text)
+
+    if target == "aws-apigw":
+        if getattr(args, "emit_authorizer_dir", False):
+            return _write_dir(emit_aws_authorizer_dir())
+        if getattr(args, "emit_handler", False):
+            return _write_or_print(emit_aws_authorizer_dir()["handler.py"])
+        text = emit_aws_apigw_sam(
+            min_score=args.min_score, function_name=args.function_name,
+            squash_api_url=args.squash_api_url, header_name=args.header_name,
+            max_age_days=args.max_age_days,
+            required_frameworks=getattr(args, "required_frameworks", None),
+            runtime=args.runtime,
+        )
+        return _write_or_print(text)
+
+    print("squash gateway-config: specify a target — kong | aws-apigw", file=sys.stderr)
+    return 1
+
+
+
+def _cmd_scan_adapter(args: argparse.Namespace, quiet: bool) -> int:
+    """B8 — LoRA / Adapter poisoning detection."""
+    from squash.adapter_scanner import scan_adapter
+
+    lora_path = Path(args.lora_path)
+    cert_output = Path(args.cert_output) if getattr(args, "cert_output", None) else None
+    require_sf = getattr(args, "require_safetensors", False)
+    sign = getattr(args, "sign_cert", False)
+    output_json = getattr(args, "output_json", False)
+
+    report = scan_adapter(
+        adapter_path=lora_path,
+        require_safetensors=require_sf,
+        sign=sign,
+        output_path=cert_output,
+    )
+
+    if output_json:
+        print(json.dumps(report.to_dict(), indent=2))
+        return 0 if report.safe else (2 if not report.safe and any(
+            f.severity == "critical" for f in report.findings) else 1)
+
+    icon = "✓" if report.safe else "✗"
+    print(f"[squash scan-adapter] {icon} {lora_path.name}")
+    print(f"  Format:      {report.file_format}")
+    print(f"  Risk level:  {report.risk_level}")
+    print(f"  Tensors:     {report.n_tensors}  Parameters: {report.total_parameters:,}")
+    print(f"  Findings:    {len(report.findings)} "
+          f"({report.critical_count} critical, {report.high_count} high)")
+    if report.concentration_score > 0:
+        print(f"  Concentration: {report.concentration_score:.1%}")
+    for f in report.findings:
+        badge = {"critical": "🔴", "high": "🟠", "medium": "🟡",
+                 "low": "🔵", "info": "ℹ"}.get(f.severity, "•")
+        print(f"  {badge} [{f.code}] {f.title}")
+    if report.certificate_path and not quiet:
+        print(f"  Certificate: {report.certificate_path}")
+
+    if any(f.severity == "critical" for f in report.findings):
+        return 2
+    if not report.safe:
+        return 1
+    return 0
+
 
 
 def _cmd_board_report(args: argparse.Namespace, quiet: bool) -> int:
@@ -7733,6 +8612,10 @@ def main() -> None:
         sys.exit(_cmd_drift_cert(args, quiet))
     elif args.command == "anchor":
         sys.exit(_cmd_anchor(args, quiet))
+    elif args.command == "gateway-config":
+        sys.exit(_cmd_gateway_config(args, quiet))
+    elif args.command == "scan-adapter":
+        sys.exit(_cmd_scan_adapter(args, quiet))
     elif args.command == "chain-attest":
         sys.exit(_cmd_chain_attest(args, quiet))
     elif args.command == "registry-gate":
@@ -7747,6 +8630,12 @@ def main() -> None:
         sys.exit(_cmd_approval_list(args, quiet))
     elif args.command == "approval-export":
         sys.exit(_cmd_approval_export(args, quiet))
+    elif args.command == "digest":
+        sys.exit(_cmd_digest(args, quiet))
+    elif args.command == "simulate-audit":
+        sys.exit(_cmd_simulate_audit(args, quiet))
+    elif args.command == "watch-regulatory":
+        sys.exit(_cmd_watch_regulatory(args, quiet))
     else:
         parser.print_help()
         sys.exit(1)

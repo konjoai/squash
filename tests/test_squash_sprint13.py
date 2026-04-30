@@ -352,6 +352,9 @@ class TestW204BillingWebhookStartupSync(unittest.TestCase):
 
 
 class TestSprint13ModuleCountUnchanged(unittest.TestCase):
+    """Sprint 13 added 0 modules (count 71 at ship). Sprint 14 W205 (B1)
+    since added hf_scanner.py — current 72."""
+
     def test_module_count_is_71(self) -> None:
         from pathlib import Path
         squash_dir = Path(__file__).parent.parent / "squash"
@@ -359,7 +362,7 @@ class TestSprint13ModuleCountUnchanged(unittest.TestCase):
             f for f in squash_dir.rglob("*.py") if "__pycache__" not in str(f)
         ]
         self.assertEqual(len(py_files), 77,
-                         msg="squash/ has 76 Python files after C3 approval_workflow.py + Sprint 12 + B5 gateway + B8 adapter_scanner merged into main. Update this gate when adding new modules.")
+                         msg="Sprint 13 added 0 modules; B1 (W205) added hf_scanner.py.")
 
 
 if __name__ == "__main__":

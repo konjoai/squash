@@ -651,17 +651,15 @@ class TestModuleCountGate(unittest.TestCase):
         # dashboard.py, regulatory_feed.py, due_diligence.py — 65 total.
         # Sprint 9 (W188–W191) added telemetry.py, integrations/gitops.py,
         # webhook_delivery.py, sbom_diff.py — 69 total.
-        # W193 / B6 (audit-trail blockchain anchoring) added anchor.py — 70 total.
-        # W194 / B7 (drift SLA certificate) added drift_certificate.py — 71 total.
-        # W195 / B9 (data poisoning detection) added data_poison.py — 72 total.
-        # W196 / B10 (licence conflict detection) added license_conflict.py — 73 total.
-        # Sprint 10 (W193) added model_card_validator.py — 74 total.
-        # Sprint 11 (W197) added chain_attest.py — 75 total.
-        # W223-225 / C2 (AI washing detection) added washing_detector.py — +2 more = 77 total.
+        # Sprint 10 (W192–W194) added model_card_validator.py — 70 total.
+        # Sprint 11 (W195–W197) added chain_attest.py — 71 total.
+        # B1 hf_scanner.py (72) · B5 gateway.py (73) · B8 adapter_scanner.py (74)
+        # · B2 pdf_report.py (75) · Sprint 27 regulatory_watch.py (76)
+        # · Sprint 22 audit_sim.py (77).
         self.assertEqual(
             count,
             77,
-            msg=f"squash/ has {count} Python files (expected 77 after W225/C2). "
+            msg=f"squash/ has {count} Python files (expected 77 after Sprint 22). "
                 "If you added a file, update this gate.",
         )
 
