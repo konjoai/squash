@@ -5,6 +5,67 @@ Format: [Conventional Commits](https://www.conventionalcommits.org/) · [Keep a 
 
 ---
 
+## [1.14.0] — 2026-04-30 — Sprint 22 W229–W231 / Track C-5: Regulatory Examination Simulation
+
+### Added (W229–W231 — Track C / C5 — Regulatory Examination Simulation)
+
+78% of executives can't pass an AI governance audit in 90 days.
+`squash simulate-audit` closes that gap in 60 seconds. Mock regulatory
+examination from the examiner's perspective — answers pulled from squash
+attestation data, gaps flagged, prioritised remediation roadmap included.
+
+```bash
+squash simulate-audit --regulator EU-AI-Act --models-dir ./model
+squash simulate-audit --regulator NIST-RMF --json
+squash simulate-audit --regulator SEC --output-dir ./compliance/
+squash simulate-audit --regulator FDA --fail-below 60
+```
+
+- **`squash/audit_sim.py`** (NEW MODULE — W229–W230):
+  - `ExamQuestion` — q_id, article, question, answer_sources, answer_cli, weight (1–3), category, days_to_close
+  - `ExamAnswer` — status (PASS/PARTIAL/FAIL/N/A), evidence_found/missing, gap_description, remediation
+  - `ReadinessReport` — overall_score, readiness_tier, answers, roadmap, executive summary; `to_json()`, `to_markdown()`, `save()`
+  - `AuditSimulator.simulate(model_path, regulator)` → `ReadinessReport`
+  - **Scoring:** score = 100 × Σ(earned) / Σ(max), where PASS=2/PARTIAL=1/FAIL=0 × weight; **critical-gate cap** — any weight-3 fail caps score at 74 regardless of other results
+  - **Tiers:** AUDIT_READY ≥80 · SUBSTANTIAL 60–79 · DEVELOPING 40–59 · EARLY_STAGE <40
+  - **Evidence detection** — file-presence scan of model_path/ and model_path/squash/ against canonical squash artefact names; instant, no network calls
+
+- **4 regulator profiles** (W230):
+  - **EU-AI-Act (38 questions)** — Art. 9 (risk management system), Art. 10 (data governance + bias), Art. 11 (Annex IV technical documentation), Art. 12 (record-keeping + logs), Art. 13 (transparency + model card), Art. 14 (human oversight), Art. 15 (accuracy / robustness / cybersecurity), Art. 17/16 (QMS + conformity), Art. 25/53/61/72/73 (supply chain / GPAI / post-market / incident reporting)
+  - **NIST-RMF (30 questions)** — GOVERN 1.1–6.1 (policies, accountability, roles, training, monitoring, third-party, concentration), MAP 1.1–5.1 (context, risk tolerance, benefits/harms, scientific basis), MEASURE 1.1–4.1 (metrics, test sets, bias, drift, cybersecurity, societal effects), MANAGE 1.1–5.1 (risk plans, responses, monitoring, residual risk, improvement)
+  - **SEC (22 questions)** — AI disclosure, OMB M-26-04 model cards, investment-adviser oversight, AI capability claim verification, cybersecurity disclosures, data governance, bias testing, operational controls, audit trail, AI-washing, concentration risk, change management
+  - **FDA (20 questions)** — SaMD risk classification, 510(k) clearance, analytical/clinical validation, PCCP (change control plan), QMS 21 CFR 820, intended use, labelling §801, adverse event reporting, training data demographics, subgroup performance (bias), cybersecurity §524B, version control, post-market monitoring, FMEA, 21 CFR Part 11, human factors, supply chain, transparency
+
+- **`squash/cli.py`** — `squash simulate-audit` first-class command (W231):
+  - `--regulator {EU-AI-Act,NIST-RMF,SEC,FDA}` (default: EU-AI-Act)
+  - `--models-dir PATH` (default: cwd)
+  - `--output-dir DIR` (writes `audit-readiness.{json,md}`)
+  - `--json` (structured JSON to stdout)
+  - `--fail-below N` (exit 1 if score < N — CI gate)
+  - `--quiet`
+
+- **`tests/test_squash_sprint22.py`** (NEW) — 48 tests:
+  - ExamQuestion / ExamAnswer field assertions
+  - Scoring maths: all-pass=100, all-fail=0, critical-gate cap at 74, partial=50, all 4 tier transitions
+  - Profile size assertions (38/30/22/20 questions)
+  - EU-AI-Act profile: unique IDs, all fields non-empty, critical gates present, categories covered
+  - AuditSimulator: all 4 regulators run without error, empty score=0/EARLY_STAGE, answer count matches, bad regulator raises ValueError, executive summary populated
+  - Populated dir: score>0, passing+partial>0, scores in 0–100, roadmap order (weight desc)
+  - ReadinessReport: valid JSON, all markdown sections, score in Markdown, question IDs in Markdown, remediation commands present, save() writes both files, answers count in JSON, tier in JSON
+  - CLI: help surface (6 flags + 4 regulators), default run writes artefacts, JSON output structure (squash_version/regulator/remediation_roadmap), NIST-RMF 30 questions, SEC 22, FDA 20, fail-below gates (score<1→1, score<100→1, 0→0), Markdown has roadmap, populated dir scores higher than empty
+
+### Changed
+- **Module count gates** (8 files) bumped 76 → 77 for `audit_sim.py`
+- **`SQUASH_MASTER_PLAN.md`** — Track C / C5 marked **shipped**
+
+### Stats
+- **48 new tests** · **0 regressions** · **4308 total tests passing**
+- **1 new module** (`audit_sim.py`) · 76 → 77 modules
+- **1 new top-level CLI command** (`simulate-audit`) with 6 flags
+- **4 regulatory profiles** · 110 examiner questions total
+
+---
+
 ## [1.13.0] — 2026-04-30 — Sprint 27 W243–W245 / Track C-4: Continuous Regulatory Watch Daemon
 
 ### Added (W243–W245 — Track C / C4 — Continuous Regulatory Watch Daemon)

@@ -2327,6 +2327,66 @@ def _build_parser() -> argparse.ArgumentParser:
         "--quiet", action="store_true", help="Suppress non-error output",
     )
 
+    # ── Sprint 22 W229-W231 (Track C / C5) — simulate-audit ───────────────────
+    sa_cmd = sub.add_parser(
+        "simulate-audit",
+        help="Run a mock regulatory examination — pulls answers from squash attestation data",
+        description=(
+            "Simulate a regulatory examination from the examiner's perspective.\n"
+            "78% of executives can't pass an AI governance audit in 90 days.\n"
+            "This command closes that gap in 60 seconds.\n\n"
+            "Supported regulators:\n"
+            "  EU-AI-Act   38 questions (Art. 9-15, 17, 73, Annex IV)\n"
+            "  NIST-RMF    30 questions (GOVERN, MAP, MEASURE, MANAGE)\n"
+            "  SEC         22 questions (AI disclosure, OMB M-26-04)\n"
+            "  FDA         20 questions (SaMD, clinical validation)\n\n"
+            "Examples:\n"
+            "  squash simulate-audit --regulator EU-AI-Act --models-dir ./model\n"
+            "  squash simulate-audit --regulator NIST-RMF --json\n"
+            "  squash simulate-audit --regulator SEC --output-dir ./compliance/\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    sa_cmd.add_argument(
+        "--regulator", "-r",
+        default="EU-AI-Act",
+        choices=["EU-AI-Act", "NIST-RMF", "SEC", "FDA"],
+        dest="sa_regulator",
+        help="Regulatory framework to simulate. Default: EU-AI-Act",
+    )
+    sa_cmd.add_argument(
+        "--models-dir", "--model-path",
+        default=".",
+        dest="sa_models_dir",
+        help="Path to model directory containing squash attestation artefacts. "
+             "Default: current directory.",
+    )
+    sa_cmd.add_argument(
+        "--output-dir",
+        default=None,
+        dest="sa_output_dir",
+        help="Directory to write audit-readiness.json + audit-readiness.md. "
+             "Default: write to --models-dir.",
+    )
+    sa_cmd.add_argument(
+        "--json",
+        action="store_true",
+        dest="sa_json",
+        help="Print structured JSON report to stdout.",
+    )
+    sa_cmd.add_argument(
+        "--fail-below",
+        type=int,
+        default=0,
+        dest="sa_fail_below",
+        help="Exit non-zero if readiness score is below this threshold (0–100).",
+    )
+    sa_cmd.add_argument(
+        "--quiet",
+        action="store_true",
+        help="Suppress non-essential output.",
+    )
+
     # ── Sprint 27 W243-W245 (Track C / C4) — watch-regulatory daemon ──────────
     wr_cmd = sub.add_parser(
         "watch-regulatory",
@@ -4785,6 +4845,74 @@ def _cmd_digest(args: argparse.Namespace, quiet: bool) -> int:
 
     print(f"squash digest: unknown subcommand {sub_cmd!r}", file=sys.stderr)
     return 2
+
+
+def _cmd_simulate_audit(args: argparse.Namespace, quiet: bool) -> int:
+    """Sprint 22 W231 — `squash simulate-audit`. Regulatory exam simulation.
+
+    Exit codes:
+      0   success (score meets --fail-below threshold if set)
+      1   score below --fail-below threshold
+      2   configuration error
+    """
+    try:
+        from squash.audit_sim import AuditSimulator
+    except ImportError as exc:
+        print(f"squash simulate-audit unavailable: {exc}", file=sys.stderr)
+        return 2
+
+    model_path = Path(getattr(args, "sa_models_dir", ".") or ".")
+    if not model_path.exists():
+        print(f"simulate-audit: path not found: {model_path}", file=sys.stderr)
+        return 2
+
+    regulator = getattr(args, "sa_regulator", "EU-AI-Act") or "EU-AI-Act"
+    quiet = quiet or getattr(args, "quiet", False)
+
+    try:
+        report = AuditSimulator().simulate(model_path, regulator)
+    except ValueError as exc:
+        print(f"simulate-audit: {exc}", file=sys.stderr)
+        return 2
+    except Exception as exc:  # noqa: BLE001
+        print(f"simulate-audit: failed: {exc}", file=sys.stderr)
+        return 1
+
+    output_dir_arg = getattr(args, "sa_output_dir", None)
+    output_dir = Path(output_dir_arg) if output_dir_arg else model_path
+    written = report.save(output_dir)
+
+    emit_json = getattr(args, "sa_json", False)
+    if emit_json:
+        print(report.to_json())
+    elif not quiet:
+        tier_emoji = {
+            "AUDIT_READY":  "✅",
+            "SUBSTANTIAL":  "🟡",
+            "DEVELOPING":   "🟠",
+            "EARLY_STAGE":  "🔴",
+        }.get(report.readiness_tier, "⚪")
+        print(
+            f"{tier_emoji} {regulator} readiness: "
+            f"{report.overall_score}/100 · {report.readiness_tier.replace('_', ' ')}"
+        )
+        print(
+            f"   {report.passing} PASS · {report.partial} PARTIAL · "
+            f"{report.failing} FAIL ({report.critical_fails} critical)"
+        )
+        for fmt, p in written.items():
+            print(f"   [{fmt}] {p}")
+
+    fail_below = int(getattr(args, "sa_fail_below", 0) or 0)
+    if fail_below and report.overall_score < fail_below:
+        if not quiet:
+            print(
+                f"simulate-audit: score {report.overall_score} < "
+                f"threshold {fail_below} — failing",
+                file=sys.stderr,
+            )
+        return 1
+    return 0
 
 
 def _cmd_watch_regulatory(args: argparse.Namespace, quiet: bool) -> int:
@@ -7524,6 +7652,8 @@ def main() -> None:
         sys.exit(_cmd_registry_gate(args, quiet))
     elif args.command == "digest":
         sys.exit(_cmd_digest(args, quiet))
+    elif args.command == "simulate-audit":
+        sys.exit(_cmd_simulate_audit(args, quiet))
     elif args.command == "watch-regulatory":
         sys.exit(_cmd_watch_regulatory(args, quiet))
     else:
