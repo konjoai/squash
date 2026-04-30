@@ -155,7 +155,7 @@ Pure engineering that has zero dependency on Track A once A1 is live. Each item 
 | **B5** | **API Gateway Plugin** — Kong + AWS Lambda authorizer | 8 days | May 27–Jun 5 | D1, C5 | Two packages (Kong Go/Lua + AWS Python) | (de-scoped Tier 3 #28; reinstated as B5) |
 | **B6** | **Blockchain Anchoring** — Ethereum OP_RETURN of attestation hash | 6 days | Jun 6–13 | D1, C5 | `provenance.py` exists; new web3.py + tx builder | Sprint 17 (W215–W217) |
 | **B7** | **Drift SLA Certificate** — `squash drift-sla --threshold 0.05 --window 30d` | 4 days | May 28–Jun 2 | B5, C4 | `drift.py` already computes PSI/KS; new SLA cert + breach event | Sprint 31 (W253–W254) |
-| **B8** | **LoRA / Adapter Poisoning Detection** — `squash scan-adapter --lora ./adapter.safetensors` | 5 days | Jun 5–11 | B6, D1 | `scanner.py` + ModelScan; new behavioural-comparison + weight-delta anomaly | Sprint 32 (W257–W258) |
+| **B8** ✅ | **LoRA / Adapter Poisoning Detection** — `squash scan-adapter --lora ./adapter.safetensors` | 5 days | Jun 5–11 | B6, D1 | `scanner.py` + ModelScan; new behavioural-comparison + weight-delta anomaly | Sprint 32 (W257–W258) |
 | **B9** | **Data Poisoning + Pipeline Integrity Attestation** — `squash attest-pipeline --datasets ./data/` | 7 days | Jun 12–22 | C5, D2 | `data_lineage.py` + `scanner.py`; new dataset hash verifier + label-distribution anomaly | Sprint 34 (W262–W264) |
 | **B10** | **License Conflict Detector** — `squash license-check --deployment-type commercial-saas` | 5 days | May 18–23 | B4, C3 | `data_lineage.py` SPDX layer; new 200+ LLM license DB + deployment-type rules | Sprint 33 (W255–W256) — OMB M-26-04 deadline |
 
@@ -1353,7 +1353,7 @@ deliverable is one more proof artefact.
 
 ---
 
-### Sprint 32 — LoRA / Adapter Poisoning Detection (`squash scan-adapter`) · **Track B / B8**
+### Sprint 32 — LoRA / Adapter Poisoning Detection (`squash scan-adapter`) · **Track B / B8** ✅ COMPLETE
 
 **Goal:** `squash scan-adapter --lora ./adapter.safetensors --base-model ./model` runs behavioural-comparison testing between the base model and the LoRA-applied model, flags statistical anomalies in the weight-delta distribution that could indicate backdoor injection, checks adapter provenance + signing, generates a signed adapter safety certificate. Includes `--require-safetensors` to block pickle-format adapters outright.
 

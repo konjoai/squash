@@ -2173,6 +2173,34 @@ def _build_parser() -> argparse.ArgumentParser:
     gw_aws.add_argument("--output", dest="output")
 
 
+
+    # ── B8 (Track B) — scan-adapter: LoRA / Adapter poisoning detection ─────
+    sa_cmd = sub.add_parser(
+        "scan-adapter",
+        help="Scan a LoRA / adapter file for poisoning, backdoors, and format risks",
+        description=(
+            "Analyse a LoRA or fine-tuning adapter file for indicators of\n"
+            "backdoor injection, weight-delta anomalies, and unsafe serialisation.\n\n"
+            "Examples:\n"
+            "  squash scan-adapter --lora ./adapter.safetensors\n"
+            "  squash scan-adapter --lora ./adapter.safetensors --require-safetensors\n"
+            "  squash scan-adapter --lora ./adapter.pt --sign --output report.json\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    sa_cmd.add_argument("--lora", required=True, dest="lora_path",
+                        help="Path to the LoRA / adapter file to scan")
+    sa_cmd.add_argument("--require-safetensors", action="store_true",
+                        dest="require_safetensors",
+                        help="Fail (rc=2) if adapter is not in safetensors format")
+    sa_cmd.add_argument("--sign", action="store_true", dest="sign_cert",
+                        help="Embed HMAC-SHA256 signature in the certificate JSON")
+    sa_cmd.add_argument("--output", dest="cert_output",
+                        help="Path to write signed certificate JSON (default: <adapter>-squash-adapter-scan.json)")
+    sa_cmd.add_argument("--json", action="store_true", dest="output_json",
+                        help="Print full report JSON to stdout")
+
+
     # ── W197 (Sprint 11) — chain-attest: composite chain / pipeline attest ────
     chain_cmd = sub.add_parser(
         "chain-attest",
@@ -7007,6 +7035,52 @@ def _cmd_gateway_config(args, quiet):
 
 
 
+def _cmd_scan_adapter(args: argparse.Namespace, quiet: bool) -> int:
+    """B8 — LoRA / Adapter poisoning detection."""
+    from squash.adapter_scanner import scan_adapter
+
+    lora_path = Path(args.lora_path)
+    cert_output = Path(args.cert_output) if getattr(args, "cert_output", None) else None
+    require_sf = getattr(args, "require_safetensors", False)
+    sign = getattr(args, "sign_cert", False)
+    output_json = getattr(args, "output_json", False)
+
+    report = scan_adapter(
+        adapter_path=lora_path,
+        require_safetensors=require_sf,
+        sign=sign,
+        output_path=cert_output,
+    )
+
+    if output_json:
+        print(json.dumps(report.to_dict(), indent=2))
+        return 0 if report.safe else (2 if not report.safe and any(
+            f.severity == "critical" for f in report.findings) else 1)
+
+    icon = "✓" if report.safe else "✗"
+    print(f"[squash scan-adapter] {icon} {lora_path.name}")
+    print(f"  Format:      {report.file_format}")
+    print(f"  Risk level:  {report.risk_level}")
+    print(f"  Tensors:     {report.n_tensors}  Parameters: {report.total_parameters:,}")
+    print(f"  Findings:    {len(report.findings)} "
+          f"({report.critical_count} critical, {report.high_count} high)")
+    if report.concentration_score > 0:
+        print(f"  Concentration: {report.concentration_score:.1%}")
+    for f in report.findings:
+        badge = {"critical": "🔴", "high": "🟠", "medium": "🟡",
+                 "low": "🔵", "info": "ℹ"}.get(f.severity, "•")
+        print(f"  {badge} [{f.code}] {f.title}")
+    if report.certificate_path and not quiet:
+        print(f"  Certificate: {report.certificate_path}")
+
+    if any(f.severity == "critical" for f in report.findings):
+        return 2
+    if not report.safe:
+        return 1
+    return 0
+
+
+
 def _cmd_board_report(args: argparse.Namespace, quiet: bool) -> int:
     """W174 — Board report generation."""
     from squash.board_report import BoardReportGenerator
@@ -7193,6 +7267,8 @@ def main() -> None:
         sys.exit(_cmd_gitops(args, quiet))
     elif args.command == "gateway-config":
         sys.exit(_cmd_gateway_config(args, quiet))
+    elif args.command == "scan-adapter":
+        sys.exit(_cmd_scan_adapter(args, quiet))
     elif args.command == "chain-attest":
         sys.exit(_cmd_chain_attest(args, quiet))
     elif args.command == "registry-gate":

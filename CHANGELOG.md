@@ -5,6 +5,71 @@ Format: [Conventional Commits](https://www.conventionalcommits.org/) · [Keep a 
 
 ---
 
+## [1.11.0] — 2026-04-30 — Sprint 32 W257–W258 / Track B-8: LoRA / Adapter Poisoning Detection
+
+### Added (W257–W258 — Track B / B8 — LoRA / Adapter Poisoning Detection)
+
+LoRA adapters are perceived as "small therefore low-risk." They are not.
+A LoRA adapter is a complete behavioural rewrite in megabytes. JFrog Security
+(2024) found ~100 malicious models on HuggingFace, several establishing
+reverse-shell on load. This sprint ships the first dedicated adapter security
+gate in the compliance-as-code ecosystem.
+
+```
+# Block any non-safetensors adapter outright (policy gate)
+squash scan-adapter --lora ./adapter.pt --require-safetensors
+# → rc=2, CRITICAL: --require-safetensors violated
+
+# Scan a safetensors adapter with signed certificate
+squash scan-adapter --lora ./adapter.safetensors --sign
+# → CLEAN · 2 tensors · 0 findings · Certificate: adapter-squash-adapter-scan.json
+
+# Full JSON report for CI integration
+squash scan-adapter --lora ./adapter.safetensors --json
+# → {"risk_level": "CLEAN", "findings": [], "adapter_hash": "...", ...}
+```
+
+- **`squash/adapter_scanner.py`** (new module) — complete standalone adapter scanner:
+  - `detect_format(path)` — magic-byte detection of safetensors vs. pickle vs. unknown
+  - `scan_pickle_opcodes(path)` — GLOBAL, REDUCE, STACK_GLOBAL, NEWOBJ scan without deserialisation
+  - `scan_shell_patterns(path)` — text-pattern sweep for injection strings (safe on any format)
+  - `parse_safetensors_header(path)` — header integrity + out-of-bounds offset detection
+  - `_analyse_tensors(path, tensors)` — per-tensor stats: mean, std, kurtosis, l2_norm, NaN/Inf
+  - `_compute_concentration(stats)` — layer-concentration score (single layer > 85% of total L2 norm)
+  - `scan_adapter(path, require_safetensors, sign, output_path)` → `AdapterScanReport`
+  - Signed `squash-adapter-scan.json` certificate (HMAC-SHA256 of report payload)
+
+- **`squash/cli.py`** — `squash scan-adapter` command:
+  - `--lora <path>` — adapter file to scan
+  - `--require-safetensors` — exit rc=2 if adapter is not safetensors format
+  - `--sign` — embed HMAC-SHA256 signature in certificate JSON
+  - `--output <path>` — custom certificate output path
+  - `--json` — emit full JSON report to stdout for CI parsing
+
+**Threat model covered (W257):**
+
+| Threat | Detection | Severity |
+|--------|-----------|----------|
+| Pickle / PyTorch format | PK-001 GLOBAL/REDUCE/STACK_GLOBAL opcodes | CRITICAL |
+| Pickle without explicit opcodes | PK-002 inherent execution risk | HIGH |
+| `--require-safetensors` policy violation | PK-003 format gate | CRITICAL |
+| Shell injection strings in any format | SH-001 pattern sweep | CRITICAL |
+| safetensors OOB read vector | ST-006 offset > file size | CRITICAL |
+| Malformed safetensors header | ST-001–ST-004 integrity checks | CRITICAL |
+| NaN / Inf weights | WD-001/WD-002 float sentinel check | HIGH |
+| Kurtosis anomaly (spike weights) | WD-003 excess kurtosis > 8 | HIGH/MEDIUM |
+| High-value target (embed_tokens/lm_head) large magnitude | WD-004 | HIGH |
+| Layer concentration (backdoor in one layer) | WD-005 > 85% L2 in single tensor | MEDIUM |
+
+**Statistical thresholds tuned against (W258):**
+- ≥3 known-clean adapter fixtures (F32 Gaussian, BF16 QLoRA, multi-layer)
+- ≥1 known-malicious fixture per threat class (pickle+opcodes, kurtosis spike, NaN, OOB, shell injection)
+- Clean kurtosis threshold: |kurtosis| < 8 for all 3 clean fixtures
+
+**Module count:** 73 → 74 (adapter_scanner.py)
+
+---
+
 ## [1.10.0] — 2026-04-30 — Sprint 15 W209/W210 / Track B-3: Compliance Digest
 
 ### Added (W209/W210 — Track B / B3 — Weekly / Monthly Email Digest)
