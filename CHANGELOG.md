@@ -5,6 +5,61 @@ Format: [Conventional Commits](https://www.conventionalcommits.org/) · [Keep a 
 
 ---
 
+## [1.7.0] — 2026-04-30 — B7: Drift SLA Certificate (W194)
+
+### Added
+
+- **`squash/drift_certificate.py`** — Drift SLA Certificate generator (W194 / Tier 3 B7):
+  - `DriftSLASpec` — typed SLA contract: model, framework, min_score, window_days,
+    max_violation_rate, min_snapshots, org. Input validation on all parameters.
+  - `ScoreLedger` — append-only JSONL ledger of compliance score snapshots per model per
+    framework. Populated from `master_record.json` files via `ingest()` or directly via
+    `add_snapshot()`. Supports time-window, model, and framework filtering.
+  - `SLAEvaluator` — computes SLA result over a ledger slice: passes/fails, compliance
+    rate, score stats (min/max/avg/p10), violation count, contiguous violation windows.
+    Mathematically exact: violation rate is per-snapshot, not per-calendar-day bucket.
+  - `ViolationWindow` — contiguous run of below-threshold snapshots with min score.
+  - `DriftCertificate` — signed certificate envelope with `squash.drift.certificate/v1`
+    schema marker; `body_dict()` produces the canonical signed surface (excludes sig/key);
+    `to_markdown()`, `to_html()`, `to_json()` renderers; HTML is print-ready for PDF via
+    weasyprint.
+  - `DriftCertificateIssuer` — signs certificates with Ed25519 (same keypair as
+    `LocalAnchor`); public key embedded in envelope; `verify()` detects tampered spec,
+    tampered result, unknown schema, and unsigned certs.
+  - `load_certificate()` — round-trip JSON deserialiser.
+  - `SQUASH_DRIFT_LEDGER` env var for CI/air-gap ledger path override.
+- **CLI: `squash drift-cert`** — 5 subcommands:
+  - `ingest <master_record.json>` — append snapshot to ledger
+  - `issue --model --framework --min-score --window [--priv-key] [--out] [--format]`
+  - `verify <cert.json>` — signature + self-consistency check
+  - `show <cert.json>` — human-readable Markdown render
+  - `export <cert.json> --format md|html|pdf` — export certificate
+- **`tests/test_drift_certificate.py`** — 30 tests:
+  - DriftSLASpec validation (invalid score, window, rate, min_snapshots)
+  - ScoreLedger: add/query, model filter, time-window filter, master_record ingest
+  - SLAEvaluator: all-pass, violation-rate exceeded, within-budget, insufficient
+    snapshots, no snapshots, violation windows, score statistics
+  - DriftCertificate: body_dict excludes signature, JSON round-trip, Markdown/HTML render
+  - DriftCertificateIssuer: sign+verify roundtrip, tampered spec fails, tampered result
+    fails, unsigned cert → false, unknown schema → false
+  - Env-var override; CLI parser registration; end-to-end ingest→issue→verify
+
+### Konjo notes
+
+- 건조 — the SLA evaluation is a pure function over the ledger; no network, no daemon,
+  no background worker. The ledger is a single JSONL file.
+- ᨀᨚᨐᨚ — `violation_rate = violations / snapshots` is computed to full float precision,
+  not rounded to a daily bucket. A certificate is wrong or it is right — no rounding mode.
+- 康宙 — the ledger is append-only; certificates are issued on-demand from history.
+  Tamper detection is a first-class property: changing any field in the certificate body
+  breaks the Ed25519 signature immediately.
+- কুঞ্জ — a Drift SLA Certificate is the artefact an insurance underwriter, enterprise
+  procurement team, or board-level CISO can actually hold. "Model M stayed above 80/100
+  on EU AI Act for 90 days, signed, verifiable." That is the garden squash builds for
+  the next person.
+
+---
+
 ## [1.6.0] — 2026-04-30 — B6: Audit-Trail Blockchain Anchoring (W193)
 
 ### Added

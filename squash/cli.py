@@ -1979,6 +1979,56 @@ def _build_parser() -> argparse.ArgumentParser:
     go_annotate.add_argument("--policy", default="eu-ai-act", help="Policy name (default: eu-ai-act)")
     go_annotate.add_argument("--passed", action="store_true", default=True)
 
+    # ── W194 / B7 — Drift SLA Certificate ────────────────────────────────────
+    dc_cmd = sub.add_parser(
+        "drift-cert",
+        help="Drift SLA Certificate — prove sustained compliance over a time window",
+        description=(
+            "Issue and verify Drift SLA Certificates: signed, time-windowed\n"
+            "assertions that a model maintained a compliance score above a\n"
+            "threshold for a defined SLA window.\n\n"
+            "Examples:\n"
+            "  squash drift-cert ingest ./out/master_record.json\n"
+            "  squash drift-cert issue --model phi-3 --framework eu-ai-act --min-score 80 --window 90\n"
+            "  squash drift-cert issue --model phi-3 --priv-key ./squash.priv.pem --out cert.json\n"
+            "  squash drift-cert verify cert.json\n"
+            "  squash drift-cert show cert.json\n"
+            "  squash drift-cert export cert.json --format html\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    dc_sub = dc_cmd.add_subparsers(dest="dc_command")
+
+    dc_ingest = dc_sub.add_parser("ingest", help="Add a master_record.json snapshot to the score ledger")
+    dc_ingest.add_argument("master_record_path", help="Path to master_record.json")
+    dc_ingest.add_argument("--ledger", default=None, dest="ledger_path", help="Score ledger path (default: ~/.squash/drift/score_ledger.jsonl)")
+
+    dc_issue = dc_sub.add_parser("issue", help="Evaluate SLA and issue a signed certificate")
+    dc_issue.add_argument("--model", required=True, dest="model_id", help="Model ID")
+    dc_issue.add_argument("--framework", default="eu-ai-act", help="Compliance framework (default: eu-ai-act)")
+    dc_issue.add_argument("--min-score", type=float, default=80.0, dest="min_score", help="Minimum passing score (default: 80)")
+    dc_issue.add_argument("--window", type=int, default=90, dest="window_days", help="Evaluation window in days (default: 90)")
+    dc_issue.add_argument("--max-violation-rate", type=float, default=0.05, dest="max_violation_rate", help="Max fraction of failing snapshots (default: 0.05)")
+    dc_issue.add_argument("--min-snapshots", type=int, default=3, dest="min_snapshots", help="Minimum snapshots required (default: 3)")
+    dc_issue.add_argument("--org", default="", help="Organisation name embedded in certificate")
+    dc_issue.add_argument("--priv-key", default=None, dest="priv_key", help="Ed25519 .priv.pem for signing")
+    dc_issue.add_argument("--ledger", default=None, dest="ledger_path", help="Score ledger path")
+    dc_issue.add_argument("--out", default=None, help="Write certificate JSON to PATH (default: stdout)")
+    dc_issue.add_argument("--format", default="json", choices=["json", "md", "html"], dest="issue_format", help="Output format (default: json)")
+    dc_issue.add_argument("--json", action="store_true", dest="output_json")
+
+    dc_verify = dc_sub.add_parser("verify", help="Verify a certificate's Ed25519 signature and self-consistency")
+    dc_verify.add_argument("cert_path", help="Path to certificate JSON file")
+    dc_verify.add_argument("--json", action="store_true", dest="output_json")
+
+    dc_show = dc_sub.add_parser("show", help="Render a certificate as human-readable Markdown")
+    dc_show.add_argument("cert_path")
+
+    dc_export = dc_sub.add_parser("export", help="Export a certificate to Markdown, HTML, or PDF")
+    dc_export.add_argument("cert_path")
+    dc_export.add_argument("--format", default="html", choices=["md", "html", "pdf"], dest="export_format")
+    dc_export.add_argument("--out", default=None, help="Output path (default: <cert_id>.<format>)")
+
     # ── W193 / B6 — Audit-trail blockchain anchoring ──────────────────────────
     anchor_cmd = sub.add_parser(
         "anchor",
@@ -6119,6 +6169,121 @@ def _cmd_gitops(args: argparse.Namespace, quiet: bool) -> int:
         return 1
 
 
+def _cmd_drift_cert(args: argparse.Namespace, quiet: bool) -> int:
+    """W194 / B7 — Drift SLA Certificate issuer and verifier."""
+    from squash.drift_certificate import (
+        DriftCertificateIssuer,
+        DriftSLASpec,
+        ScoreLedger,
+        default_ledger_path,
+        load_certificate,
+    )
+
+    sub = getattr(args, "dc_command", None)
+
+    if sub == "ingest":
+        path = Path(args.master_record_path)
+        if not path.exists():
+            print(f"error: {path} not found", file=sys.stderr)
+            return 1
+        ledger_path = Path(args.ledger_path) if args.ledger_path else default_ledger_path()
+        ledger = ScoreLedger(ledger_path=ledger_path)
+        snap = ledger.ingest(path)
+        if not quiet:
+            print(f"✓ ingested {snap.attestation_id or snap.model_id} @ {snap.timestamp[:10]} (score={snap.score})")
+        return 0
+
+    if sub == "issue":
+        ledger_path = Path(args.ledger_path) if args.ledger_path else default_ledger_path()
+        ledger = ScoreLedger(ledger_path=ledger_path)
+        spec = DriftSLASpec(
+            model_id=args.model_id,
+            framework=args.framework,
+            min_score=args.min_score,
+            window_days=args.window_days,
+            max_violation_rate=args.max_violation_rate,
+            min_snapshots=args.min_snapshots,
+            org=args.org,
+        )
+        priv_key = Path(args.priv_key) if args.priv_key else None
+        issuer = DriftCertificateIssuer(priv_key_path=priv_key)
+        cert = issuer.issue(spec, ledger)
+
+        fmt = args.issue_format
+        if fmt == "md":
+            text = cert.to_markdown()
+        elif fmt == "html":
+            text = cert.to_html()
+        else:
+            text = cert.to_json()
+
+        if args.out:
+            Path(args.out).write_text(text, encoding="utf-8")
+            if not quiet:
+                icon = "✅" if cert.result.passes_sla else "❌"
+                print(f"{icon} certificate {cert.cert_id} written to {args.out} (rate={cert.result.compliance_rate:.1%})")
+        else:
+            print(text)
+        return 0 if cert.result.passes_sla else 2
+
+    if sub == "verify":
+        path = Path(args.cert_path)
+        if not path.exists():
+            print(f"error: {path} not found", file=sys.stderr)
+            return 1
+        cert = load_certificate(path)
+        ok, msg = DriftCertificateIssuer.verify(cert)
+        if args.output_json:
+            print(json.dumps({"ok": ok, "message": msg, "cert_id": cert.cert_id}, indent=2))
+        else:
+            icon = "✓" if ok else "✗"
+            print(f"{icon} {cert.cert_id}: {msg}")
+        return 0 if ok else 2
+
+    if sub == "show":
+        path = Path(args.cert_path)
+        if not path.exists():
+            print(f"error: {path} not found", file=sys.stderr)
+            return 1
+        cert = load_certificate(path)
+        print(cert.to_markdown())
+        return 0
+
+    if sub == "export":
+        path = Path(args.cert_path)
+        if not path.exists():
+            print(f"error: {path} not found", file=sys.stderr)
+            return 1
+        cert = load_certificate(path)
+        fmt = args.export_format
+        if fmt == "md":
+            text = cert.to_markdown()
+        elif fmt == "html":
+            text = cert.to_html()
+        elif fmt == "pdf":
+            try:
+                from weasyprint import HTML as WeasyprintHTML  # type: ignore
+            except ImportError:
+                print("error: weasyprint required for PDF export: pip install weasyprint", file=sys.stderr)
+                return 2
+            out_path = Path(args.out) if args.out else Path(f"{cert.cert_id}.pdf")
+            WeasyprintHTML(string=cert.to_html()).write_pdf(str(out_path))
+            if not quiet:
+                print(f"✓ PDF written to {out_path}")
+            return 0
+        else:
+            text = cert.to_json()
+
+        out_path = Path(args.out) if args.out else Path(f"{cert.cert_id}.{fmt}")
+        out_path.write_text(text, encoding="utf-8")
+        if not quiet:
+            print(f"✓ {fmt.upper()} written to {out_path}")
+        return 0
+
+    print("squash drift-cert: specify a subcommand — ingest | issue | verify | show | export")
+    return 1
+
+
 def _cmd_anchor(args: argparse.Namespace, quiet: bool) -> int:
     """W193 / B6 — audit-trail blockchain anchoring."""
     from squash.anchor import (
@@ -6429,6 +6594,8 @@ def main() -> None:
         sys.exit(_cmd_telemetry(args, quiet))
     elif args.command == "gitops":
         sys.exit(_cmd_gitops(args, quiet))
+    elif args.command == "drift-cert":
+        sys.exit(_cmd_drift_cert(args, quiet))
     elif args.command == "anchor":
         sys.exit(_cmd_anchor(args, quiet))
     else:

@@ -677,7 +677,7 @@ class TestModuleCount:
         import subprocess, pathlib
         root = pathlib.Path(__file__).parent.parent / "squash"
         count = len(list(root.rglob("*.py")))
-        assert count == 70, (
+        assert count == 71, (
             f"Module count should be 70, got {count}. "
             "Sprint 9 added telemetry.py, integrations/gitops.py, webhook_delivery.py, sbom_diff.py. "
             "W193/B6 added anchor.py (audit-trail blockchain anchoring). "

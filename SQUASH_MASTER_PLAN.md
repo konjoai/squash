@@ -738,7 +738,7 @@ All 30 features ranked by acquisition impact, revenue leverage, and defensibilit
 | 25 | **Compliance email digest** | `squash/notifications.py` | Weekly/monthly portfolio posture summary. Passive retention. |
 | 26 | **Terraform/Pulumi provider** ✅ B4 (2026-04-30) | `integrations/terraform/` (Go, terraform-plugin-framework v1.13.0) — `squash_attestation` + `squash_policy_check` resources, `squash_compliance_score` data source, Pulumi `command` shell-out examples + bridge path documented. 16 Go tests passing under `-race -count=1`. | Compliance as infrastructure. DevOps teams adopt immediately. |
 | 27 | **Pre-built HuggingFace Spaces deployment** | HF Spaces | Free, visible to entire HF community. Zero marketing cost. |
-| 28 | **API gateway plugin** | Kong/AWS API Gateway | Block inference requests at runtime if attestation expired or CVE flagged. |
+| 28 | **Drift SLA Certificate** ✅ B7 (2026-04-30) | `squash/drift_certificate.py` — DriftSLASpec + ScoreLedger + SLAEvaluator + DriftCertificateIssuer; `squash drift-cert ingest|issue|verify|show|export`; 30 tests passing. Signed `squash.drift.certificate/v1` JSON + HTML + PDF export. | Prove sustained compliance for insurance, enterprise procurement, and board reporting. |
 | 29 | **Audit trail blockchain anchoring** ✅ B6 (2026-04-30) | `squash/anchor.py` — Merkle-batch commitment, LocalAnchor (Ed25519), OpenTimestampsAnchor (Bitcoin), EthereumAnchor (EVM calldata via cast), portable `squash.anchor.proof/v1` docs, `squash anchor` CLI (add/commit/verify/proof/list/status). 23 tests passing. | Immutable proof for financial services/medical/defense. |
 | 30 | **SOC 2 Type II** | Business/legal | Enterprise procurement unblocked. Start readiness phase now. |
 
