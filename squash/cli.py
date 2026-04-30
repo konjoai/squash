@@ -2194,6 +2194,82 @@ def _build_parser() -> argparse.ArgumentParser:
     an_status.add_argument("--ledger-dir", default=None)
     an_status.add_argument("--json", action="store_true", dest="output_json")
 
+
+    # ── W197 (Sprint 11) — chain-attest: composite chain / pipeline attest ────
+    chain_cmd = sub.add_parser(
+        "chain-attest",
+        help="Attest an entire RAG / agent / multi-LLM pipeline as a composite",
+        description=(
+            "Run composite chain attestation. The chain is defined either as a "
+            "JSON / YAML spec or as a Python module path that exposes a "
+            "LangChain Runnable.\n\n"
+            "Examples:\n"
+            "  squash chain-attest ./chain-spec.json --json\n"
+            "  squash chain-attest ./chain-spec.yaml --fail-on-component-violation\n"
+            "  squash chain-attest --verify ./chain-attest.json\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    chain_cmd.add_argument(
+        "spec", metavar="SPEC",
+        help="Path to JSON/YAML chain spec, or 'module.path:attr' for a LangChain Runnable",
+    )
+    chain_cmd.add_argument("--verify", action="store_true", dest="chain_verify_only",
+                           help="Verify an existing chain attestation file (SPEC is the file to verify)")
+    chain_cmd.add_argument("--chain-id", dest="chain_id_override", default=None,
+                           help="Override the chain_id in the spec")
+    chain_cmd.add_argument("--policy", action="append", dest="chain_policies", metavar="POLICY",
+                           help="Policy to evaluate (repeatable; default: enterprise-strict)")
+    chain_cmd.add_argument("--output-dir", dest="chain_output_dir", default=None,
+                           help="Directory to write chain-attest.json and chain-attest.md")
+    chain_cmd.add_argument("--fail-on-component-violation", action="store_true",
+                           dest="chain_fail_on_violation",
+                           help="Exit 1 if any component fails policy")
+    chain_cmd.add_argument("--sign-components", action="store_true",
+                           dest="chain_sign_components",
+                           help="HMAC-sign each component attestation")
+    chain_cmd.add_argument("--json", action="store_true", dest="chain_json",
+                           help="Print full attestation JSON to stdout")
+    chain_cmd.add_argument("--quiet", "-q", action="store_true",
+                           help="Suppress informational output")
+
+    # ── W201 (Sprint 12) — registry-gate: unified pre-registration policy gate ─
+    rg_cmd = sub.add_parser(
+        "registry-gate",
+        help="Pre-registration policy gate for MLflow / W&B / SageMaker / local",
+        description=(
+            "Attest a local model before promoting it to a model registry.\n"
+            "Writes a structured gate decision to registry-gate.json.\n\n"
+            "Examples:\n"
+            "  squash registry-gate --backend local --model-path ./model\n"
+            "  squash registry-gate --backend mlflow --uri models:/MyModel/Staging --model-path ./model\n"
+            "  squash registry-gate --backend sagemaker --uri arn:aws:sagemaker:us-east-1:123:model/v1 --model-path ./model\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    rg_cmd.add_argument("--backend", default="local",
+                        choices=["local", "mlflow", "wandb", "sagemaker"],
+                        help="Registry backend (default: local)")
+    rg_cmd.add_argument("--model-path", required=True, dest="rg_model_path",
+                        help="Path to the local model directory")
+    rg_cmd.add_argument("--uri", dest="rg_uri", default=None,
+                        help="Registry URI (e.g. models:/Name/Stage for MLflow)")
+    rg_cmd.add_argument("--name", dest="rg_name", default=None,
+                        help="Human-readable model name to embed in the gate record")
+    rg_cmd.add_argument("--policy", action="append", dest="rg_policies", metavar="POLICY",
+                        help="Policy to evaluate (repeatable; default: enterprise-strict)")
+    rg_cmd.add_argument("--output-dir", dest="rg_output_dir", default=None,
+                        help="Directory for gate JSON (default: <model-path>/squash/)")
+    rg_cmd.add_argument("--allow-on-fail", action="store_true", dest="rg_allow_on_fail",
+                        help="Record the failure but exit 0 (non-blocking)")
+    rg_cmd.add_argument("--json", action="store_true", dest="rg_json",
+                        help="Print full gate JSON to stdout")
+    rg_cmd.add_argument("--sign", action="store_true", dest="rg_sign",
+                        help="Sigstore-sign the underlying attestation")
+    rg_cmd.add_argument("--quiet", "-q", action="store_true",
+                        help="Suppress informational output")
+
+
     # ── W135 / W136 — Annex IV generate + validate ────────────────────────────
     annex_iv_cmd = sub.add_parser(
         "annex-iv",
@@ -7221,6 +7297,10 @@ def main() -> None:
         sys.exit(_cmd_drift_cert(args, quiet))
     elif args.command == "anchor":
         sys.exit(_cmd_anchor(args, quiet))
+    elif args.command == "chain-attest":
+        sys.exit(_cmd_chain_attest(args, quiet))
+    elif args.command == "registry-gate":
+        sys.exit(_cmd_registry_gate(args, quiet))
     else:
         parser.print_help()
         sys.exit(1)
