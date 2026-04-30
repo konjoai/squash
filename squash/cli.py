@@ -2327,6 +2327,81 @@ def _build_parser() -> argparse.ArgumentParser:
         "--quiet", action="store_true", help="Suppress non-error output",
     )
 
+    # ── Sprint 27 W243-W245 (Track C / C4) — watch-regulatory daemon ──────────
+    wr_cmd = sub.add_parser(
+        "watch-regulatory",
+        help="Continuous regulatory watch daemon — polls SEC, NIST, EUR-Lex for AI governance updates",
+        description=(
+            "Poll live regulatory sources for new AI governance requirements, "
+            "map them to squash policy controls, and surface gap analysis "
+            "against your attested model portfolio.\n\n"
+            "Examples:\n"
+            "  # One-shot poll (cron-friendly)\n"
+            "  squash watch-regulatory --once --models-dir ./models\n"
+            "\n"
+            "  # Continuous daemon (every 6 hours)\n"
+            "  squash watch-regulatory --interval 6h --alert-channel slack\n"
+            "\n"
+            "  # Dry-run: show what would be fetched without persisting\n"
+            "  squash watch-regulatory --once --dry-run\n"
+            "\n"
+            "  # Add custom RSS feed\n"
+            "  squash watch-regulatory --once \\\n"
+            "      --extra-feed name=legiscan,url=https://example.com/rss,keywords=artificial+intelligence\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    wr_cmd.add_argument(
+        "--once", action="store_true", dest="wr_once",
+        help="Poll once, print results, and exit (default behaviour; use without --interval).",
+    )
+    wr_cmd.add_argument(
+        "--interval", default="0", dest="wr_interval",
+        metavar="INTERVAL",
+        help="Polling interval as integer hours or string '6h', '1d', etc. "
+             "When set, runs continuously until interrupted. Default: poll once.",
+    )
+    wr_cmd.add_argument(
+        "--sources", action="append", default=None, dest="wr_sources",
+        choices=["sec", "nist", "eurlex"],
+        help="Sources to poll (repeatable). Default: sec nist eurlex.",
+    )
+    wr_cmd.add_argument(
+        "--extra-feed", action="append", default=None, dest="wr_extra_feeds",
+        metavar="KEY=VAL,...",
+        help="Add a custom RSS feed. Format: name=NAME,url=URL[,keywords=k1+k2]. "
+             "Repeatable.",
+    )
+    wr_cmd.add_argument(
+        "--models-dir", default=None, dest="wr_models_dir",
+        help="Directory of attested model subdirectories for gap analysis.",
+    )
+    wr_cmd.add_argument(
+        "--alert-channel", default="stdout",
+        choices=["stdout", "slack", "teams", "webhook"],
+        dest="wr_alert_channel",
+        help="Where to send new-event alerts. Default: stdout.",
+    )
+    wr_cmd.add_argument(
+        "--db-path", default=None, dest="wr_db_path",
+        help="SQLite store path for seen events. Default: ~/.squash/regulatory_events.db",
+    )
+    wr_cmd.add_argument(
+        "--dry-run", action="store_true", dest="wr_dry_run",
+        help="Fetch events but skip persistence and alert dispatch.",
+    )
+    wr_cmd.add_argument(
+        "--json", action="store_true", dest="wr_json",
+        help="Emit structured JSON output (gap analysis results).",
+    )
+    wr_cmd.add_argument(
+        "--max-events", type=int, default=50, dest="wr_max_events",
+        help="Maximum new events to process per poll cycle (default: 50).",
+    )
+    wr_cmd.add_argument(
+        "--quiet", action="store_true", help="Suppress non-error output",
+    )
+
     # ── W135 / W136 — Annex IV generate + validate ────────────────────────────
     annex_iv_cmd = sub.add_parser(
         "annex-iv",
@@ -4710,6 +4785,119 @@ def _cmd_digest(args: argparse.Namespace, quiet: bool) -> int:
 
     print(f"squash digest: unknown subcommand {sub_cmd!r}", file=sys.stderr)
     return 2
+
+
+def _cmd_watch_regulatory(args: argparse.Namespace, quiet: bool) -> int:
+    """Sprint 27 W245 — `squash watch-regulatory`.
+
+    Poll live regulatory sources, run gap analysis, and route alerts.
+
+    Exit codes:
+      0  success (no new events, or new events processed and notified)
+      1  one or more source adapters failed (partial results still shown)
+      2  configuration error
+    """
+    try:
+        from squash.regulatory_watch import (
+            WatcherConfig, RegulatoryWatcher,
+        )
+    except ImportError as exc:
+        print(f"squash watch-regulatory unavailable: {exc}", file=sys.stderr)
+        return 2
+
+    quiet = quiet or getattr(args, "quiet", False)
+
+    # ── Build config ──────────────────────────────────────────────────────────
+    sources = list(getattr(args, "wr_sources", None) or ["sec", "nist", "eurlex"])
+    db_path_arg = getattr(args, "wr_db_path", None)
+
+    # Parse extra feed configs: "name=foo,url=https://...,keywords=ai+act"
+    extra_feeds: list[dict] = []
+    for raw_feed in (getattr(args, "wr_extra_feeds", None) or []):
+        parts = dict(item.split("=", 1) for item in raw_feed.split(",") if "=" in item)
+        if "name" not in parts or "url" not in parts:
+            print(
+                f"watch-regulatory: --extra-feed must have name= and url= keys: {raw_feed!r}",
+                file=sys.stderr,
+            )
+            return 2
+        keywords = parts.get("keywords", "").replace("+", " ").split() or None
+        extra_feeds.append({
+            "name": parts["name"],
+            "url": parts["url"],
+            "keywords": keywords,
+        })
+
+    cfg = WatcherConfig(
+        sources=sources,
+        extra_feeds=extra_feeds,
+        max_events=getattr(args, "wr_max_events", 50),
+        alert_channel=getattr(args, "wr_alert_channel", "stdout"),
+    )
+    if db_path_arg:
+        cfg.db_path = Path(db_path_arg)
+
+    watcher = RegulatoryWatcher(cfg)
+    models_dir = Path(args.wr_models_dir) if getattr(args, "wr_models_dir", None) else None
+    dry_run = bool(getattr(args, "wr_dry_run", False))
+    emit_json = bool(getattr(args, "wr_json", False))
+    channel = getattr(args, "wr_alert_channel", "stdout")
+
+    # ── Determine polling interval ────────────────────────────────────────────
+    from squash.regulatory_watch import parse_interval as _parse_interval
+    interval_arg = getattr(args, "wr_interval", "0") or "0"
+    interval_seconds = _parse_interval(interval_arg)
+    continuous = interval_seconds > 0
+
+    # ── Main loop ─────────────────────────────────────────────────────────────
+    had_error = False
+    iterations = 0
+    while True:
+        iterations += 1
+        try:
+            new_events, gap_results = watcher.poll(models_dir=models_dir)
+        except Exception as exc:  # noqa: BLE001
+            print(f"watch-regulatory: poll failed: {exc}", file=sys.stderr)
+            had_error = True
+            new_events, gap_results = [], []
+
+        if not quiet and not emit_json:
+            if new_events:
+                print(f"✓ {len(new_events)} new regulatory event(s) detected")
+            else:
+                if not continuous or iterations == 1:
+                    print("✓ No new regulatory events since last poll")
+
+        if emit_json:
+            print(json.dumps(
+                {
+                    "new_events": len(new_events),
+                    "gap_results": [g.to_dict() for g in gap_results],
+                },
+                indent=2, sort_keys=True,
+            ))
+        elif gap_results and not quiet:
+            for gap in gap_results:
+                print()
+                print(gap.summary_text())
+
+        if gap_results and not dry_run and channel != "stdout":
+            watcher.notify(gap_results, channel=channel)
+
+        if dry_run and new_events and not quiet:
+            print(f"[dry-run] {len(new_events)} event(s) not persisted")
+
+        if not continuous or getattr(args, "wr_once", False):
+            break
+
+        if not quiet:
+            next_poll = datetime.datetime.now(datetime.timezone.utc) + \
+                datetime.timedelta(seconds=interval_seconds)
+            print(f"Next poll at {next_poll.strftime('%H:%M UTC')} "
+                  f"({interval_seconds // 3600}h interval)")
+        time.sleep(interval_seconds)
+
+    return 1 if had_error else 0
 
 
 def _cmd_registry_gate(args: argparse.Namespace, quiet: bool) -> int:
@@ -7336,6 +7524,8 @@ def main() -> None:
         sys.exit(_cmd_registry_gate(args, quiet))
     elif args.command == "digest":
         sys.exit(_cmd_digest(args, quiet))
+    elif args.command == "watch-regulatory":
+        sys.exit(_cmd_watch_regulatory(args, quiet))
     else:
         parser.print_help()
         sys.exit(1)

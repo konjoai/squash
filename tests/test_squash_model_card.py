@@ -653,12 +653,12 @@ class TestModuleCountGate(unittest.TestCase):
         # webhook_delivery.py, sbom_diff.py — 69 total.
         # Sprint 10 (W192–W194) added model_card_validator.py — 70 total.
         # Sprint 11 (W195–W197) added chain_attest.py — 71 total.
-        # Sprint 14 B1 added hf_scanner.py (72) · B5 gateway.py (73) ·
-        # B8 adapter_scanner.py (74) · B2 pdf_report.py (75).
+        # B1 hf_scanner.py (72) · B5 gateway.py (73) · B8 adapter_scanner.py (74)
+        # · B2 pdf_report.py (75) · Sprint 27 regulatory_watch.py (76).
         self.assertEqual(
             count,
-            75,
-            msg=f"squash/ has {count} Python files (expected 75 after B2). "
+            76,
+            msg=f"squash/ has {count} Python files (expected 76 after Sprint 27). "
                 "If you added a file, update this gate.",
         )
 

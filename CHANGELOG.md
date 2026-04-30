@@ -5,6 +5,78 @@ Format: [Conventional Commits](https://www.conventionalcommits.org/) · [Keep a 
 
 ---
 
+## [1.13.0] — 2026-04-30 — Sprint 27 W243–W245 / Track C-4: Continuous Regulatory Watch Daemon
+
+### Added (W243–W245 — Track C / C4 — Continuous Regulatory Watch Daemon)
+
+Turns squash from a quarterly compliance tool into a daily intelligence service. Poll SEC.gov, NIST.gov, EUR-Lex, and any custom RSS feed for new AI governance requirements, map them to squash policy controls, and surface gap analysis against the local model portfolio — all from a single cron-friendly command.
+
+```bash
+# One-shot poll (add to cron)
+squash watch-regulatory --once --models-dir ./models --alert-channel slack
+
+# 6-hour daemon
+squash watch-regulatory --interval 6h --alert-channel slack
+
+# Custom state legislature feed
+squash watch-regulatory --once --extra-feed name=legiscan,url=https://...,keywords=artificial+intelligence
+
+# Dry run — see what would surface without persisting
+squash watch-regulatory --once --dry-run --json
+```
+
+- **`squash/regulatory_watch.py`** (NEW MODULE — W243–W244):
+  - `RegulatoryEvent` — event_id, source, title, url, published, summary, severity, fetched_at
+  - `GapAnalysisResult` — maps event → matched_reg_ids, squash_controls, models_to_re_attest, recommended_actions
+  - `WatcherConfig` — sources, extra_feeds, timeout, max_events, alert_channel, db_path
+  - **Source adapters** (duck-typed, graceful per-source failure):
+    - `SecAdapter` — SEC press-release RSS; AI-relevance filtered
+    - `NistAdapter` — NIST CSRC publications RSS; AI-relevance filtered
+    - `EurLexAdapter` — EUR-Lex Official Journal RSS; AI-relevance filtered
+    - `GenericRssAdapter` — any RSS 2.0 or Atom feed with configurable keyword filter
+  - **RSS engine** (`_parse_rss`): namespace-aware Atom + RSS 2.0 parser (stdlib only); AI-relevance keyword filter (18 terms); severity scoring (HIGH/MEDIUM/LOW) from title + source
+  - **SQLite deduplication** (`~/.squash/regulatory_events.db`): event IDs persisted; second poll returns 0 new events for already-seen items; `mark_all_seen()` for bulk catch-up
+  - **Gap analysis** (`gap_analysis(event, models_dir)`):
+    - 32-keyword → framework-ID mapping (EU_AI_ACT, NIST_AI_RMF, SEC_AI, FTC, FDA, CMMC, FEDRAMP, EU_GDPR, NYC_LL144, COLORADO_AI_ACT, …)
+    - pulls squash CLI controls from `regulatory_feed.py` per matched regulation
+    - discovers attested models in `models_dir` that should be re-attested
+    - derives `days_to_act` from the regulation's enforcement deadline
+  - **Alert routing** via `squash.notifications` for Slack/Teams/webhook channels
+  - `parse_interval()` — parse `'6h'`, `'1d'`, `'30m'`, bare seconds
+
+- **`squash/cli.py`** — `squash watch-regulatory` first-class command (W245):
+  - `--once` / `--interval INTERVAL` (cron-friendly / continuous-daemon)
+  - `--sources {sec,nist,eurlex}` (repeatable; default: all three)
+  - `--extra-feed name=NAME,url=URL[,keywords=k1+k2]` (repeatable)
+  - `--models-dir DIR` (gap analysis against local attestations)
+  - `--alert-channel {stdout,slack,teams,webhook}`
+  - `--db-path PATH` (override default `~/.squash/regulatory_events.db`)
+  - `--dry-run` (fetch without persist; shows what would surface)
+  - `--json` (structured JSON: new_events count + full gap_results array)
+  - `--max-events N` (per-poll cap; default 50)
+  - `--quiet`
+
+- **`tests/test_squash_sprint27.py`** (NEW) — 63 tests:
+  - RSS + Atom parsing; AI-relevance filter; severity scoring; event ID stability
+  - `parse_interval` (6h, 1d, 30m, plain seconds, empty, invalid)
+  - All 4 adapters with mocked `_http_get`; per-source graceful failure
+  - `RegulatoryWatcher`: first-poll returns all, second-poll deduplicates, new event on third poll surfaces, `mark_all_seen`, `load_history`
+  - Gap analysis: EU_AI_ACT match, NIST_AI_RMF match, squash controls from feed, attested models discovered, no-match has actions, `summary_text`, `to_dict`
+  - Regulatory ID mapping: EU_AI_ACT, NIST_AI_RMF, multi-reg, no-keyword-returns-empty
+  - CLI: help surface (10 flags), misconfig exit 2, once/no-events→0, event-summary printed, JSON output, dry-run, default-sources config
+
+### Changed
+- **Module count gates** (8 files) bumped 75 → 76 for `regulatory_watch.py`
+- **`SQUASH_MASTER_PLAN.md`** — Track C / C4 marked **shipped**
+
+### Stats
+- **63 new tests** · **0 regressions** · **4260 total tests passing**
+- **1 new module** (`regulatory_watch.py`) · 75 → 76 modules
+- **1 new top-level CLI command** (`watch-regulatory`) with 10 flags
+- **4 source adapters** covering the primary AI governance regulatory sources
+
+---
+
 ## [1.12.0] — 2026-04-30 — Sprint 15 W208 / Track B-2: Branded PDF Compliance Report
 
 ### Added (W208 — Track B / B2 — Branded PDF Compliance Report)
