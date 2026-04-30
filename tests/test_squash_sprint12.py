@@ -534,7 +534,8 @@ class TestW201RegistryGateCLI(unittest.TestCase):
 
 
 class TestSprint12ModuleCountUnchanged(unittest.TestCase):
-    """Sprint 12 extends existing modules — module count stays at 71."""
+    """Sprint 12 itself added 0 modules (extensions only); count was 71 at
+    Sprint 12 ship. Sprint 14 W205 (B1) since added hf_scanner.py — current 72."""
 
     def test_squash_module_count_is_71(self) -> None:
         squash_dir = Path(__file__).parent.parent / "squash"
@@ -542,8 +543,8 @@ class TestSprint12ModuleCountUnchanged(unittest.TestCase):
             f for f in squash_dir.rglob("*.py") if "__pycache__" not in str(f)
         ]
         self.assertEqual(
-            len(py_files), 71,
-            msg="Sprint 12 should not add new modules (extensions only).",
+            len(py_files), 72,
+            msg="Sprint 12 added 0 modules; B1 (Sprint 14 W205) added hf_scanner.py.",
         )
 
 

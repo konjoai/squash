@@ -225,8 +225,26 @@ def _build_parser() -> argparse.ArgumentParser:
     )
 
     # ── squash scan ────────────────────────────────────────────────────────────
-    scan_cmd = sub.add_parser("scan", help="Run security scanner only (no SBOM generation)")
-    scan_cmd.add_argument("model_path", help="Path to model directory or file")
+    scan_cmd = sub.add_parser(
+        "scan",
+        help="Run security scanner only (no SBOM generation). Accepts a local "
+             "path or an hf://owner/model URI for the public HF scanner.",
+        description=(
+            "Run the security scanner against a local model directory or a "
+            "public HuggingFace model.\n\n"
+            "Examples:\n"
+            "  squash scan ./my-model\n"
+            "  squash scan hf://microsoft/phi-3-mini-4k-instruct\n"
+            "  squash scan hf://meta-llama/Llama-3.1-8B-Instruct@main \\\n"
+            "        --policy enterprise-strict --output-dir ./out\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    scan_cmd.add_argument(
+        "model_path",
+        help="Path to model directory/file, OR `hf://owner/model[@revision]` "
+             "for the public HF scanner.",
+    )
     scan_cmd.add_argument("--json-result", default=None, metavar="PATH")
     scan_cmd.add_argument(
         "--sarif",
@@ -239,6 +257,34 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         default=False,
         help="Exit 2 on critical/high findings; exit 1 on other unsafe statuses",
+    )
+
+    # ── B1 (Sprint 14, W205) — hf:// public scanner flags ─────────────────────
+    scan_cmd.add_argument(
+        "--policy", action="append", default=None, dest="hf_policies",
+        help="(hf:// only) Policy preview to evaluate (repeatable).",
+    )
+    scan_cmd.add_argument(
+        "--output-dir", default=None, dest="hf_output_dir",
+        help="(hf:// only) Directory to write `squash-hf-scan.{json,md}`.",
+    )
+    scan_cmd.add_argument(
+        "--download-weights", action="store_true", dest="hf_download_weights",
+        help="(hf:// only) Fetch full weight files. Default fetches small "
+             "artefacts only — keeps the public scanner fast & cheap.",
+    )
+    scan_cmd.add_argument(
+        "--keep-download", action="store_true", dest="hf_keep_download",
+        help="(hf:// only) Retain the downloaded snapshot directory after scan.",
+    )
+    scan_cmd.add_argument(
+        "--hf-token", default="", dest="hf_token",
+        help="(hf:// only) HF Hub token for private/gated repos. Falls back "
+             "to HUGGING_FACE_HUB_TOKEN / HF_TOKEN env.",
+    )
+    scan_cmd.add_argument(
+        "--quiet", action="store_true", dest="hf_quiet",
+        help="(hf:// only) Suppress non-essential output.",
     )
 
     # ── squash diff ───────────────────────────────────────────────────────────
@@ -2458,6 +2504,10 @@ def _cmd_policies(args: argparse.Namespace, quiet: bool) -> int:
 
 
 def _cmd_scan(args: argparse.Namespace, quiet: bool) -> int:
+    # B1 (Sprint 14, W205) — `squash scan hf://owner/model` public scanner
+    if isinstance(args.model_path, str) and args.model_path.startswith("hf://"):
+        return _cmd_scan_hf(args, quiet)
+
     try:
         from squash.scanner import ModelScanner
     except ImportError as e:
@@ -2509,6 +2559,114 @@ def _cmd_scan(args: argparse.Namespace, quiet: bool) -> int:
         return 0
 
     return 0 if result.is_safe else 2
+
+
+def _cmd_scan_hf(args: argparse.Namespace, quiet: bool) -> int:
+    """B1 (Sprint 14, W205) — public `squash scan hf://...` handler.
+
+    Routes from `_cmd_scan` when the positional argument is an hf:// URI.
+    Builds an HFScanReport and writes squash-hf-scan.{json,md} to
+    --output-dir (default: cwd).
+
+    Exit codes:
+      0  scan clean
+      1  scan unsafe
+      2  configuration / dependency error
+    """
+    try:
+        from squash.hf_scanner import HFScanner
+    except ImportError as e:
+        print(f"squash hf scanner unavailable: {e}", file=sys.stderr)
+        return 2
+
+    quiet = quiet or getattr(args, "hf_quiet", False)
+
+    import os as _os
+    token = (
+        getattr(args, "hf_token", "")
+        or _os.environ.get("HUGGING_FACE_HUB_TOKEN", "")
+        or _os.environ.get("HF_TOKEN", "")
+    )
+
+    output_dir = Path(args.hf_output_dir) if getattr(args, "hf_output_dir", None) \
+        else Path.cwd()
+    policies = getattr(args, "hf_policies", None)
+    download_weights = bool(getattr(args, "hf_download_weights", False))
+    keep_download = bool(getattr(args, "hf_keep_download", False))
+
+    scanner = HFScanner()
+    try:
+        report = scanner.scan(
+            uri=args.model_path,
+            policies=policies,
+            download_weights=download_weights,
+            keep_download=keep_download,
+            token=token,
+        )
+    except ValueError as exc:
+        print(f"squash scan: {exc}", file=sys.stderr)
+        return 2
+    except ImportError as exc:
+        print(f"squash scan: {exc}", file=sys.stderr)
+        return 2
+    except Exception as exc:  # noqa: BLE001 — surface fetch errors to user
+        print(f"squash scan: hf fetch failed: {exc}", file=sys.stderr)
+        return 1
+
+    # Write artefacts
+    paths = report.save(output_dir)
+
+    # ── Optional pass-through outputs honoured for hf:// path ────────────────
+    if getattr(args, "json_result", None):
+        Path(args.json_result).write_text(report.to_json(), encoding="utf-8")
+    if getattr(args, "sarif", None):
+        try:
+            from squash.sarif import SarifBuilder
+            from squash.scanner import ScanFinding, ScanResult
+        except ImportError:
+            pass
+        else:
+            findings = [
+                ScanFinding(
+                    severity=f.get("severity", "info"),
+                    finding_id=f.get("finding_id", ""),
+                    title=f.get("title", ""),
+                    detail=f.get("detail", ""),
+                    file_path=f.get("file_path", ""),
+                    cve=f.get("cve", ""),
+                )
+                for f in report.findings
+            ]
+            sr = ScanResult(
+                scanned_path=f"hf://{report.metadata.repo_id}",
+                status=report.scan_status,
+                findings=findings,
+            )
+            SarifBuilder.write(sr, Path(args.sarif))
+
+    # ── Console output ───────────────────────────────────────────────────────
+    if not quiet:
+        emoji = "✅" if report.is_safe else "❌"
+        print(f"{emoji} hf://{report.metadata.repo_id} — scan {report.scan_status}"
+              f" ({len(report.findings)} findings, {report.file_count} files)")
+        if report.metadata.license:
+            print(f"   license: {report.metadata.license}  "
+                  f"downloads: {report.metadata.downloads:,}")
+        for w in report.license_warnings:
+            print(f"   ⚠️  {w}")
+        for fmt, p in paths.items():
+            print(f"   {fmt}: {p}")
+
+    if getattr(args, "exit_2_on_unsafe", False):
+        critical = sum(1 for f in report.findings
+                       if f.get("severity") == "critical")
+        high = sum(1 for f in report.findings if f.get("severity") == "high")
+        if critical or high:
+            return 2
+        if not report.is_safe:
+            return 1
+        return 0
+    return 0 if report.is_safe else 1
 
 
 def _cmd_diff(args: argparse.Namespace, quiet: bool) -> int:

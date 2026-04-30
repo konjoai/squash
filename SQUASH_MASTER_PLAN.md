@@ -51,13 +51,13 @@ That's the moat. Credo AI and OneTrust are form-filling tools. Squash is a pipel
 
 ---
 
-## ⚡ Situation Report (April 30, 2026) — Post Sprint 13 ✅ COMPLETE — Tier 2 100% DONE
+## ⚡ Situation Report (April 30, 2026) — Post Sprint 14 W205 (B1) ✅ — First Track B Item Shipped
 
 | Metric | Value |
 |--------|-------|
 | **EU AI Act enforcement deadline** | August 2, 2026 — **94 days** |
-| **Squash code maturity** | v1.8.0 · Sprint 13 complete · 3987 tests passing · **Tier 2 100% complete** |
-| **Python modules** | 71 standalone modules + VS Code extension · 100+ git commits |
+| **Squash code maturity** | v1.9.0 · Sprint 14 W205 (B1) shipped · 4027 tests passing · **Tier 2 100% · Track B started** |
+| **Python modules** | 72 standalone modules + VS Code extension · 100+ git commits |
 | **Annex IV coverage** | ✅ 100% — 12-section generator, completeness scoring, PDF export |
 | **ISO 42001 coverage** | ✅ — 38-control readiness assessment, gap analysis, remediation roadmap |
 | **Trust Package** | ✅ — Signed vendor attestation bundle, `squash verify-trust-package` CLI |
@@ -148,7 +148,7 @@ Pure engineering that has zero dependency on Track A once A1 is live. Each item 
 
 | ID | Item | Effort | Date | ∥ With | Foundation | Sprint Spec |
 |---|---|---|---|---|---|---|
-| **B1** | **HF Public Scanner** — `squash scan hf://owner/model` | 4 days | **May 5–8** | A3, C1, C2 | `scanner.py` + `policy.py` exist; new HF API fetch layer | Sprint 14 (W205) |
+| **B1** ✅ | **HF Public Scanner** — `squash scan hf://owner/model` | 4 days → **shipped** | ✅ 2026-04-30 | A3, C1, C2 | `scanner.py` + `policy.py` + new `hf_scanner.py` (W205) | Sprint 14 (W205) ✅ v1.9.0 |
 | **B2** | **Branded PDF Report** — cover + exec summary on existing `to_pdf()` | 2 days | May 8–10 | A4, C2, C3 | `annex_iv_generator.to_pdf()` works; design + template only | Sprint 15 (W208) |
 | **B3** | **Email Digest** — Weekly/monthly portfolio posture | 2 days | May 12–14 | C3, C4 | `notifications.py` + Resend already configured | Sprint 15 (W209–W210) |
 | **B4** | **Terraform/Pulumi Provider** — Go provider + Pulumi component | 10 days | May 15–26 | C3, C4, D1 | API stable after A1; new repo `terraform-provider-squash/` | Sprint 16 (W211–W214) |

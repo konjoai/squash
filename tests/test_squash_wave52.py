@@ -599,8 +599,8 @@ class TestModuleCount(unittest.TestCase):
         py_files = list(squish_root.rglob("*.py"))
         count = len(py_files)
         self.assertEqual(
-            count, 71,
-            f"Module count is {count}, expected exactly 71. "
-            f"Sprint 11 added chain_attest.py. "
+            count, 72,
+            f"Module count is {count}, expected exactly 72. "
+            f"Sprint 14 W205 (B1) added hf_scanner.py. "
             f"Any new module requires a corresponding deletion or written justification.",
         )

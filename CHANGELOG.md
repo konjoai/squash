@@ -5,6 +5,126 @@ Format: [Conventional Commits](https://www.conventionalcommits.org/) · [Keep a 
 
 ---
 
+## [1.9.0] — 2026-04-30 — Sprint 14 W205 / Track B-1: Public HF Scanner
+
+### Added (W205 — Track B / B1 — Public HuggingFace Model Scanner)
+
+The first Track B parallel item. The free top-of-funnel growth tool any
+ML engineer can run against any public HuggingFace model in one
+command — no login, no enterprise SaaS, no sales call. Squash's
+brand-builder on the platform with the largest concentration of ML
+engineers in the world.
+
+```
+squash scan hf://meta-llama/Llama-3.1-8B-Instruct
+squash scan hf://microsoft/phi-3@v2.0 --policy enterprise-strict --output-dir ./out
+squash scan hf://acme/private --hf-token $HF_TOKEN --download-weights
+```
+
+- **`squash/hf_scanner.py` (NEW MODULE — W205)**:
+  - `HFRef` / `RepoMetadata` / `HFScanReport` dataclasses
+  - `parse_hf_uri(uri)` — strict URI parser supporting
+    `hf://owner/model[@revision]` form (revisions can include `/` for
+    branch names like `feat/my-branch`)
+  - `is_hf_uri(s)` — cheap predicate, no network call
+  - `HFScanner.scan(uri, ...)` — orchestrator that:
+    1. parses the URI,
+    2. lazily imports `huggingface_hub`,
+    3. calls `snapshot_download` to a temp directory (light mode by
+       default — skips weight files; opt-in via `download_weights=True`),
+    4. fetches repo metadata via `HfApi.model_info` (license,
+       downloads, last_modified, library_name, pipeline_tag, tags, sha),
+    5. runs `ModelScanner.scan_directory` against the snapshot,
+    6. optionally runs a policy preview via `PolicyEngine.evaluate`,
+    7. flags license warnings (unknown / restricted / non-permissive),
+    8. detects weight format from observed file suffixes,
+    9. returns a structured `HFScanReport` with `to_json()` /
+       `to_markdown()` / `save()` methods,
+    10. cleans up the temp directory unless `keep_download=True`
+  - License-warning logic with three buckets:
+    - **Permissive** (apache-2.0, mit, bsd-3-clause, cc-by, openrail) —
+      no warning
+    - **Restricted** (llama2/3/3.1/3.2/3.3, gemma, deepseek, openrail-m) —
+      warns about deployment-specific commercial / MAU restrictions
+    - **Unknown / non-listed** — warns to verify manually
+  - Markdown report includes repo metadata table, scan status
+    (✅/⚠️/❌), findings table (truncates at 25 with "+N more" footer),
+    license warnings, policy-preview table, link back to
+    `getsquash.dev` for self-serve install
+
+- **`squash/cli.py` — `squash scan hf://...` integration (W205)**:
+  - `_cmd_scan` now detects `hf://` prefix on the positional argument
+    and routes to a new `_cmd_scan_hf` handler — no new subcommand,
+    just a transparent extension of the existing `squash scan`
+  - 6 new flags applicable to `hf://` mode:
+    - `--policy POLICY` (repeatable) — policy preview to evaluate
+    - `--output-dir DIR` — where to write `squash-hf-scan.{json,md}`
+      (default: cwd)
+    - `--download-weights` — opt into full weight download (default
+      light mode skips weights — keeps the public scanner fast and cheap)
+    - `--keep-download` — retain the temp directory after scan
+    - `--hf-token TOKEN` — HF Hub token for private/gated repos;
+      falls back to `HUGGING_FACE_HUB_TOKEN` / `HF_TOKEN` env
+    - `--quiet` — suppress non-essential output
+  - Pass-through `--json-result` and `--sarif` flags now also apply
+    to the hf:// path
+  - Local-path scanning preserved verbatim (regression test included)
+  - Exit-code matrix:
+    - 0  scan clean
+    - 1  scan unsafe (or malformed URI when not also using `--exit-2-on-unsafe`)
+    - 2  configuration / dependency error / malformed URI / missing huggingface_hub
+
+- **`tests/test_squash_w205_hf_scanner.py` (NEW)** — 40 tests covering:
+  - URI parsing edge cases (basic, with revision, slash-revision,
+    missing prefix, malformed, owner-only, `is_hf_uri` predicate)
+  - `RepoMetadata.to_dict` + `HFScanReport` JSON / Markdown
+    serialisation including findings-table truncation at 25 + policy
+    preview table
+  - `save()` writes both JSON + Markdown
+  - License-warning logic for all 4 license buckets
+  - Weight-format detection (safetensors / gguf / pickle /
+    metadata-only fallback)
+  - End-to-end `HFScanner.scan()` with `huggingface_hub` mocked at the
+    `sys.modules` import boundary — tests `revision` is forwarded,
+    light-mode default skips weights, `--download-weights` lifts the
+    filter, `keep_download=True` preserves the temp dir, missing
+    `huggingface_hub` raises clean ImportError
+  - CLI dispatch via subprocess + a runtime shim that injects the
+    mocked `huggingface_hub` before `squash.cli` imports it — tests
+    help surface, malformed URI rc=2, clean scan writes both
+    artefacts, policy preview lands in the JSON, `@revision` carried
+    through, **local-path regression guard** confirms existing
+    behaviour is untouched
+
+### Changed
+- **Module count gates** (5 files: `test_squash_model_card.py`,
+  `test_squash_wave49.py`, `test_squash_wave52.py`,
+  `test_squash_wave5355.py`, `test_squash_sprint11/12/13.py`) all bumped
+  71 → 72 with explanatory comments noting the gate now tracks current
+  count rather than sprint-snapshot count.
+- **`SQUASH_MASTER_PLAN.md`** — Track B / B1 marked **shipped**
+  alongside Sprint 14 W205.
+
+### Stats
+- **40 new tests** · **0 regressions** · **4027 total tests passing**
+- **1 new module** (`squash/hf_scanner.py`) · 71 → 72 modules
+- **6 new CLI flags** on `squash scan` (hf:// mode)
+- **First Track B item shipped** — the parallel-track operating model
+  is now active.
+
+### Konjo notes
+The Konjo discipline this sprint: B1 is the highest-leverage parallel
+item that depends only on the existing scanner + policy modules. Same
+calendar week ships A1/A2 (Track A) + C1 (Track C) too — exactly the
+parallelisation insight the master plan codifies. The hf:// path
+extends `squash scan` rather than introducing a new top-level
+subcommand: one user-facing entry point, two backends, zero learning
+overhead. Light-mode default (no weight download) keeps the public
+scanner fast & cheap; `--download-weights` is opt-in for users who
+want the full security audit. *건조* applied to the surface area.
+
+---
+
 ## [1.8.0] — 2026-04-30 — Sprint 13: Startup Pricing Tier ($499/mo)
 
 ### Added (W202–W204 — Sprint 13: Startup Pricing Tier — Tier 2 #19)
