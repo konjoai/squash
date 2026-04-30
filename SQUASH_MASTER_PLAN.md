@@ -736,7 +736,7 @@ All 30 features ranked by acquisition impact, revenue leverage, and defensibilit
 | 23 | **`squash scan hf://` public security scanner** | Free public tool | Anyone checks any HuggingFace model for security issues. Top-of-funnel brand builder. |
 | 24 | **Branded PDF compliance report** | `squash/annex_iv_generator.py` (to_pdf() exists) | Cover page + exec summary. Email to the CISO. |
 | 25 | **Compliance email digest** | `squash/notifications.py` | Weekly/monthly portfolio posture summary. Passive retention. |
-| 26 | **Terraform/Pulumi provider** | `squash-terraform-provider` (Go) | Compliance as infrastructure. DevOps teams adopt immediately. |
+| 26 | **Terraform/Pulumi provider** ✅ B4 (2026-04-30) | `integrations/terraform/` (Go, terraform-plugin-framework v1.13.0) — `squash_attestation` + `squash_policy_check` resources, `squash_compliance_score` data source, Pulumi `command` shell-out examples + bridge path documented. 16 Go tests passing under `-race -count=1`. | Compliance as infrastructure. DevOps teams adopt immediately. |
 | 27 | **Pre-built HuggingFace Spaces deployment** | HF Spaces | Free, visible to entire HF community. Zero marketing cost. |
 | 28 | **API gateway plugin** | Kong/AWS API Gateway | Block inference requests at runtime if attestation expired or CVE flagged. |
 | 29 | **Audit trail blockchain anchoring** | `squash/provenance.py` | Ethereum OP_RETURN anchoring. Immutable proof for financial services/medical/defense. |

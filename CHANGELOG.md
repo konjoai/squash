@@ -5,6 +5,61 @@ Format: [Conventional Commits](https://www.conventionalcommits.org/) · [Keep a 
 
 ---
 
+## [1.5.0] — 2026-04-30 — B4: Terraform / Pulumi Provider
+
+### Added — Tier 3 #26 (B4) Terraform/Pulumi provider
+
+- **`integrations/terraform/`** — full Terraform provider in Go, built on
+  `terraform-plugin-framework` v1.13.0:
+  - `squash_attestation` resource — runs `squash attest`, captures the
+    master record JSON, exposes `attestation_id`, `overall_score`,
+    `passed`, `framework_scores`, SBOM/signature paths. Replacement on
+    `model_path` change preserves an immutable provenance trail.
+  - `squash_policy_check` resource — declarative compliance gate; fails
+    `terraform apply` when score drops below `min_score` or when
+    `require_passed = true` and the upstream attestation did not pass.
+    Lets a regression block every dependent resource via the dependency
+    graph (no admission controller required).
+  - `squash_compliance_score` data source — read an existing
+    `master_record.json` without re-running the pipeline; surfaces
+    `top_frameworks` for compact downstream gating.
+  - Provider config: `cli_path`, `models_dir`, `policy`, `api_key`
+    (sensitive), `offline` — every field has an env-var fallback for
+    CI/air-gap parity.
+  - **`internal/squashcli/`** — stdlib-only core (zero external deps).
+    Argv builder + master-record JSON parser + injectable `Runner`
+    interface. Tested offline; the package the FedRAMP / CMMC story
+    rests on.
+  - 7 squashcli tests + 9 provider schema/helper tests = 16 Go tests
+    passing under `go test -race -count=1`.
+  - Build: `make build` / `make install` / `make test` / `make test-core`.
+- **`integrations/terraform/pulumi/`** — Pulumi parity:
+  - `examples/typescript` and `examples/python` show the
+    `@pulumi/command` shell-out pattern that works today.
+  - README documents the Pulumi Terraform bridge path for strongly-typed
+    multi-language SDKs once the provider is published to the Registry.
+- **Examples** (`integrations/terraform/examples/`):
+  - `basic` — single model, signed, gated.
+  - `multi-model-gate` — `for_each` over a model registry.
+  - `data-source-gate` — gate a deploy on a CI-produced record.
+- **Registry-format docs** under `integrations/terraform/docs/`:
+  `index.md`, `resources/attestation.md`, `resources/policy_check.md`,
+  `data-sources/compliance_score.md`.
+- **`integrations/terraform/terraform-registry-manifest.json`** —
+  protocol v6 manifest for Terraform Registry publication.
+
+### Konjo notes
+
+- 건조 (dry): provider is a typed declarative facade — zero duplicate
+  SBOM/policy logic. The squash CLI remains the single source of truth.
+- ᨀᨚᨐᨚ (seaworthy): stdlib-only core means the provider can be audited
+  and shipped to air-gapped environments without a HashiCorp dep tree
+  audit on the critical path.
+- 康宙 (health of the universe): one process per `terraform apply`, no
+  goroutines, no daemons, no background workers.
+
+---
+
 ## [1.3.0] — 2026-04-29 — Sprint 8: Moat Deepening
 
 ### Added (W182–W187 — Sprint 8: Moat Deepening)
