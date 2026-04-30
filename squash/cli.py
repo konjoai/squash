@@ -1214,6 +1214,41 @@ def _build_parser() -> argparse.ArgumentParser:
         dest="mc_license",
         help="SPDX licence identifier for the card (default: apache-2.0).",
     )
+    # W194 (Sprint 10) — first-class CLI: validate + push subflags
+    mc_cmd.add_argument(
+        "--validate",
+        action="store_true",
+        dest="mc_validate",
+        help="Validate generated card(s) against the HuggingFace model-card schema. "
+             "Exits non-zero on errors.",
+    )
+    mc_cmd.add_argument(
+        "--validate-only",
+        action="store_true",
+        dest="mc_validate_only",
+        help="Skip generation and validate an existing card file at "
+             "model_dir/squash-model-card-hf.md.",
+    )
+    mc_cmd.add_argument(
+        "--push-to-hub",
+        default=None,
+        dest="mc_push_repo",
+        metavar="REPO_ID",
+        help="After generating, push squash-model-card-hf.md to the given HF repo "
+             "(e.g. user/model). Requires `huggingface_hub` to be installed.",
+    )
+    mc_cmd.add_argument(
+        "--hub-token",
+        default=None,
+        dest="mc_hub_token",
+        help="HuggingFace token for --push-to-hub. Falls back to HUGGING_FACE_HUB_TOKEN.",
+    )
+    mc_cmd.add_argument(
+        "--json",
+        action="store_true",
+        dest="mc_json",
+        help="With --validate or --validate-only, emit structured JSON report.",
+    )
     mc_cmd.add_argument(
         "--quiet",
         action="store_true",
@@ -4101,7 +4136,10 @@ def _cmd_chat(args: argparse.Namespace, quiet: bool) -> int:
 
 
 def _cmd_model_card(args: argparse.Namespace, quiet: bool) -> int:
-    """Generate regulation-compliant model cards from squash attestation artifacts."""
+    """Generate regulation-compliant model cards from squash attestation artifacts.
+
+    W194 (Sprint 10): added --validate, --validate-only, and --push-to-hub flows.
+    """
     try:
         from squash.model_card import ModelCardConfig, ModelCardGenerator
     except ImportError as exc:
@@ -4114,6 +4152,14 @@ def _cmd_model_card(args: argparse.Namespace, quiet: bool) -> int:
         return 1
 
     output_dir = Path(args.mc_output_dir) if args.mc_output_dir else None
+
+    # ── Validate-only short-circuit ──────────────────────────────────────────
+    if getattr(args, "mc_validate_only", False):
+        return _model_card_validate(
+            card_path=(output_dir or model_dir) / "squash-model-card-hf.md",
+            json_out=getattr(args, "mc_json", False),
+            quiet=quiet,
+        )
 
     config = ModelCardConfig(
         model_dir=model_dir,
@@ -4133,6 +4179,340 @@ def _cmd_model_card(args: argparse.Namespace, quiet: bool) -> int:
         for p in paths:
             print(f"✓ {p}")
 
+    # ── Optional validate after generation ───────────────────────────────────
+    if getattr(args, "mc_validate", False):
+        hf_card = next(
+            (p for p in paths if p.name == "squash-model-card-hf.md"),
+            (output_dir or model_dir) / "squash-model-card-hf.md",
+        )
+        rc = _model_card_validate(
+            card_path=hf_card,
+            json_out=getattr(args, "mc_json", False),
+            quiet=quiet,
+        )
+        if rc != 0:
+            return rc
+
+    # ── Optional push to HuggingFace Hub ─────────────────────────────────────
+    push_repo = getattr(args, "mc_push_repo", None)
+    if push_repo:
+        hf_card = next(
+            (p for p in paths if p.name == "squash-model-card-hf.md"), None
+        )
+        if hf_card is None:
+            print(
+                "--push-to-hub requires --format hf or --format all to produce "
+                "squash-model-card-hf.md",
+                file=sys.stderr,
+            )
+            return 1
+        return _model_card_push(
+            card_path=hf_card,
+            repo_id=push_repo,
+            token=getattr(args, "mc_hub_token", None),
+            quiet=quiet,
+        )
+
+    return 0
+
+
+def _model_card_validate(card_path: Path, json_out: bool, quiet: bool) -> int:
+    """Validate an HF model card; print report. Exit non-zero on errors."""
+    try:
+        from squash.model_card_validator import ModelCardValidator
+    except ImportError as exc:
+        print(f"squash model-card validator unavailable: {exc}", file=sys.stderr)
+        return 2
+
+    report = ModelCardValidator().validate(card_path)
+
+    if json_out:
+        print(json.dumps(report.to_dict(), indent=2))
+    elif not quiet:
+        print(report.summary())
+        for f in report.errors + report.warnings + report.infos:
+            print(f"  {f.render()}")
+
+    return 0 if report.is_valid else 1
+
+
+def _cmd_chain_attest(args: argparse.Namespace, quiet: bool) -> int:
+    """W197 — `squash chain-attest`. Composite chain / pipeline attestation."""
+    try:
+        from squash.chain_attest import (
+            ChainAttestConfig, ChainAttestPipeline,
+            attestation_from_dict, load_chain_spec, verify_signature,
+        )
+    except ImportError as exc:
+        print(f"squash chain-attest unavailable: {exc}", file=sys.stderr)
+        return 2
+
+    spec_arg: str = args.spec
+    output_dir = Path(args.chain_output_dir) if args.chain_output_dir else None
+    policies = args.chain_policies or ["enterprise-strict"]
+
+    # ── Verify-only short-circuit ────────────────────────────────────────────
+    if getattr(args, "chain_verify_only", False):
+        target = Path(spec_arg)
+        if not target.exists():
+            print(f"chain-attest: file not found: {target}", file=sys.stderr)
+            return 1
+        try:
+            raw = json.loads(target.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            print(f"chain-attest: not a valid JSON file: {exc}", file=sys.stderr)
+            return 1
+        try:
+            attestation = attestation_from_dict(raw)
+        except KeyError as exc:
+            print(f"chain-attest: file missing required field: {exc}", file=sys.stderr)
+            return 1
+        ok = verify_signature(attestation)
+        if not quiet:
+            status = "✅ VALID" if ok else "❌ TAMPERED"
+            print(f"{status} {target} — chain_id={attestation.chain_id}")
+        return 0 if ok else 1
+
+    # ── Resolve spec: file path or 'module.path:variable' ───────────────────
+    if ":" in spec_arg and not Path(spec_arg).exists():
+        # Python import form: chain attestation via attest_chain()
+        try:
+            chain_obj = _resolve_python_chain(spec_arg)
+        except Exception as exc:  # noqa: BLE001 — surface import errors verbatim
+            print(f"chain-attest: could not resolve {spec_arg!r}: {exc}",
+                  file=sys.stderr)
+            return 1
+        try:
+            from squash.integrations.langchain import attest_chain
+        except ImportError as exc:
+            print(f"chain-attest: langchain integration unavailable: {exc}",
+                  file=sys.stderr)
+            return 2
+        attestation = attest_chain(
+            chain_obj,
+            chain_id=args.chain_id_override or "",
+            policies=policies,
+            output_dir=output_dir,
+            fail_on_component_violation=args.chain_fail_on_violation,
+            sign_components=args.chain_sign_components,
+        )
+    else:
+        # File path: JSON or YAML chain spec
+        spec_path = Path(spec_arg)
+        if not spec_path.exists():
+            print(f"chain-attest: spec not found: {spec_path}", file=sys.stderr)
+            return 1
+        try:
+            spec = load_chain_spec(spec_path)
+        except (ValueError, ImportError, json.JSONDecodeError) as exc:
+            print(f"chain-attest: could not load spec {spec_path}: {exc}",
+                  file=sys.stderr)
+            return 1
+        if args.chain_id_override:
+            spec.chain_id = args.chain_id_override
+        cfg = ChainAttestConfig(
+            spec=spec,
+            policies=policies,
+            output_dir=output_dir,
+            fail_on_component_violation=args.chain_fail_on_violation,
+            sign_components=args.chain_sign_components,
+        )
+        attestation = ChainAttestPipeline.run(cfg)
+
+    # ── Output ───────────────────────────────────────────────────────────────
+    if getattr(args, "chain_json", False):
+        print(attestation.to_json())
+    elif not quiet:
+        print(attestation.to_markdown())
+        if output_dir:
+            print(f"✓ chain-attest.json + chain-attest.md → {output_dir}")
+
+    if args.chain_fail_on_violation and not attestation.composite_passed:
+        return 1
+    return 0
+
+
+def _cmd_registry_gate(args: argparse.Namespace, quiet: bool) -> int:
+    """W201 — `squash registry-gate`. Pre-registration policy gate.
+
+    Attests the local model and emits a structured gate decision. Exit 0 on
+    policy pass, 1 on policy fail (unless --allow-on-fail), 2 on misconfig.
+    """
+    try:
+        from squash.attest import AttestConfig, AttestPipeline
+    except ImportError as exc:
+        print(f"squash registry-gate unavailable: {exc}", file=sys.stderr)
+        return 2
+
+    model_path = Path(args.rg_model_path)
+    if not model_path.exists():
+        print(f"registry-gate: model not found: {model_path}", file=sys.stderr)
+        return 2
+
+    output_dir = (
+        Path(args.rg_output_dir) if args.rg_output_dir
+        else (model_path.parent / "squash")
+    )
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    policies = args.rg_policies or ["enterprise-strict"]
+    backend: str = args.backend
+    uri: str = args.rg_uri or ""
+
+    # ── Light backend-specific URI validation ────────────────────────────────
+    rc_validate = _validate_registry_uri(backend, uri)
+    if rc_validate != 0:
+        return rc_validate
+
+    config = AttestConfig(
+        model_path=model_path,
+        output_dir=output_dir,
+        policies=policies,
+        sign=getattr(args, "rg_sign", False),
+        fail_on_violation=False,  # gate decides exit code itself
+    )
+    result = AttestPipeline.run(config)
+
+    decision = "allow" if result.passed else "refuse"
+    if args.rg_allow_on_fail and not result.passed:
+        decision = "record-only"
+
+    gate = {
+        "squash_version": "registry_gate_v1",
+        "backend": backend,
+        "uri": uri,
+        "name": args.rg_name or "",
+        "model_path": str(model_path),
+        "passed": result.passed,
+        "decision": decision,
+        "attestation_id": result.model_id,
+        "scan_status": (
+            result.scan_result.status if result.scan_result else "skipped"
+        ),
+        "policies": {
+            n: {
+                "passed": pr.passed,
+                "errors": pr.error_count,
+                "warnings": pr.warning_count,
+            }
+            for n, pr in result.policy_results.items()
+        },
+        "summary": result.summary(),
+        "output_dir": str(output_dir),
+    }
+
+    gate_path = output_dir / "registry-gate.json"
+    gate_path.write_text(json.dumps(gate, indent=2, sort_keys=True), encoding="utf-8")
+
+    if args.rg_json:
+        print(json.dumps(gate, indent=2, sort_keys=True))
+    elif not quiet:
+        emoji = "✅" if result.passed else "❌"
+        print(f"{emoji} registry-gate [{backend}] decision={decision}")
+        print(f"   model: {model_path}")
+        if uri:
+            print(f"   uri:   {uri}")
+        print(f"   {result.summary()}")
+        print(f"   gate file: {gate_path}")
+
+    if not result.passed and not args.rg_allow_on_fail:
+        return 1
+    return 0
+
+
+def _validate_registry_uri(backend: str, uri: str) -> int:
+    """Light, opinionated URI sanity check per backend. Returns 0 or 2."""
+    if not uri or backend == "local":
+        return 0
+    if backend == "mlflow":
+        if not (uri.startswith("models:/") or uri.startswith("runs:/")):
+            print(
+                f"registry-gate: --uri for mlflow must start with 'models:/' "
+                f"or 'runs:/' — got {uri!r}", file=sys.stderr,
+            )
+            return 2
+    elif backend == "wandb":
+        if not uri.startswith("wandb://"):
+            print(
+                f"registry-gate: --uri for wandb must start with 'wandb://' "
+                f"— got {uri!r}", file=sys.stderr,
+            )
+            return 2
+    elif backend == "sagemaker":
+        if not uri.startswith("arn:aws:sagemaker:"):
+            print(
+                f"registry-gate: --uri for sagemaker must be an AWS ARN "
+                f"starting with 'arn:aws:sagemaker:' — got {uri!r}",
+                file=sys.stderr,
+            )
+            return 2
+    return 0
+
+
+def _resolve_python_chain(spec: str) -> Any:
+    """Resolve a 'module.path:attr' or 'module.path:attr.nested' string to an object."""
+    import importlib
+    if ":" not in spec:
+        raise ValueError(f"Expected 'module:attribute' form, got {spec!r}")
+    module_path, attr_path = spec.split(":", 1)
+    mod = importlib.import_module(module_path)
+    obj: Any = mod
+    for part in attr_path.split("."):
+        if not part:
+            continue
+        obj = getattr(obj, part)
+    if callable(obj) and not hasattr(obj, "steps") and not hasattr(obj, "tools"):
+        # Treat zero-arg factories as builders — call them
+        try:
+            obj = obj()
+        except TypeError:
+            pass
+    return obj
+
+
+def _model_card_push(
+    card_path: Path, repo_id: str, token: str | None, quiet: bool,
+) -> int:
+    """Upload squash-model-card-hf.md to a HuggingFace repo. Optional dep."""
+    if not card_path.exists():
+        print(f"Model card not found: {card_path}", file=sys.stderr)
+        return 1
+    try:
+        from huggingface_hub import HfApi  # type: ignore
+    except ImportError:
+        print(
+            "--push-to-hub requires `huggingface_hub`. Install with: "
+            "pip install huggingface_hub",
+            file=sys.stderr,
+        )
+        return 2
+
+    import os as _os
+    hub_token = token or _os.environ.get("HUGGING_FACE_HUB_TOKEN") \
+        or _os.environ.get("HF_TOKEN")
+    if not hub_token:
+        print(
+            "--push-to-hub requires a token. Pass --hub-token or set "
+            "HUGGING_FACE_HUB_TOKEN.",
+            file=sys.stderr,
+        )
+        return 1
+
+    api = HfApi(token=hub_token)
+    try:
+        api.upload_file(
+            path_or_fileobj=str(card_path),
+            path_in_repo="README.md",
+            repo_id=repo_id,
+            repo_type="model",
+            commit_message="Squash: model card auto-generated by squash model-card",
+        )
+    except Exception as exc:  # noqa: BLE001 — surface any HF error verbatim
+        print(f"HuggingFace upload failed: {exc}", file=sys.stderr)
+        return 1
+
+    if not quiet:
+        print(f"✓ pushed {card_path.name} to https://huggingface.co/{repo_id}")
     return 0
 
 
