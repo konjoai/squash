@@ -5,6 +5,92 @@ Format: [Conventional Commits](https://www.conventionalcommits.org/) · [Keep a 
 
 ---
 
+## [1.5.0] — 2026-04-29 — Sprint 10: Model Card First-Class CLI
+
+### Added (W192–W194 — Sprint 10: Model Card First-Class CLI — Tier 2 #15)
+
+- **`squash/model_card.py` — Annex IV / bias / lineage data fusion (W192)**:
+  - HF model card now pre-fills from `annex_iv.json` (Article-13 metadata —
+    intended purpose, intended users, prohibited uses, risk management,
+    adversarial testing, oversight, hardware requirements)
+  - Reads `bias_audit_report.json` to populate Bias / Fairness narrative
+  - Reads `data_lineage_certificate.json` to populate Training Data table
+  - Four extended HF sections added: **Training Data**, **Evaluation**,
+    **Environmental Impact**, **Ethical Considerations**
+  - Graceful degradation preserved — every helper falls back to safe defaults
+    when the source artefact is absent
+  - 13 new tests
+
+- **`squash/model_card_validator.py` — HuggingFace schema validator (W193) — NEW MODULE**:
+  - `ModelCardValidator.validate()` returns structured `ModelCardValidationReport`
+  - Stdlib-only frontmatter parser (no PyYAML dep) — handles scalars, lists,
+    dicts, list-of-dicts, quoted strings, bools, numbers
+  - Required frontmatter check: `license`, `language`, `tags`
+  - Recommended frontmatter check: `pipeline_tag`, `model_id`, `model-index`
+  - Required section check: `Intended Use`, `Limitations`
+  - Recommended section check: `Training Data`, `Evaluation`,
+    `Ethical Considerations`, `How to Use`
+  - SPDX licence sanity check (24 known licences) — warning surface
+  - HF pipeline_tag recognition (18 well-known tags) — info surface
+  - Body length sanity check — short body warning
+  - `to_dict()` for JSON output; `summary()` for terminal display
+  - 14 new tests
+
+- **`squash/cli.py` — `model-card` first-class flags (W194)**:
+  - `--validate` — generate then run validator; exits non-zero on errors
+  - `--validate-only` — skip generation; validate existing
+    `squash-model-card-hf.md`
+  - `--push-to-hub REPO_ID` — upload to HuggingFace via `huggingface_hub`
+    (optional dep; clean error if not installed; uploads as `README.md`)
+  - `--hub-token TOKEN` — token override; falls back to
+    `HUGGING_FACE_HUB_TOKEN` / `HF_TOKEN` env
+  - `--json` — structured JSON validation report on stdout
+  - 9 new tests
+
+### Changed
+- **`tests/test_squash_model_card.py`** — module count gate updated 69 → 70
+- **`tests/test_squash_wave49.py`**, **`tests/test_squash_wave52.py`**,
+  **`tests/test_squash_wave5355.py`** — secondary module count gates
+  updated 69 → 70 (collateral)
+- **`tests/test_squash_w139.py`** — fixed pre-existing fly.toml whitespace
+  literal test by switching to regex match (not Sprint 10 work, but blocked
+  the "all green" exit gate)
+- **`SQUASH_MASTER_PLAN.md`** — Sprint 10 marked complete; Sprints 11–13
+  scheduled (chain attestation, registry auto-attest gates, startup pricing tier)
+
+### Stats
+- **36 new tests** · **0 regressions** · **3875 total tests passing**
+- **70 Python modules** (was 69 after Sprint 9)
+- **1 new module** (`squash/model_card_validator.py`)
+- **5 new CLI flags** on `squash model-card`
+
+---
+
+## [1.4.0] — 2026-04-29 — Sprint 9: Enterprise Pipeline Integration
+
+### Added (W188–W191 — Sprint 9)
+
+- **`squash/telemetry.py` (W188)** — OpenTelemetry spans per attestation run,
+  OTLP gRPC + HTTP exporters, Datadog / Honeycomb / Jaeger compatible;
+  `squash telemetry status / test / configure` CLI
+- **`squash/integrations/gitops.py` (W189)** — ArgoCD / Flux admission webhook;
+  K8s ValidatingWebhookConfiguration; blocks deployment when attestation
+  missing or score below threshold; `squash gitops check / webhook-manifest /
+  annotate` CLI
+- **`squash/webhook_delivery.py` (W190)** — Generic outbound webhook delivery
+  with HMAC-SHA256 signing, 5 event types, SQLite persistence;
+  `squash webhook add / list / test / remove` CLI
+- **`squash/sbom_diff.py` (W191)** — Attestation diff engine; score delta,
+  component / policy / vulnerability drift; ANSI table / JSON / HTML output;
+  `squash diff v1.json v2.json --fail-on-regression` CLI
+
+### Stats
+- **212 new tests** · **0 regressions** · **3839 total tests passing**
+- **69 Python modules** (was 65 after Sprint 8)
+- **4 new modules**
+
+---
+
 ## [1.3.0] — 2026-04-29 — Sprint 8: Moat Deepening
 
 ### Added (W182–W187 — Sprint 8: Moat Deepening)

@@ -65,7 +65,8 @@ class TestFlyToml:
 
     def test_app_name_set(self):
         content = FLY_TOML.read_text()
-        assert 'app = "squash' in content
+        import re
+        assert re.search(r'^app\s*=\s*"squash', content, re.MULTILINE)
 
     def test_primary_region(self):
         content = FLY_TOML.read_text()

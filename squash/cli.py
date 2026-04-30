@@ -1213,6 +1213,41 @@ def _build_parser() -> argparse.ArgumentParser:
         dest="mc_license",
         help="SPDX licence identifier for the card (default: apache-2.0).",
     )
+    # W194 (Sprint 10) — first-class CLI: validate + push subflags
+    mc_cmd.add_argument(
+        "--validate",
+        action="store_true",
+        dest="mc_validate",
+        help="Validate generated card(s) against the HuggingFace model-card schema. "
+             "Exits non-zero on errors.",
+    )
+    mc_cmd.add_argument(
+        "--validate-only",
+        action="store_true",
+        dest="mc_validate_only",
+        help="Skip generation and validate an existing card file at "
+             "model_dir/squash-model-card-hf.md.",
+    )
+    mc_cmd.add_argument(
+        "--push-to-hub",
+        default=None,
+        dest="mc_push_repo",
+        metavar="REPO_ID",
+        help="After generating, push squash-model-card-hf.md to the given HF repo "
+             "(e.g. user/model). Requires `huggingface_hub` to be installed.",
+    )
+    mc_cmd.add_argument(
+        "--hub-token",
+        default=None,
+        dest="mc_hub_token",
+        help="HuggingFace token for --push-to-hub. Falls back to HUGGING_FACE_HUB_TOKEN.",
+    )
+    mc_cmd.add_argument(
+        "--json",
+        action="store_true",
+        dest="mc_json",
+        help="With --validate or --validate-only, emit structured JSON report.",
+    )
     mc_cmd.add_argument(
         "--quiet",
         action="store_true",
@@ -3920,7 +3955,10 @@ def _cmd_chat(args: argparse.Namespace, quiet: bool) -> int:
 
 
 def _cmd_model_card(args: argparse.Namespace, quiet: bool) -> int:
-    """Generate regulation-compliant model cards from squash attestation artifacts."""
+    """Generate regulation-compliant model cards from squash attestation artifacts.
+
+    W194 (Sprint 10): added --validate, --validate-only, and --push-to-hub flows.
+    """
     try:
         from squash.model_card import ModelCardConfig, ModelCardGenerator
     except ImportError as exc:
@@ -3933,6 +3971,14 @@ def _cmd_model_card(args: argparse.Namespace, quiet: bool) -> int:
         return 1
 
     output_dir = Path(args.mc_output_dir) if args.mc_output_dir else None
+
+    # ── Validate-only short-circuit ──────────────────────────────────────────
+    if getattr(args, "mc_validate_only", False):
+        return _model_card_validate(
+            card_path=(output_dir or model_dir) / "squash-model-card-hf.md",
+            json_out=getattr(args, "mc_json", False),
+            quiet=quiet,
+        )
 
     config = ModelCardConfig(
         model_dir=model_dir,
@@ -3952,6 +3998,106 @@ def _cmd_model_card(args: argparse.Namespace, quiet: bool) -> int:
         for p in paths:
             print(f"✓ {p}")
 
+    # ── Optional validate after generation ───────────────────────────────────
+    if getattr(args, "mc_validate", False):
+        hf_card = next(
+            (p for p in paths if p.name == "squash-model-card-hf.md"),
+            (output_dir or model_dir) / "squash-model-card-hf.md",
+        )
+        rc = _model_card_validate(
+            card_path=hf_card,
+            json_out=getattr(args, "mc_json", False),
+            quiet=quiet,
+        )
+        if rc != 0:
+            return rc
+
+    # ── Optional push to HuggingFace Hub ─────────────────────────────────────
+    push_repo = getattr(args, "mc_push_repo", None)
+    if push_repo:
+        hf_card = next(
+            (p for p in paths if p.name == "squash-model-card-hf.md"), None
+        )
+        if hf_card is None:
+            print(
+                "--push-to-hub requires --format hf or --format all to produce "
+                "squash-model-card-hf.md",
+                file=sys.stderr,
+            )
+            return 1
+        return _model_card_push(
+            card_path=hf_card,
+            repo_id=push_repo,
+            token=getattr(args, "mc_hub_token", None),
+            quiet=quiet,
+        )
+
+    return 0
+
+
+def _model_card_validate(card_path: Path, json_out: bool, quiet: bool) -> int:
+    """Validate an HF model card; print report. Exit non-zero on errors."""
+    try:
+        from squash.model_card_validator import ModelCardValidator
+    except ImportError as exc:
+        print(f"squash model-card validator unavailable: {exc}", file=sys.stderr)
+        return 2
+
+    report = ModelCardValidator().validate(card_path)
+
+    if json_out:
+        print(json.dumps(report.to_dict(), indent=2))
+    elif not quiet:
+        print(report.summary())
+        for f in report.errors + report.warnings + report.infos:
+            print(f"  {f.render()}")
+
+    return 0 if report.is_valid else 1
+
+
+def _model_card_push(
+    card_path: Path, repo_id: str, token: str | None, quiet: bool,
+) -> int:
+    """Upload squash-model-card-hf.md to a HuggingFace repo. Optional dep."""
+    if not card_path.exists():
+        print(f"Model card not found: {card_path}", file=sys.stderr)
+        return 1
+    try:
+        from huggingface_hub import HfApi  # type: ignore
+    except ImportError:
+        print(
+            "--push-to-hub requires `huggingface_hub`. Install with: "
+            "pip install huggingface_hub",
+            file=sys.stderr,
+        )
+        return 2
+
+    import os as _os
+    hub_token = token or _os.environ.get("HUGGING_FACE_HUB_TOKEN") \
+        or _os.environ.get("HF_TOKEN")
+    if not hub_token:
+        print(
+            "--push-to-hub requires a token. Pass --hub-token or set "
+            "HUGGING_FACE_HUB_TOKEN.",
+            file=sys.stderr,
+        )
+        return 1
+
+    api = HfApi(token=hub_token)
+    try:
+        api.upload_file(
+            path_or_fileobj=str(card_path),
+            path_in_repo="README.md",
+            repo_id=repo_id,
+            repo_type="model",
+            commit_message="Squash: model card auto-generated by squash model-card",
+        )
+    except Exception as exc:  # noqa: BLE001 — surface any HF error verbatim
+        print(f"HuggingFace upload failed: {exc}", file=sys.stderr)
+        return 1
+
+    if not quiet:
+        print(f"✓ pushed {card_path.name} to https://huggingface.co/{repo_id}")
     return 0
 
 

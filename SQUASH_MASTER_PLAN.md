@@ -36,13 +36,13 @@ That's the moat. Credo AI and OneTrust are form-filling tools. Squash is a pipel
 
 ---
 
-## ⚡ Situation Report (April 29, 2026) — Post Sprint 9 ✅ COMPLETE
+## ⚡ Situation Report (April 29, 2026) — Post Sprint 10 ✅ COMPLETE
 
 | Metric | Value |
 |--------|-------|
 | **EU AI Act enforcement deadline** | August 2, 2026 — **95 days** |
-| **Squash code maturity** | v1.4.0 · Sprint 9 complete · 3839 tests passing |
-| **Python modules** | 69 standalone modules + VS Code extension · 100+ git commits |
+| **Squash code maturity** | v1.5.0 · Sprint 10 complete · 3875 tests passing |
+| **Python modules** | 70 standalone modules + VS Code extension · 100+ git commits |
 | **Annex IV coverage** | ✅ 100% — 12-section generator, completeness scoring, PDF export |
 | **ISO 42001 coverage** | ✅ — 38-control readiness assessment, gap analysis, remediation roadmap |
 | **Trust Package** | ✅ — Signed vendor attestation bundle, `squash verify-trust-package` CLI |
@@ -63,6 +63,7 @@ That's the moat. Credo AI and OneTrust are form-filling tools. Squash is a pipel
 | **ArgoCD/Flux GitOps Gate** | ✅ NEW (Sprint 9) — K8s ValidatingWebhookConfiguration; admission deny on missing/low score; `squash gitops check` CLI |
 | **Generic Webhook Delivery** | ✅ NEW (Sprint 9) — HMAC-signed outbound webhooks; 5 event types; SQLite persistence; `squash webhook` CLI |
 | **SBOM Diff** | ✅ NEW (Sprint 9) — `squash diff v1.json v2.json`; score delta, component/policy/vuln drift; table/JSON/HTML |
+| **Model Card First-Class CLI** | ✅ NEW (Sprint 10) — `squash model-card --validate / --validate-only / --push-to-hub`; Annex IV / bias / lineage data fusion; HF schema validator (`squash/model_card_validator.py`); 4 new HF sections (Training Data, Evaluation, Environmental Impact, Ethical Considerations) |
 | **Repo status** | ✅ Separated from `konjoai/squish` — standalone Apache 2.0 repo |
 | **Production status** | Dockerfile + fly.toml written; **not yet deployed** |
 | **PyPI status** | `pyproject.toml` ready; **not yet published** |
@@ -631,6 +632,93 @@ Value/effort matrix drove this sprint: highest-value features with existing modu
 - `squash diff v1.json v2.json` outputs score delta, component/policy/vuln changes ✅
 - `squash diff --fail-on-regression` exits non-zero on compliance regression ✅
 - 3839/3839 tests passing · 0 regressions
+
+---
+
+### Sprint 10 — Model Card First-Class CLI (April 29, 2026) ✅ COMPLETE
+
+**All code shipped 2026-04-29. 1 new module, 36 new tests, 0 regressions.**
+
+**Goal:** Promote `squash model-card` from a basic dump-from-artifacts utility into a first-class, HuggingFace-publication-ready CLI surface that is pre-filled from the richest available sources (Annex IV documentation, bias audit, data-lineage certificate) and validates against the HF model card schema before push.
+
+**Why now:** HuggingFace requires a model card at publication time. Annex IV technical documentation contains the strongest narrative content squash can produce — currently not threaded into the model card. Bias audit and data lineage are the two sections HF reviewers (and EU regulators) inspect first. A `--push-to-hub` flow turns squash into the last command a user runs before publishing a model.
+
+| Wave | Module / Feature | What It Delivers | Status |
+|------|-----------------|-----------------|--------|
+| W192 | `squash/model_card.py` enhancement | Reads `annex_iv.json` (if present) and pre-fills HF card sections — Intended Use, Limitations, Evaluation, Risk; reads `bias_audit_report.json` to populate Bias / Fairness section; reads `data_lineage_certificate.json` to populate Training Data section. Adds extended HF sections: Training Data, Evaluation, Environmental Impact, Ethical Considerations. | ✅ |
+| W193 | `squash/model_card_validator.py` (NEW) | HF model card schema validator — checks required YAML frontmatter fields (`license`, `language`, `tags`, `pipeline_tag`), section completeness, and produces a structured `ModelCardValidationReport` with severities (`error` / `warning` / `info`). | ✅ |
+| W194 | CLI: `squash model-card --validate` / `--validate-only` / `--push-to-hub` | `--validate` generates then runs the validator, non-zero exit on errors. `--validate-only` skips generation. `--push-to-hub REPO_ID` uploads `squash-model-card-hf.md` to a HuggingFace repo as `README.md` via `huggingface_hub` (optional dep) — graceful no-op if not installed. `--json` for structured report. | ✅ |
+
+**Sprint 10 exit criteria: ALL MET**
+- `squash model-card ./model --format hf` pre-fills sections from `annex_iv.json` when present ✅
+- `squash model-card ./model --validate-only --json` emits structured report; non-zero exit on errors ✅
+- `squash model-card ./model --push-to-hub user/model` works with `huggingface_hub` installed; clean error (rc=2) when not ✅
+- Bias & data-lineage sections render only when source artefacts exist (graceful degradation preserved) ✅
+- 70 modules; module count gate updated ✅
+- 3875/3875 tests passing · 0 regressions ✅
+
+---
+
+### Sprint 11 — Chain & Pipeline Attestation (Tier 2 #16)
+
+**Goal:** Attest entire RAG / agent / multi-model pipelines as a single composite unit. Today squash attests one model at a time — production AI systems are LangChain chains, LlamaIndex query engines, and multi-step agent workflows. Compliance must apply to the whole pipeline.
+
+**Why now:** Gartner: 40% of GenAI apps ship as agent chains by end of 2026. EU AI Act treats the deployed system, not individual models, as the regulated unit. A composite attestation is the only honest answer.
+
+| Wave | Module / Feature | What It Delivers |
+|------|-----------------|-----------------|
+| W195 | `squash/chain_attest.py` (NEW) | Composite chain attestation engine — `ChainAttestation` aggregates per-component attestations into a single signed record with composite score and worst-case policy roll-up. |
+| W196 | `squash/integrations/langchain.py` extension | `attest_chain(chain, policies=...)` — walks the LangChain `Runnable` graph, extracts every LLM / retriever / tool, attests each, returns a `ChainAttestation`. |
+| W197 | CLI: `squash chain-attest` | Discovers a chain definition (Python module path or YAML) and produces `chain-attest.json` plus Markdown summary; supports `--fail-on-component-violation`. |
+
+**Sprint 11 exit criteria:**
+- `attest_chain(chain, policies=[...])` returns ChainAttestation covering all chain components
+- `squash chain-attest ./chain.yaml` produces composite signed attestation
+- Composite score correctly rolls up worst-case across components
+- Tests cover RAG (retriever + LLM), tool-using agent, and multi-LLM ensemble shapes
+- 71 modules; 0 regressions
+
+---
+
+### Sprint 12 — Model Registry Auto-Attest Gates (Tier 2 #18)
+
+**Goal:** Make registration in MLflow / W&B / SageMaker Model Registry the enforcement gate for compliance. A model that fails attestation cannot be registered. Compliance is enforced at the moment of promotion to production, not discovered later.
+
+**Why now:** Model registries are the production gate of every serious ML org. Squash already has framework-aware integrations — this sprint turns them from passive observers into hard gates.
+
+| Wave | Module / Feature | What It Delivers |
+|------|-----------------|-----------------|
+| W198 | `squash/integrations/mlflow.py` extension | `register_attested(model_uri, policies, fail_on_violation=True)` — runs attest before MLflow `register_model`; on policy fail, raises and refuses registration. |
+| W199 | `squash/integrations/wandb.py` extension | `log_artifact_attested(artifact, ...)` — runs attest before `wandb.log_artifact`; tags artefact with attestation ID and score. |
+| W200 | `squash/integrations/sagemaker.py` extension | `register_model_package_attested(...)` — runs attest before SageMaker Model Registry promotion; blocks `Approved` status on policy fail. |
+| W201 | CLI: `squash registry-gate` (NEW) | Unified registry-aware gate command — `squash registry-gate mlflow models:/MyModel/Production --policy eu-ai-act` resolves URI, fetches model, attests, exits non-zero on fail. |
+
+**Sprint 12 exit criteria:**
+- All three registries gain `_attested` registration helpers that fail loudly on policy violation
+- `squash registry-gate <backend> <uri>` works for MLflow / W&B / SageMaker URIs
+- Each helper attaches attestation ID as registry-side tag/metadata
+- Tests cover happy path and refuse-to-register path for each backend (with backend libs mocked at the import boundary)
+- 0 new modules (extensions only); 0 regressions
+
+---
+
+### Sprint 13 — Startup Pricing Tier (Tier 2 #19)
+
+**Goal:** Open the seed/Series A revenue band with a $499/mo Startup tier — too big for free, can't justify $899 Team. 500 attestations/mo, 3 users, VEX read entitlement, Slack delivery entitlement.
+
+**Why now:** Free → $299 → $899 leaves a wide gap that is exactly where the highest-velocity buyers sit. A $499 tier captures them at the moment they first need an attestation feed, before they need SAML SSO.
+
+| Wave | Module / Feature | What It Delivers |
+|------|-----------------|-----------------|
+| W202 | `squash/billing.py` Startup tier | New `Plan.STARTUP` — 500 attestations/mo, 3 user seats; quota wiring through `squash/quota.py`; tier display in `squash status` and dashboard. |
+| W203 | Entitlement gating | `squash/billing.py` adds entitlement bits — `vex_read`, `slack_delivery`, `github_issues`; gated checks in `squash/vex.py`, `squash/notifications.py`, `squash/ticketing.py`. |
+| W204 | Stripe checkout link | `squash/billing.py` Stripe Checkout Session generator for Startup; `squash/api.py` exposes `POST /v1/billing/checkout` returning a Stripe-hosted URL. |
+
+**Sprint 13 exit criteria:**
+- `Plan.STARTUP` registered with correct quota and seat caps
+- Entitlement check returns False for VEX / Slack / Issues on Community/Pro; True on Startup+
+- `POST /v1/billing/checkout` returns Stripe checkout URL for `plan=startup`
+- 0 new modules; 0 regressions
 
 ---
 

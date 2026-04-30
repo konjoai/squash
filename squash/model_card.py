@@ -198,6 +198,10 @@ class ModelCardGenerator:
         "scan": "squash-scan.json",
         "attest": "squash-attest.json",
         "vex": "squash-vex-report.json",
+        # W192 — Sprint 10: pre-fill from richer sources
+        "annex_iv": "annex_iv.json",
+        "bias": "bias_audit_report.json",
+        "lineage": "data_lineage_certificate.json",
     }
 
     def __init__(
@@ -295,6 +299,159 @@ class ModelCardGenerator:
     def _utc_now_iso() -> str:
         return datetime.datetime.now(datetime.timezone.utc).isoformat()
 
+    # ── W192 (Sprint 10) — Annex IV / bias / lineage extraction ──────────────
+
+    def _annex_iv_section(self, key: str) -> str:
+        """Return the markdown body of an Annex IV section by key, or empty string."""
+        annex = self._artifacts.get("annex_iv", {})
+        for section in annex.get("sections", []):
+            if section.get("key") == key:
+                return str(section.get("content", "")).strip()
+        return ""
+
+    def _annex_iv_meta(self, field_name: str) -> str:
+        """Return a single Annex IV metadata field value, or empty string."""
+        annex = self._artifacts.get("annex_iv", {})
+        meta = annex.get("metadata", {})
+        val = meta.get(field_name, "")
+        return str(val) if val else ""
+
+    def _intended_use_text(self) -> str:
+        """Use Annex IV §1(b) intended_purpose if present, else default text."""
+        purpose = self._annex_iv_meta("intended_purpose")
+        users = self._annex_iv_meta("intended_users")
+        prohibited = self._annex_iv_meta("prohibited_uses")
+
+        if not (purpose or users or prohibited):
+            return (
+                "This model is intended for text generation tasks. "
+                "Review the security scan and policy results before deploying in production."
+            )
+
+        parts: list[str] = []
+        if purpose:
+            parts.append(f"**Intended purpose:** {purpose}")
+        if users:
+            parts.append(f"**Intended users:** {users}")
+        if prohibited:
+            parts.append(f"**Prohibited uses:** {prohibited}")
+        return "\n\n".join(parts)
+
+    def _limitations_text(self) -> str:
+        """Use Annex IV risk content + bias audit summary when available."""
+        risk = self._annex_iv_meta("risk_management")
+        adversarial = self._annex_iv_meta("adversarial_testing")
+        bias_summary = self._bias_summary()
+
+        default = (
+            "Quantised models may exhibit reduced accuracy compared to the BF16 reference. "
+            "Always validate on your target task before deployment."
+        )
+
+        parts: list[str] = []
+        if risk:
+            parts.append(f"**Risk considerations:** {risk}")
+        if adversarial:
+            parts.append(f"**Adversarial testing:** {adversarial}")
+        if bias_summary:
+            parts.append(f"**Bias / fairness:** {bias_summary}")
+        if not parts:
+            return default
+        parts.append(default)
+        return "\n\n".join(parts)
+
+    def _bias_summary(self) -> str:
+        """Build a one-paragraph bias audit summary, or empty string."""
+        bias = self._artifacts.get("bias", {})
+        if not bias:
+            return ""
+        attrs = bias.get("protected_attributes") or bias.get("attributes") or []
+        passed = bias.get("passed")
+        overall = bias.get("overall_status") or (
+            "PASS" if passed else "FAIL" if passed is False else "UNKNOWN"
+        )
+        if attrs:
+            attr_str = ", ".join(str(a) for a in attrs)
+            return f"Audited on protected attributes: {attr_str}. Overall: {overall}."
+        return f"Bias audit overall: {overall}."
+
+    def _training_data_text(self) -> str:
+        """Build training data section from data_lineage_certificate.json."""
+        lineage = self._artifacts.get("lineage", {})
+        if not lineage:
+            # Fall back to Annex IV §2 (training data) if present
+            return self._annex_iv_section("§2(a)") or "Training data details not available."
+
+        datasets = lineage.get("datasets", [])
+        if not datasets:
+            return "No training datasets recorded in lineage certificate."
+
+        rows = ["| Dataset | License | PII Risk | Source |", "|---|---|---|---|"]
+        for ds in datasets[:20]:
+            name = ds.get("name") or ds.get("id") or "unknown"
+            lic = ds.get("license") or "unknown"
+            pii = ds.get("pii_risk") or ds.get("pii") or "unknown"
+            src = ds.get("source") or ds.get("uri") or ""
+            rows.append(f"| `{name}` | {lic} | {pii} | {src} |")
+        return "\n".join(rows)
+
+    def _evaluation_text(self) -> str:
+        """Build evaluation section from Annex IV §6(a) or BOM perf metrics."""
+        eval_section = self._annex_iv_section("§6(a)")
+        if eval_section:
+            return eval_section
+
+        comp = self._bom_component()
+        if not comp:
+            return "Evaluation metrics not available."
+        mc = comp.get("modelCard", {})
+        qa = mc.get("quantitativeAnalysis", {})
+        metrics = qa.get("performanceMetrics", [])
+        if not metrics:
+            return "Evaluation metrics not available."
+        rows = ["| Metric | Value |", "|---|---|"]
+        for m in metrics:
+            t = m.get("type") or "metric"
+            v = m.get("value")
+            if v is not None:
+                rows.append(f"| {t} | {v} |")
+        return "\n".join(rows)
+
+    def _environmental_impact_text(self) -> str:
+        """Environmental impact section — pulls from Annex IV §1(c) hardware."""
+        hw = self._annex_iv_meta("hardware_requirements")
+        if hw:
+            return (
+                f"**Hardware requirements:** {hw}\n\n"
+                "Carbon footprint is estimated by deployer using the hardware profile above. "
+                "See [ML CO2 Impact](https://mlco2.github.io/impact/) for a methodology."
+            )
+        return (
+            "Environmental impact not measured at attestation time. Deployers should estimate "
+            "training and inference carbon footprint using their hardware profile."
+        )
+
+    def _ethical_considerations_text(self) -> str:
+        """Ethical considerations — combines Annex IV oversight + bias status."""
+        oversight = self._annex_iv_meta("oversight_description")
+        bias = self._bias_summary()
+
+        parts: list[str] = []
+        if oversight:
+            parts.append(f"**Human oversight:** {oversight}")
+        else:
+            parts.append(
+                "**Human oversight:** Model outputs must be reviewed by qualified personnel "
+                "before acting on them in any high-risk decision context."
+            )
+        if bias:
+            parts.append(f"**Bias / fairness:** {bias}")
+        parts.append(
+            "**Misuse:** This model may produce inaccurate, biased, or unsafe content. "
+            "Deployers are responsible for safeguarding downstream systems."
+        )
+        return "\n\n".join(parts)
+
     # ── Format builders ───────────────────────────────────────────────────────
 
     def _build_hf_card(self) -> ModelCard:
@@ -353,13 +510,27 @@ class ModelCardGenerator:
             ),
             ModelCardSection(
                 "Intended Use",
-                "This model is intended for text generation tasks. "
-                "Review the security scan and policy results before deploying in production.",
+                self._intended_use_text(),
             ),
             ModelCardSection(
                 "Limitations",
-                "Quantised models may exhibit reduced accuracy compared to the BF16 reference. "
-                "Always validate on your target task before deployment.",
+                self._limitations_text(),
+            ),
+            ModelCardSection(
+                "Training Data",
+                self._training_data_text(),
+            ),
+            ModelCardSection(
+                "Evaluation",
+                self._evaluation_text(),
+            ),
+            ModelCardSection(
+                "Environmental Impact",
+                self._environmental_impact_text(),
+            ),
+            ModelCardSection(
+                "Ethical Considerations",
+                self._ethical_considerations_text(),
             ),
             ModelCardSection(
                 "How to Use",
