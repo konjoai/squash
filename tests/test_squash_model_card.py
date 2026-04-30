@@ -653,10 +653,11 @@ class TestModuleCountGate(unittest.TestCase):
         # webhook_delivery.py, sbom_diff.py — 69 total.
         # W193 / B6 (audit-trail blockchain anchoring) added anchor.py — 70 total.
         # W194 / B7 (drift SLA certificate) added drift_certificate.py — 71 total.
+        # W195 / B9 (data poisoning detection) added data_poison.py — 72 total.
         self.assertEqual(
             count,
-            71,
-            msg=f"squash/ has {count} Python files (expected 71 after W194). "
+            72,
+            msg=f"squash/ has {count} Python files (expected 72 after W195). "
                 "If you added a file, update this gate.",
         )
 

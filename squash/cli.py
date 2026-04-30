@@ -1979,6 +1979,42 @@ def _build_parser() -> argparse.ArgumentParser:
     go_annotate.add_argument("--policy", default="eu-ai-act", help="Policy name (default: eu-ai-act)")
     go_annotate.add_argument("--passed", action="store_true", default=True)
 
+    # ── W195 / B9 — Data Poisoning Detection ──────────────────────────────────
+    dp_cmd = sub.add_parser(
+        "data-poison",
+        help="Training data poisoning detection — six-layer scanner",
+        description=(
+            "Scan training datasets for data poisoning indicators across six\n"
+            "detection layers: threat intelligence, label integrity, duplicate\n"
+            "injection, statistical outliers, backdoor trigger patterns, and\n"
+            "provenance chain integrity.\n\n"
+            "Examples:\n"
+            "  squash data-poison scan ./datasets/training\n"
+            "  squash data-poison scan ./datasets/training --format json --out report.json\n"
+            "  squash data-poison scan ./datasets/training --fail-on HIGH\n"
+            "  squash data-poison report ./report.json\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    dp_sub = dp_cmd.add_subparsers(dest="dp_command")
+
+    dp_scan = dp_sub.add_parser("scan", help="Scan a dataset directory or file for poisoning indicators")
+    dp_scan.add_argument("dataset_path", help="Path to dataset directory or file")
+    dp_scan.add_argument("--format", default="text", choices=["text", "json", "md"], dest="scan_format", help="Output format (default: text)")
+    dp_scan.add_argument("--out", default=None, help="Write report to PATH instead of stdout")
+    dp_scan.add_argument(
+        "--fail-on",
+        default="high",
+        choices=["low", "medium", "high", "critical"],
+        dest="fail_on",
+        help="Exit non-zero if risk level meets or exceeds this threshold (default: high)",
+    )
+    dp_scan.add_argument("--provenance", default=None, dest="provenance_path", help="Path to provenance JSON to cross-reference")
+
+    dp_report = dp_sub.add_parser("report", help="Render a previously saved data-poison report")
+    dp_report.add_argument("report_path", help="Path to data-poison report JSON")
+    dp_report.add_argument("--format", default="text", choices=["text", "json", "md"], dest="report_format")
+
     # ── W194 / B7 — Drift SLA Certificate ────────────────────────────────────
     dc_cmd = sub.add_parser(
         "drift-cert",
@@ -6169,6 +6205,84 @@ def _cmd_gitops(args: argparse.Namespace, quiet: bool) -> int:
         return 1
 
 
+def _cmd_data_poison(args: argparse.Namespace, quiet: bool) -> int:
+    """W195 / B9 — Training data poisoning detection."""
+    from squash.data_poison import (
+        DataPoisonScanner,
+        RiskLevel,
+        load_report,
+    )
+
+    sub = getattr(args, "dp_command", None)
+
+    if sub == "scan":
+        dataset_path = Path(args.dataset_path)
+        if not dataset_path.exists():
+            print(f"error: {dataset_path} not found", file=sys.stderr)
+            return 1
+
+        provenance_data = None
+        if args.provenance_path:
+            try:
+                provenance_data = json.loads(Path(args.provenance_path).read_text())
+            except Exception as exc:
+                print(f"warning: could not read provenance file: {exc}", file=sys.stderr)
+
+        report = DataPoisonScanner().scan(dataset_path, provenance_data=provenance_data)
+        _output_poison_report(report, args.scan_format, args.out, quiet)
+
+        fail_threshold = RiskLevel(args.fail_on)
+        if report.risk_level >= fail_threshold:
+            if not quiet and args.scan_format == "text":
+                print(
+                    f"error: risk level {report.risk_level.value.upper()} "
+                    f">= --fail-on {fail_threshold.value.upper()}",
+                    file=sys.stderr,
+                )
+            return 2
+        return 0
+
+    if sub == "report":
+        try:
+            report = load_report(Path(args.report_path))
+        except Exception as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 1
+        _output_poison_report(report, args.report_format, None, quiet)
+        return 0
+
+    print("squash data-poison: specify a subcommand — scan | report")
+    return 1
+
+
+def _output_poison_report(report: Any, fmt: str, out_path: str | None, quiet: bool) -> None:
+    from squash.data_poison import DataPoisonReport
+    if fmt == "json":
+        text = report.to_json()
+    elif fmt == "md":
+        text = report.to_markdown()
+    else:
+        # Human-readable text summary
+        lines = [report.summary(), ""]
+        for c in report.checks:
+            icon = "✓" if c.passed else "✗"
+            lines.append(f"  {icon} {c.name} [{c.severity.value}] score={c.score:.3f}")
+            for e in c.evidence[:2]:
+                lines.append(f"      {e}")
+        if report.remediations:
+            lines += ["", "Remediations:"]
+            for r in report.remediations[:3]:
+                lines.append(f"  • {r[:120]}")
+        text = "\n".join(lines)
+
+    if out_path:
+        Path(out_path).write_text(text, encoding="utf-8")
+        if not quiet:
+            print(f"✓ report written to {out_path}")
+    else:
+        print(text)
+
+
 def _cmd_drift_cert(args: argparse.Namespace, quiet: bool) -> int:
     """W194 / B7 — Drift SLA Certificate issuer and verifier."""
     from squash.drift_certificate import (
@@ -6594,6 +6708,8 @@ def main() -> None:
         sys.exit(_cmd_telemetry(args, quiet))
     elif args.command == "gitops":
         sys.exit(_cmd_gitops(args, quiet))
+    elif args.command == "data-poison":
+        sys.exit(_cmd_data_poison(args, quiet))
     elif args.command == "drift-cert":
         sys.exit(_cmd_drift_cert(args, quiet))
     elif args.command == "anchor":

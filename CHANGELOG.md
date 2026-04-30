@@ -5,6 +5,80 @@ Format: [Conventional Commits](https://www.conventionalcommits.org/) · [Keep a 
 
 ---
 
+## [1.8.0] — 2026-04-30 — B9: Training Data Poisoning Detection (W195)
+
+### Added
+
+- **`squash/data_poison.py`** — six-layer training data poisoning scanner (W195 / B9):
+
+  **Layer 1 — Threat Intelligence** (`ThreatIntelChecker`)
+  Cross-references dataset file hashes against a curated registry of known-poisoned
+  and known-compromised datasets. Definitive detection with zero false positives on
+  a match. Seed set covers Badnets SST-2, Hidden Killer clean-label, and documented
+  HuggingFace supply-chain incidents.
+
+  **Layer 2 — Label Integrity** (`LabelIntegrityChecker`)
+  Shannon entropy analysis, class imbalance ratio (flagged at >50x), and per-class
+  Z-score spike detection (flagged at z > 4). Reads CSV/TSV/JSONL label files.
+  Label-flipping attacks always leave an entropy signature detectable by this layer.
+
+  **Layer 3 — Duplicate Injection Detection** (`DuplicateDetector`)
+  SHA-256 content-hash duplicate rate per file. Adversarial sample amplification
+  (inserting the same poisoned sample N times) is flagged at >5% duplicate rate
+  (MEDIUM) and >20% (HIGH). Covers JSONL, CSV, TSV, and plain text.
+
+  **Layer 4 — Statistical Outlier Detection** (`OutlierDetector`)
+  Z-score analysis on numerical feature columns (threshold z > 5). Adversarially
+  crafted inputs lie off the data manifold and are extreme outliers. Constant
+  columns (synthetic data indicator) are also flagged. Numpy-accelerated with
+  stdlib `statistics` fallback for air-gapped environments.
+
+  **Layer 5 — Backdoor Trigger Pattern Scan** (`TriggerPatternScanner`)
+  Searches for 9 known NLP backdoor trigger tokens (Badnets `cf`, Hidden Killer
+  `mn`, instruction-tuning poison `tq`, zero-width space, BOM markers, GPT special
+  tokens). Also detects Unicode homoglyph character mixing (Latin + Cyrillic/Greek
+  in the same token — the invisible-trigger attack class from Boucher et al. 2022).
+
+  **Layer 6 — Provenance Chain Integrity** (`ProvenanceIntegrityChecker`)
+  Flags missing provenance records, file modification timestamps post-dating claimed
+  creation dates, and suspicious source URL patterns (Mega.nz, Pastebin, anonfiles,
+  darkweb/onion domains).
+
+  **Aggregation** — weighted risk score → `CLEAN / LOW / MEDIUM / HIGH / CRITICAL`.
+  CRITICAL check hit immediately elevates report regardless of aggregate score.
+  Prioritised remediations generated per flagged layer.
+
+- **CLI: `squash data-poison`** — 2 subcommands:
+  - `scan <dataset_path> [--format text|json|md] [--out PATH] [--fail-on low|medium|high|critical] [--provenance PATH]`
+  - `report <report.json>` — render a previously saved report
+- **`tests/test_data_poison.py`** — 39 tests covering all six layers, end-to-end
+  clean/poisoned datasets, JSON round-trip, Markdown render, and CLI smoke.
+  Module count gates updated (71→72); full suite clean.
+
+### Literature basis
+
+- Gu et al. 2019 — Badnets: Identifying Vulnerabilities in the ML Model Supply Chain
+- Turner et al. 2019 — Label-Consistent Backdoor Attacks
+- Shafahi et al. 2018 — Poison Frogs! Targeted Clean-Label Poisoning Attacks
+- Schwarzschild et al. 2021 — Just How Toxic Is Data Poisoning?
+- Wan et al. 2023 — Poisoning Language Models During Instruction Tuning
+- Boucher et al. 2022 — Bad Characters: Imperceptible NLP Attacks
+- OWASP LLM Top 10 2025 — LLM04: Data and Model Poisoning
+
+### Konjo notes
+
+- 건조 — pure stdlib core; numpy optional for Layer 4. No model execution, no
+  network calls, no daemons. Safe in FedRAMP / CMMC air-gapped environments.
+- 根性 — six independent detection layers means no single bypass defeats the
+  scanner. An attacker who avoids layer 3 (dedup) still faces layers 2 and 5.
+- 康宙 — the scanner is a read-only pass over existing dataset artefacts.
+  No data is copied, modified, or sent anywhere.
+- কুঞ্জ — the report is a portable JSON document that an ML security team can
+  run as part of CI, attach to a model card, and hand to an auditor. Every
+  finding includes a reference to the underlying paper or standard.
+
+---
+
 ## [1.7.0] — 2026-04-30 — B7: Drift SLA Certificate (W194)
 
 ### Added
