@@ -103,6 +103,110 @@ That's the moat. Credo AI and OneTrust are form-filling tools. Squash is a pipel
 
 ---
 
+## 🛤 Parallel Track Roadmap — The Canonical Execution Model
+
+**Sequential sprint numbering is retired as the operating model.** From May 2 onward, work runs across **four parallel tracks plus the launch sequence and a research lane.** Tracks A/B/C/D each have an owner-track and zero blocking dependencies on the others once Track A item A1 is live.
+
+The parallelisation insight that produced the Tier 1+2 surface — Sprints 5, 7, 8, 9 all ran simultaneously — becomes the standing operating model for everything that follows. Sequential cadence was a vestige of the early-repo phase; it no longer applies.
+
+```
+TRACK A (Launch Pipeline)        TRACK B (Tier 3 Engineering)     TRACK C (New Opportunities)      TRACK D (Enterprise Moat)
+  └─ critical path, solo          └─ parallel, independent         └─ parallel, research items     └─ post-launch defensibility
+       │                                │                                │                              │
+       └── A1 fly deploy                └── B1 HF Public Scanner         └── C1 squash freeze ★        └── D1 GitHub App
+       └── A2 PyPI publish              └── B2 Branded PDF               └── C2 AI Washing Detect      └── D2 AI Identity Attest
+       └── A3 Domain + Stripe           └── B3 Email Digest              └── C3 Approval Workflow      └── D3 Procurement Score API
+       └── A4 Website Live              └── B4 Terraform/Pulumi          └── C4 Regulatory Watch       └── D4 Multi-Jurisdiction
+                                        └── B5 API Gateway Plugin        └── C5 Audit Simulation       └── D5 Industry Benchmark
+                                        └── B6 Blockchain Anchor         └── C6 Insurance Package      └── D6 SOC 2 Type II
+                                                                                                       
+LAUNCH SEQUENCE                                                          RESEARCH LANE (post-launch)
+  └─ L1 Public Beta — Jul 11                                              └─ R1 Red-Team / Prompt Injection — Sep–Oct
+  └─ L2 HN Show HN — Jul 14, 9am ET                                       └─ R2 AI Cost / ROI Attestation — Oct–Nov
+  └─ L3 Product Hunt — Jul 21
+  └─ L4 EU Enforcement Day — Aug 2
+```
+
+★ **C1 `squash freeze` is the headline win.** Two days of work, zero new modules, orchestrates five existing modules (`attestation_registry`, `webhook_delivery`, `gitops`, `incident`, `notifications`) into one CLI command. The "red button" CISOs will demo to boards. **Highest drama-per-hour-of-effort ratio in the entire roadmap.** Goes in the first press release.
+
+---
+
+### Track A — Launch Pipeline (critical path, solo execution)
+
+The non-delegable, sequential actions only the founder can perform. **9 days end-to-end, May 2 → May 10.** Every Tier 3 / Tier 4 cloud-dependent item is blocked by A1 (live API).
+
+| ID | Item | Effort | Date | Blocks | Notes |
+|---|---|---|---|---|---|
+| **A1** | **Production Deploy** — `fly deploy` | 2 hrs | **May 2** | A2, A3, all cloud-dependent items | Dockerfile + fly.toml ready. Set env vars, deploy, verify `/health/ping`. |
+| **A2** | **PyPI Publish** — `pip install squash-ai` | 1 hr | May 3 | All install docs | `python -m build && twine upload dist/*`. Verify in clean venv. |
+| **A3** | **Domain + Stripe Live** — getsquash.dev + Stripe products | 1 day | May 5 | A4 (website) | Buy domain, point to Vercel, create Stripe products ($299/$499/$899/$4K+), wire checkout, activate Resend. `billing.py` Stripe webhooks already written. |
+| **A4** | **Website Live** — Vercel deploy of `website/` | 3 days | May 7–10 | First inbound | Next.js scaffold built. Activate countdown timer, pricing page, demo GIF, EU deadline urgency banner. |
+
+### Track B — Tier 3 Engineering (parallel, independent)
+
+Pure engineering that has zero dependency on Track A once A1 is live. Each item maps 1:1 to a previously-defined Tier 3 sprint specification.
+
+| ID | Item | Effort | Date | ∥ With | Foundation | Sprint Spec |
+|---|---|---|---|---|---|---|
+| **B1** | **HF Public Scanner** — `squash scan hf://owner/model` | 4 days | **May 5–8** | A3, C1, C2 | `scanner.py` + `policy.py` exist; new HF API fetch layer | Sprint 14 (W205) |
+| **B2** | **Branded PDF Report** — cover + exec summary on existing `to_pdf()` | 2 days | May 8–10 | A4, C2, C3 | `annex_iv_generator.to_pdf()` works; design + template only | Sprint 15 (W208) |
+| **B3** | **Email Digest** — Weekly/monthly portfolio posture | 2 days | May 12–14 | C3, C4 | `notifications.py` + Resend already configured | Sprint 15 (W209–W210) |
+| **B4** | **Terraform/Pulumi Provider** — Go provider + Pulumi component | 10 days | May 15–26 | C3, C4, D1 | API stable after A1; new repo `terraform-provider-squash/` | Sprint 16 (W211–W214) |
+| **B5** | **API Gateway Plugin** — Kong + AWS Lambda authorizer | 8 days | May 27–Jun 5 | D1, C5 | Two packages (Kong Go/Lua + AWS Python) | (de-scoped Tier 3 #28; reinstated as B5) |
+| **B6** | **Blockchain Anchoring** — Ethereum OP_RETURN of attestation hash | 6 days | Jun 6–13 | D1, C5 | `provenance.py` exists; new web3.py + tx builder | Sprint 17 (W215–W217) |
+
+### Track C — New Opportunities (parallel, research-driven)
+
+High-ROI items derived from market research. Each operationalises a specific anchor stat from the Market Intelligence section.
+
+| ID | Item | Effort | Date | ∥ With | Anchor Stat | Sprint Spec |
+|---|---|---|---|---|---|---|
+| **C1 ★** | **`squash freeze`** — emergency response orchestrator | **2 days** | **May 5–6** | A3, B1 | 20% have a tested AI incident-response plan | Sprint 19 (W221–W222) |
+| **C2** | **AI Washing Detection** — `squash detect-washing` | 5 days | May 7–12 | B1, B2 | SEC #1 AI exam priority 2026 | Sprint 20 (W223–W225) |
+| **C3** | **Approval Workflow** — `squash approve` (signed reviewer record) | 5 days | May 13–19 | B2, B3, B4 | EU AI Act Art. 9 human-oversight requirement | Sprint 23 (W232–W234) |
+| **C4** | **Regulatory Watch Daemon** — primary-source polling + gap analysis | 7 days | May 20–28 | B4, D1 | Daily-touch product = retention | Sprint 27 (W243–W245) |
+| **C5** | **Audit Simulation** — `squash simulate-audit --regulator EU-AI-Act` | 10 days | Jun 2–13 | D1, D2, B5 | 78% can't pass audit in 90 days | Sprint 22 (W229–W231) |
+| **C6** | **Insurance Risk Package** — Munich Re / Coalition format | 7 days | Jun 16–24 | D2, D3 | AI cyber-insurance market crystallising late 2026 | Sprint 24 (W235–W237) |
+
+### Track D — Enterprise Moat (post-launch defensibility)
+
+Higher-effort items that build the long-term moat. Most depend on Track A's live API and benefit from launch volume to validate.
+
+| ID | Item | Effort | Date | ∥ With | Anchor Stat | Sprint Spec |
+|---|---|---|---|---|---|---|
+| **D1** | **GitHub App** — Marketplace listing + PR auto-comment | 15 days | Jun 1–20 | C5, B5, D2 | 1 user → 50-user network effect | new (not yet sprinted; promote to Sprint 30 if needed) |
+| **D2** | **AI Identity Attestation** — `squash attest-identity` | 8 days | Jun 15–25 | D1, C5, C6 | 92% lack AI identity visibility · 73% CISO want-to-buy | Sprint 21 (W226–W228) |
+| **D3** | **Procurement Scoring API** — `GET /v1/score/{vendor}` | 10 days | Jul 1–15 | D4, D5 | Two-sided marketplace, SSL-CA-of-AI play | Sprint 28 (W246–W248) |
+| **D4** | **Multi-Jurisdiction Matrix** — `squash compliance-matrix --regions ...` | 8 days | Jul 10–20 | D3, D5 | Multinational legal-mapping is 1-week consult per deploy | Sprint 26 (W240–W242) |
+| **D5** | **Industry Benchmarking** — `squash industry-benchmark --sector ...` | 7 days | Jul 20–28 | D3, D4 | QBR conversation starter; data-density unlock | Sprint 29 (W249–W250) |
+| **D6** | **SOC 2 Type II** — readiness phase + auditor selection | 6 mo | Aug 2026+ | (external) | Procurement unblocker for $50K+ ACV | Sprint 18 (W218–W220) |
+
+### Launch Sequence (red, date-locked)
+
+These dates are critical-path dependencies. Everything in Tracks B/C/D scheduled before each launch event must ship or that launch arrives with gaps.
+
+| ID | Event | Date | Requires | Asset |
+|---|---|---|---|---|
+| **L1** | **Public Beta Launch** | Jul 11 | A1–A4, B1–B2, C1, design-partner quote | Loom 3-min demo video |
+| **L2** | **Show HN** | **Jul 14, 9am ET** (Tuesday) | C1 live (`squash freeze` demo) | Draft already in `docs/launch/hn-post.md` |
+| **L3** | **Product Hunt** | Jul 21 | Pre-arranged hunter, gallery design done | "Squash violations, not velocity." |
+| **L4** | **EU Enforcement Day** | **Aug 2 — T+0** | All preceding launches | "Squash users are compliant. Are you?" |
+
+### Research Lane (post-launch)
+
+| ID | Item | Effort | Window | Foundation |
+|---|---|---|---|---|
+| **R1** | **Red-Team / Prompt Injection Scanner** — `squash red-team --test-suite owasp-llm-top10` | 10 days | Sep–Oct 2026 | `evaluator.py` + `scanner.py`; new attack-prompt library |
+| **R2** | **AI Cost / ROI Attestation** — `squash cost-attest` for CFO buyer | 8 days | Oct–Nov 2026 | `telemetry.py` + `metrics.py` already capture cost/token |
+
+### The Critical Parallelism Insight
+
+**While Track A burns 9 sequential days from May 2 → May 10 on deployment items only the founder can do**, both Track B (HF Scanner, 4 days) and Track C (`squash freeze`, 2 days) can start on May 5 and finish before A4 is live. This is how the same week ships three independently valuable artefacts. Sprints 5, 7, 8, 9 already proved this works — the master plan now codifies it as the standing model.
+
+The moment **A1** completes (May 2 — deploy day), all four tracks are fully unblocked. Anything sequenced after A1 in this roadmap that can't articulate a concrete dependency on its predecessors should be moved earlier.
+
+---
+
 ## 📊 Market Intelligence — Anchor Statistics & Messaging Framework
 
 These are the load-bearing statistics. Every product decision, sprint
@@ -804,7 +908,7 @@ The eight Tier 3 features (#23–#30) are batched into five sprints by proximity
 
 ---
 
-### Sprint 14 — Public Security Scanner & HF Spaces (Tier 3 #23 + #27)
+### Sprint 14 — Public Security Scanner & HF Spaces (Tier 3 #23 + #27) · **Track B / B1**
 
 **Goal:** Top-of-funnel growth through a free, public-facing security tool. `squash scan hf://meta-llama/Llama-3.1-8B-Instruct` becomes the share-link asset for HuggingFace community + a HF Space that anyone can use without `pip install`. Brand build, organic acquisition, design-partner discovery.
 
@@ -824,7 +928,7 @@ The eight Tier 3 features (#23–#30) are batched into five sprints by proximity
 
 ---
 
-### Sprint 15 — Branded PDF Reports & Compliance Email Digest (Tier 3 #24 + #25)
+### Sprint 15 — Branded PDF Reports & Compliance Email Digest (Tier 3 #24 + #25) · **Track B / B2 + B3**
 
 **Goal:** Two passive-retention assets that land in the CISO's inbox without engineering effort. Branded PDF Annex IV report (cover page + exec summary + company logo hooks) is the deliverable that closes enterprise deals. Weekly/monthly portfolio digest email keeps squash present at the executive layer between attestation runs.
 
@@ -844,7 +948,7 @@ The eight Tier 3 features (#23–#30) are batched into five sprints by proximity
 
 ---
 
-### Sprint 16 — Terraform + Pulumi Provider (Tier 3 #26)
+### Sprint 16 — Terraform + Pulumi Provider (Tier 3 #26) · **Track B / B4**
 
 **Goal:** Move squash from "tool the engineer runs" to "infrastructure the org provisions." Terraform and Pulumi resources let platform / DevOps teams embed squash attestation in IaC pipelines — `terraform apply` fails when the model's attestation is missing, expired, or below score threshold. Two providers cover ~95% of the IaC market: HashiCorp's Terraform and Pulumi.
 
@@ -868,7 +972,7 @@ The eight Tier 3 features (#23–#30) are batched into five sprints by proximity
 
 ---
 
-### Sprint 17 — Cryptographic Provenance: Blockchain Anchoring (Tier 3 #29)
+### Sprint 17 — Cryptographic Provenance: Blockchain Anchoring (Tier 3 #29) · **Track B / B6**
 
 **Goal:** Immutable on-chain proof of attestation existence at a moment in time. Required for high-assurance verticals (BFSI, healthcare, defense) where regulators demand tamper-evident audit trails. Sigstore's transparency log is good but private-CA; a public chain (Ethereum mainnet via OP_RETURN-style data, or Bitcoin OP_RETURN) is the strongest available proof.
 
@@ -889,7 +993,7 @@ The eight Tier 3 features (#23–#30) are batched into five sprints by proximity
 
 ---
 
-### Sprint 18 — SOC 2 Type II Readiness (Tier 3 #30)
+### Sprint 18 — SOC 2 Type II Readiness (Tier 3 #30) · **Track D / D6**
 
 **Goal:** Close the enterprise procurement loop. SOC 2 Type II is the single most-requested item in MEDDPICC — without it most $50K+ ACVs can't even start. Squash already has the building blocks (audit trail, signed attestations, policy engine, evidence packages); Sprint 18 wraps them in the SOC 2 control catalogue and produces an auditor-ready evidence bundle.
 
@@ -930,7 +1034,9 @@ No competitor has all of these. Most have none.
 
 ---
 
-### Sprint 19 — `squash freeze` Emergency Response Command (Tier 4 — incident response)
+### Sprint 19 — `squash freeze` Emergency Response Command · **Track C / C1 ★ HEADLINE WIN**
+
+> ★ **Highest drama-per-hour ratio in the entire roadmap.** 2-day build, zero new modules, orchestrates five existing subsystems. **CISOs will demo this command to their boards. It is the headline asset of L2 (Show HN, Jul 14).** Press release lead. Sales-deck demo. Lock the post-body GIF for `docs/launch/hn-post.md` to be the `squash freeze` red-button command running.
 
 **Goal:** The "red button." A single CLI command that revokes a model's attestation, pushes a signed revocation to the public registry, triggers the GitOps webhook to block all new deployments, posts Slack/webhook alerts, and generates an EU AI Act Article 73 incident-disclosure draft. **All five subsystems already exist** — Sprint 19 is integration work, not new modules.
 
@@ -950,7 +1056,7 @@ No competitor has all of these. Most have none.
 
 ---
 
-### Sprint 20 — AI Washing Detection (`squash detect-washing`) (Tier 4 — SEC compliance)
+### Sprint 20 — AI Washing Detection (`squash detect-washing`) · **Track C / C2**
 
 **Goal:** Scan marketing collateral, investor decks, model cards, and product landing pages for AI capability claims; cross-reference against actually attested model capabilities; flag every divergence. SEC's top examination priority for 2026. No competitor has this product.
 
@@ -972,7 +1078,7 @@ No competitor has all of these. Most have none.
 
 ---
 
-### Sprint 21 — AI Identity Governance (`squash attest-identity`) (Tier 4 — CISO buyer)
+### Sprint 21 — AI Identity Governance (`squash attest-identity`) · **Track D / D2**
 
 **Goal:** Verify OAuth scopes, validate least-privilege, check token rotation policy, attest identity configuration of an AI agent or service account. Integrates with Okta, Azure AD, AWS IAM. **Zero competitors.** Extends existing `agent_audit.py` + `governor.py` audit log.
 
@@ -993,7 +1099,7 @@ No competitor has all of these. Most have none.
 
 ---
 
-### Sprint 22 — Regulatory Examination Simulation (`squash simulate-audit`) (Tier 4 — readiness)
+### Sprint 22 — Regulatory Examination Simulation (`squash simulate-audit`) · **Track C / C5**
 
 **Goal:** Run a mock regulatory examination against the attested model portfolio. Pulls answers from existing attestation data (Annex IV, ISO 42001, NIST RMF, SEC, FDA), flags gaps, produces a readiness score + prioritized remediation plan. Frames itself as a $5K–$15K professional-service deliverable wrapped in a 60-second CLI.
 
@@ -1014,7 +1120,7 @@ No competitor has all of these. Most have none.
 
 ---
 
-### Sprint 23 — Model Deployment Approval Workflow (`squash approve`) (Tier 4 — Article 9 / NIST)
+### Sprint 23 — Model Deployment Approval Workflow (`squash approve`) · **Track C / C3**
 
 **Goal:** Generate cryptographically signed approval records — reviewer identity, attestation state at moment of review, timestamp, explicit approval/rejection rationale. Sigstore handles the crypto; squash provides the workflow shell. Required by EU AI Act Article 9 and NIST AI RMF "GOVERN" pillar.
 
@@ -1035,7 +1141,7 @@ No competitor has all of these. Most have none.
 
 ---
 
-### Sprint 24 — AI Insurance Package (`squash insurance-package`) (Tier 4 — new buyer motion)
+### Sprint 24 — AI Insurance Package (`squash insurance-package`) · **Track C / C6**
 
 **Goal:** Generate standardised risk-quantification packages for AI cyber-insurance underwriting. Maps to Munich Re / Coalition / AIG frameworks. Output is a single signed ZIP: model inventory + risk tier, compliance score by framework, historical incident log, drift events, CVE exposure, bias results, response plan. **Opens a new buyer motion: Chief Risk Officer + insurance procurement.**
 
@@ -1056,7 +1162,11 @@ No competitor has all of these. Most have none.
 
 ---
 
-### Sprint 25 — Compliance SLA Dashboard (Tier 4 — enterprise procurement)
+### Sprint 25 — Compliance SLA Dashboard (Tier 4 — enterprise procurement) · **Off-track research bonus**
+
+> Not in the parallel-track grid (no track ID). Held as a pure-extension item that can be picked up opportunistically whenever a Track B / Track D slot is free. Reclassify if a procurement design partner asks for it.
+
+
 
 **Goal:** Per-model SLA tracking — revalidation frequency, attestation expiry, remediation SLA, breach status. Extends the existing `dashboard.py` + `attestation_registry.py` with configurable breach alerts. Turns squash from a point-in-time tool into an SLA-managed service. Required by enterprise procurement contracts.
 
@@ -1076,7 +1186,7 @@ No competitor has all of these. Most have none.
 
 ---
 
-### Sprint 26 — Multi-Jurisdiction Compliance Matrix (`squash compliance-matrix`) (Tier 4 — multinationals)
+### Sprint 26 — Multi-Jurisdiction Compliance Matrix (`squash compliance-matrix`) · **Track D / D4**
 
 **Goal:** `squash compliance-matrix --regions eu,us,uk,sg,ca` runs every applicable policy check simultaneously, generates a cross-referenced matrix showing which attestation fields satisfy which requirements in which jurisdictions, identifies gaps. Eliminates months of manual legal-mapping work per model deployment for multinationals.
 
@@ -1097,7 +1207,7 @@ No competitor has all of these. Most have none.
 
 ---
 
-### Sprint 27 — Continuous Regulatory Watch Daemon (Tier 4 — daily intelligence)
+### Sprint 27 — Continuous Regulatory Watch Daemon · **Track C / C4**
 
 **Goal:** Real-time monitoring of primary regulatory sources — SEC.gov, NIST.gov, EUR-Lex, state-legislature feeds. Parses new guidance, maps to squash policy framework, sends structured alerts with gap analysis against attested models. **Turns squash from a quarterly tool into a daily intelligence service.**
 
@@ -1118,7 +1228,7 @@ No competitor has all of these. Most have none.
 
 ---
 
-### Sprint 28 — AI Procurement Scoring API (Tier 4 — network effect)
+### Sprint 28 — AI Procurement Scoring API · **Track D / D3**
 
 **Goal:** Public REST endpoint `GET api.getsquash.dev/v1/score/{vendor_name}` returning a compliance score for any vendor with published trust packages. **The credit-score API for AI compliance.** Freemium: basic score free, breakdown requires Pro, real-time monitoring is Enterprise. Network effect: more vendors → more buyers → more vendors. **The SSL-CA-of-AI play.**
 
@@ -1140,7 +1250,7 @@ No competitor has all of these. Most have none.
 
 ---
 
-### Sprint 29 — Compliance Drift Rate Benchmarking (`squash industry-benchmark`) (Tier 4 — QBR conversation)
+### Sprint 29 — Compliance Drift Rate Benchmarking (`squash industry-benchmark`) · **Track D / D5**
 
 **Goal:** Anonymized aggregate analytics across all squash users — drift rate by model family, most common violations by framework, average time-to-first-drift, score distribution by industry sector. `squash industry-benchmark --sector financial-services` shows how a company compares to sector peers. **Built specifically to be the conversation starter in enterprise QBRs.**
 
@@ -1358,22 +1468,44 @@ The US enterprise buyer who doesn't care about GDPR absolutely cares about a DoD
 
 ---
 
-## Quick Reference: The August 2 Countdown — 94 Days
+## Quick Reference: The August 2 Countdown — Parallel Track Mode — 94 Days
 
-The North Star sprint sequence between today (April 30) and the EU AI
-Act enforcement deadline. Anything past August 2 is post-deadline; the
-plan has slack but every week before the deadline is highest leverage.
+The North Star execution sequence between today (April 30) and the EU AI
+Act enforcement deadline. **All four tracks run in parallel; only Track A
+is critical-path-sequential.** Anything not on this table is a
+distraction until August 2 ships.
 
-| Window | Sprints | What ships |
-|--------|---------|------------|
-| **May 2026** (Weeks 1–4) | Sprint 14 (HF Scanner + Spaces) · Sprint 19 (`squash freeze`) · Sprint 20 (AI washing detection) | Top-of-funnel growth + emergency response + SEC compliance product |
-| **June 2026** (Weeks 5–8) | Sprint 15 (Branded PDF + Email Digest) · Sprint 21 (Identity Governance) · Sprint 22 (Audit Simulation) | CISO leave-behind + 73%-pre-sold buyer + 78%-can't-pass-an-audit narrative |
-| **July 2026** (Weeks 9–12, pre-deadline push) | Sprint 16 (TF + Pulumi) · Sprint 23 (Approval Workflow) · Sprint 25 (SLA Dashboard) | DevOps embed + Article 9 documentation + procurement-ready SLAs |
-| **August 2** | **EU AI Act enforcement day.** Marketing surge: "Squash users are compliant. Are you?" Activate every press / community channel. Squash Standard installed in every CI pipeline by close-of-week. |
-| **August–September 2026** | Sprint 17 (Blockchain) · Sprint 18 (SOC 2) · Sprint 24 (Insurance Package) | High-assurance verticals (BFSI / healthcare / defence) + procurement unblocking |
-| **October 2026 → April 2027** | Sprints 26–29 (multi-jurisdiction, regulatory watch, procurement scoring API, industry benchmarks) | Network-effect plays once base + revenue motion are proven |
+| Window | Track A · Critical Path | Track B · Engineering | Track C · Opportunities | Track D · Moat | Launch |
+|---|---|---|---|---|---|
+| **May 2** | A1 `fly deploy` (2 hrs) | — | — | — | — |
+| **May 3** | A2 PyPI publish (1 hr) | — | — | — | — |
+| **May 5–6** | A3 Domain + Stripe (1d) | B1 HF Scanner (4d) ↑ | **C1 `squash freeze` ★** (2d) | — | — |
+| **May 7–10** | A4 Website live (3d) | B1 cont. · B2 Branded PDF (2d) | C2 AI Washing Detection (5d) | — | — |
+| **May 12–19** | ✅ Track A done | B3 Email Digest (2d) | C3 Approval Workflow (5d) | — | — |
+| **May 15–28** | — | B4 Terraform/Pulumi (10d) | C4 Regulatory Watch (7d) | — | — |
+| **May 27–Jun 13** | — | B5 API Gateway · B6 Blockchain | C5 Audit Simulation (10d) | D1 GitHub App (15d) · D2 Identity Attest (8d) | — |
+| **Jun 16–24** | — | — | C6 Insurance Package (7d) | D2 cont. | — |
+| **Jul 1–28** | — | — | — | D3 Procurement API · D4 Multi-Jurisdiction · D5 Benchmarking | Pre-launch staging |
+| **Jul 11** | — | — | — | — | **L1 Public Beta** |
+| **Jul 14, 9am ET** | — | — | — | — | **L2 Show HN** |
+| **Jul 21** | — | — | — | — | **L3 Product Hunt** |
+| **Aug 2 — T+0** | — | — | — | — | **L4 EU Enforcement Day** |
+| **Aug 2 → 2027** | — | — | R1/R2 (Red-Team · Cost) | D6 SOC 2 (6 mo) | Post-launch hardening |
 
-The sequence is intentional: Tier 4 sprints with hardest deadlines (Sprint 19 incident response, Sprint 20 SEC washing) front-run Tier 3 sprints. Anything not on this list is a distraction until August 2 ships.
+### Critical-Path Gates (date-locked dependencies)
+
+- **A1 (May 2) → unblocks B1, C1, all cloud-dependent items.** If A1 slips, every parallel track that depends on a live API moves with it. Do A1 first.
+- **B1 + B2 + C1 (by May 10) → unblock L1.** Public Beta Launch (Jul 11) requires the HF scanner live, the branded PDF as sales leave-behind, and `squash freeze` as the headline demo.
+- **C1 live by mid-May → headline asset for L2 (Show HN, Jul 14, 9am ET).** `squash freeze` IS the HN demo. The post body GIF should show the red-button command. Draft already in `docs/launch/hn-post.md`.
+- **Track D D3/D4/D5 (by Jul 31) → unblock the Aug 2 narrative.** Procurement scoring API, multi-jurisdiction matrix, and industry benchmarking each turn squash from "tool" to "infrastructure" — the framing of the Aug 2 press surge.
+
+### Parallelisation Discipline
+
+Sprints 5, 7, 8, 9 already ran simultaneously. That cadence is the **standing operating model** from May 2 forward. Every track item lists its `∥ With` set explicitly so a glance reveals what can run side-by-side.
+
+The headline parallelisation: **Track A (9 days, solo) overlaps Track B item B1 (4 days) and Track C item C1 (2 days) starting May 5.** The same calendar week ships three independently valuable artefacts. That is the multiplier the Tier 1+2 surface was built on, now made explicit for everything that follows.
+
+The legacy "Sprint 14 → Sprint 29" sequential numbering is preserved below as **deep-dive specifications** (each one tagged with its track ID) but is no longer the canonical execution model. The roadmap is the four-track grid above.
 
 ---
 
@@ -1381,6 +1513,6 @@ The sequence is intentional: Tier 4 sprints with hardest deadlines (Sprint 19 in
 
 ---
 
-**Document version:** 1.4 (Tier 4 expansion + Aug 2 North Star anchor)
-**Next review:** May 14, 2026 — review Tier 4 sprint sequencing against shipped Tier 3 progress
+**Document version:** 1.5 (Parallel Track restructure — A/B/C/D + Launch + Research)
+**Next review:** May 14, 2026 — review Track A completion + Track B/C/D progress against the parallel grid
 **Owner:** Wesley Scholl, Konjo AI
