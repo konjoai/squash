@@ -5,6 +5,66 @@ Format: [Conventional Commits](https://www.conventionalcommits.org/) · [Keep a 
 
 ---
 
+## [1.12.0] — 2026-04-30 — Sprint 15 W208 / Track B-2: Branded PDF Compliance Report
+
+### Added (W208 — Track B / B2 — Branded PDF Compliance Report)
+
+The CISO leave-behind that closes deals. A fully branded executive PDF from `squash annex-iv generate --branded` with cover page, KPI scorecard, exec summary, full Annex IV body, and signature block. WeasyPrint-based; degrades to an HTML preview when WeasyPrint is absent.
+
+```
+squash annex-iv generate --root ./model \
+  --system-name "BERT Sentiment Classifier" \
+  --format pdf \
+  --branded \
+  --org "Acme Corp" \
+  --author "ML Platform Team" \
+  --output-dir ./compliance/
+```
+
+- **`squash/pdf_report.py`** (NEW MODULE) — complete branded PDF engine:
+  - `BrandedPDFConfig(org_name, author, logo_path, accent_color, include_cover, include_exec_summary, include_signature, confidentiality_label)`
+  - `PDFReportBuilder(config).build_html(doc)` → full HTML string (preview without WeasyPrint)
+  - `PDFReportBuilder(config).build_from_document(doc)` → raw PDF bytes
+  - `PDFReportBuilder(config).save(doc, output_dir, stem)` → writes `*.pdf` + `*.html`; degrades to HTML-only when WeasyPrint is absent
+  - **Cover page** — dark navy background (#0a0f1a), Squash wordmark SVG embedded inline, system name, version, compliance score (colour-coded: ≥80% green / ≥40% amber / <40% red), attestation ID, metadata table, organisation + author
+  - **Executive summary page** — 4-KPI scorecard (overall score, sections complete, sections missing, total gaps), full section completion table with status badges (✓ Complete / ⚠ Partial / ✗ Missing), per-section gap callout blocks
+  - **Full Annex IV body** — all sections with dark-navy section headers, completeness badges, gap notes, attestation ID banner
+  - **Signature block** — three approval lines (Legal Review / Compliance Officer / Engineering Lead)
+  - HTML/XSS escaping throughout; `<script>`, `<style>` injection impossible
+  - Logo fallback chain: custom path → Squash dark SVG → inline wordmark
+
+- **`squash/templates/annex_iv_branded.css`** (NEW) — 370-line WeasyPrint-compatible CSS:
+  - `@page` rules with running headers (`@top-right` confidentiality label, `@bottom-right` page counter, `@bottom-center` document title)
+  - Named pages: `cover` (zero margins), `exec-summary` (custom top margin), default body
+  - Brand design system: Inter + JetBrains Mono, `#22c55e` accent, `#0a0f1a` navy
+  - Table-based layout for email-client-safe rendering
+  - Email-client fallback CSS also included for HTML preview mode
+
+- **`squash/templates/squash-logo-dark.svg`** + **`squash-logo-light.svg`** + **`squash-logo-mark.svg`** (NEW brand assets) — Squash wordmark extracted from marketing site design; embedded inline in the cover page
+
+- **`squash/cli.py`** — `squash annex-iv generate` gains `--branded`, `--org`, `--author`, `--logo`, `--accent` flags:
+  - `--branded` — triggers `PDFReportBuilder` after the normal save; WeasyPrint absence is a warning, not an error
+  - `--org NAME` — organisation name on cover
+  - `--author NAME` — preparer name on cover
+  - `--logo PATH` — custom SVG/PNG logo (replaces Squash wordmark)
+  - `--accent HEX` — brand accent override (default `#22c55e`)
+
+- **`tests/test_squash_w208_pdf_report.py`** (NEW) — 47 tests:
+  - BrandedPDFConfig defaults + coercion
+  - Cover page: score colour classes, org/author, attestation ID, logo embedding, disable flag
+  - Exec summary: KPI table, gap highlights, section badges, disable flag
+  - Body: section blocks, gap notes, attestation ID banner
+  - Signature block: three sig lines, labels, disable flag
+  - Custom accent colour injection
+  - HTML/XSS escaping
+  - `save()`: WeasyPrint mock path, graceful degradation
+  - Template files: CSS exists, contains brand green + @page rule + .cover-page
+  - CLI: all 5 new flags in help, branded flow with WeasyPrint absent
+
+**Module count:** 74 → 75 (`pdf_report.py` + `templates/` directory with 3 SVGs + 1 CSS — only `pdf_report.py` counts as a Python module)
+
+---
+
 ## [1.11.0] — 2026-04-30 — Sprint 32 W257–W258 / Track B-8: LoRA / Adapter Poisoning Detection
 
 ### Added (W257–W258 — Track B / B8 — LoRA / Adapter Poisoning Detection)

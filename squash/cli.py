@@ -2425,6 +2425,43 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Output filename stem (default: annex_iv → annex_iv.md, annex_iv.json, …)",
     )
     aiv_gen.add_argument("--no-validate", action="store_true", help="Skip post-generation validation report")
+
+    # ── B2 (Sprint 15 W208) — branded PDF flags ────────────────────────────
+    aiv_gen.add_argument(
+        "--branded",
+        action="store_true",
+        dest="annex_iv_branded",
+        help=(
+            "When --format pdf is specified, produce a branded executive PDF "
+            "with cover page, KPI scorecard, and signature block in addition "
+            "to the plain PDF. Requires: pip install weasyprint"
+        ),
+    )
+    aiv_gen.add_argument(
+        "--org",
+        default="",
+        dest="annex_iv_org",
+        help="Organisation name shown on the cover page (branded PDF).",
+    )
+    aiv_gen.add_argument(
+        "--author",
+        default="",
+        dest="annex_iv_author",
+        help="Preparer name / role shown on the cover page (branded PDF).",
+    )
+    aiv_gen.add_argument(
+        "--logo",
+        default=None,
+        dest="annex_iv_logo",
+        metavar="PATH",
+        help="Custom logo file (SVG or PNG) to embed on the cover page.",
+    )
+    aiv_gen.add_argument(
+        "--accent",
+        default="#22c55e",
+        dest="annex_iv_accent",
+        help="Brand accent colour (hex) for the branded PDF. Default: #22c55e (Squash green).",
+    )
     aiv_gen.add_argument("--fail-on-warning", action="store_true", help="Exit 1 if validation produces warnings")
     aiv_gen.add_argument("--quiet", action="store_true", help="Suppress informational output")
 
@@ -5654,6 +5691,30 @@ def _cmd_annex_iv_generate(args: argparse.Namespace, quiet: bool) -> int:  # noq
 
     # ── Phase 6: save to disk ─────────────────────────────────────────────────
     written = doc.save(output_dir, formats=list(args.formats), stem=args.stem)
+
+    # ── B2 (Sprint 15 W208) — branded PDF ────────────────────────────────────
+    if getattr(args, "annex_iv_branded", False):
+        try:
+            from squash.pdf_report import BrandedPDFConfig, PDFReportBuilder
+            from pathlib import Path as _Path
+            logo_path = _Path(args.annex_iv_logo) if getattr(args, "annex_iv_logo", None) else None
+            branded_cfg = BrandedPDFConfig(
+                org_name=getattr(args, "annex_iv_org", "") or "",
+                author=getattr(args, "annex_iv_author", "") or "",
+                logo_path=logo_path,
+                accent_color=getattr(args, "annex_iv_accent", "#22c55e") or "#22c55e",
+            )
+            branded_stem = (args.stem or "annex_iv") + "_branded"
+            branded_written = PDFReportBuilder(branded_cfg).save(
+                doc, output_dir, stem=branded_stem,
+            )
+            written.update({f"branded_{k}": v for k, v in branded_written.items()})
+        except ImportError as exc:
+            print(
+                f"squash: branded PDF requires WeasyPrint — install with: "
+                f"pip install weasyprint ({exc})",
+                file=sys.stderr,
+            )
 
     if not quiet:
         score_icon = "✅" if doc.overall_score >= 80 else ("⚠️" if doc.overall_score >= 40 else "❌")

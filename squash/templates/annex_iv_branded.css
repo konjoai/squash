@@ -1,0 +1,612 @@
+/*
+ * squash/templates/annex_iv_branded.css
+ * B2 (Sprint 15 W208) — Branded Annex IV PDF stylesheet.
+ *
+ * Design system derived from the Squash marketing site:
+ *   Brand green:  #22c55e
+ *   Dark navy:    #0a0f1a
+ *   Slate text:   #e2e8f0
+ *   Primary font: Inter
+ *   Mono font:    JetBrains Mono
+ *
+ * WeasyPrint 60+ is required. @page rules, margin boxes, and
+ * @font-face work; flexbox, grid, and CSS animations do not.
+ */
+
+/* ── Fonts ─────────────────────────────────────────────────────────────── */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap");
+
+/* ── Page setup ─────────────────────────────────────────────────────────── */
+@page {
+    size: A4;
+    margin: 22mm 20mm 24mm 20mm;
+    @bottom-center {
+        content: string(doc-title) " · " string(doc-version);
+        font-family: "JetBrains Mono", monospace;
+        font-size: 7.5pt;
+        color: #64748b;
+    }
+    @bottom-right {
+        content: "Page " counter(page) " of " counter(pages);
+        font-family: "JetBrains Mono", monospace;
+        font-size: 7.5pt;
+        color: #64748b;
+    }
+    @top-right {
+        content: "CONFIDENTIAL · ANNEX IV TECHNICAL DOCUMENTATION";
+        font-family: "JetBrains Mono", monospace;
+        font-size: 6.5pt;
+        letter-spacing: 0.08em;
+        color: #334155;
+    }
+}
+
+@page cover {
+    margin: 0;
+    @top-right    { content: none; }
+    @bottom-center { content: none; }
+    @bottom-right  { content: none; }
+}
+
+@page exec-summary {
+    margin-top: 18mm;
+    @top-right {
+        content: "EXECUTIVE SUMMARY";
+        font-family: "JetBrains Mono", monospace;
+        font-size: 6.5pt;
+        letter-spacing: 0.08em;
+        color: #334155;
+    }
+}
+
+/* ── Global reset ───────────────────────────────────────────────────────── */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: "Inter", -apple-system, Helvetica, Arial, sans-serif;
+    font-size: 10.5pt;
+    line-height: 1.65;
+    color: #1e293b;
+    background: #fff;
+}
+
+/* ── String captures for running headers ────────────────────────────────── */
+.doc-title   { string-set: doc-title content(); }
+.doc-version { string-set: doc-version content(); }
+
+/* ── Cover page ─────────────────────────────────────────────────────────── */
+.cover-page {
+    page: cover;
+    page-break-after: always;
+    min-height: 297mm;
+    background-color: #0a0f1a;
+    color: #e2e8f0;
+    padding: 0;
+    display: block;
+}
+
+.cover-top-bar {
+    background: #22c55e;
+    height: 4mm;
+    width: 100%;
+}
+
+.cover-content {
+    padding: 28mm 22mm 0 22mm;
+}
+
+.cover-logo {
+    width: 220px;
+    margin-bottom: 32mm;
+}
+
+.cover-badge {
+    display: inline-block;
+    background: rgba(34, 197, 94, 0.1);
+    border: 1px solid rgba(34, 197, 94, 0.3);
+    color: #22c55e;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 7.5pt;
+    letter-spacing: 0.12em;
+    padding: 3pt 8pt;
+    text-transform: uppercase;
+    margin-bottom: 8mm;
+}
+
+.cover-label {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 7.5pt;
+    color: #475569;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    margin-bottom: 4mm;
+}
+
+.cover-title {
+    font-size: 30pt;
+    font-weight: 800;
+    line-height: 1.08;
+    letter-spacing: -0.03em;
+    color: #f1f5f9;
+    margin-bottom: 6mm;
+}
+
+.cover-subtitle {
+    font-size: 16pt;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: #22c55e;
+    margin-bottom: 16mm;
+}
+
+.cover-score-block {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-left: 3px solid #22c55e;
+    padding: 8mm 10mm;
+    margin-bottom: 12mm;
+    display: block;
+}
+
+.cover-score-label {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 7pt;
+    color: #64748b;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    margin-bottom: 2mm;
+}
+
+.cover-score-value {
+    font-size: 42pt;
+    font-weight: 900;
+    letter-spacing: -0.04em;
+    line-height: 1;
+}
+
+.score-green  { color: #22c55e; }
+.score-amber  { color: #f59e0b; }
+.score-red    { color: #ef4444; }
+
+.cover-meta-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 8mm;
+    font-size: 9pt;
+    color: #94a3b8;
+}
+
+.cover-meta-table td {
+    padding: 3pt 0;
+    vertical-align: top;
+}
+
+.cover-meta-table td:first-child {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 7.5pt;
+    color: #475569;
+    width: 38mm;
+    padding-right: 6mm;
+    letter-spacing: 0.05em;
+}
+
+.cover-meta-table td:last-child {
+    color: #e2e8f0;
+    font-weight: 500;
+}
+
+.cover-footer {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    border-top: 1px solid rgba(255,255,255,0.06);
+    padding: 6mm 22mm;
+    display: block;
+}
+
+.cover-footer-inner {
+    display: block;
+}
+
+.cover-footer-left {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 7pt;
+    color: #334155;
+    letter-spacing: 0.06em;
+}
+
+.cover-footer-right {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 7pt;
+    color: #334155;
+    letter-spacing: 0.06em;
+    text-align: right;
+}
+
+/* ── Executive summary page ─────────────────────────────────────────────── */
+.exec-summary-page {
+    page: exec-summary;
+    page-break-after: always;
+}
+
+.exec-summary-page h2 {
+    font-size: 16pt;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: #0f172a;
+    margin-bottom: 6mm;
+    padding-bottom: 3mm;
+    border-bottom: 2px solid #22c55e;
+}
+
+.exec-kpi-row {
+    width: 100%;
+    margin-bottom: 8mm;
+    display: block;
+}
+
+/* Simulate 4-column grid with table */
+.kpi-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 4mm 0;
+    margin-bottom: 8mm;
+}
+
+.kpi-cell {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-top: 3px solid #22c55e;
+    padding: 5mm;
+    width: 25%;
+    text-align: center;
+    vertical-align: top;
+}
+
+.kpi-cell.kpi-fail {
+    border-top-color: #ef4444;
+}
+
+.kpi-cell.kpi-warn {
+    border-top-color: #f59e0b;
+}
+
+.kpi-value {
+    font-size: 22pt;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    color: #0f172a;
+    display: block;
+}
+
+.kpi-label {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 7pt;
+    color: #64748b;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    display: block;
+    margin-top: 1mm;
+}
+
+.exec-gap-block {
+    background: #fff7ed;
+    border: 1px solid #fed7aa;
+    border-left: 3px solid #f59e0b;
+    padding: 5mm 6mm;
+    margin-bottom: 5mm;
+}
+
+.exec-gap-block h4 {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 8pt;
+    color: #b45309;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 2mm;
+}
+
+.exec-gap-block ul {
+    padding-left: 5mm;
+    color: #7c2d12;
+    font-size: 9pt;
+}
+
+.exec-pass-block {
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    border-left: 3px solid #22c55e;
+    padding: 5mm 6mm;
+    margin-bottom: 5mm;
+}
+
+.exec-pass-block h4 {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 8pt;
+    color: #166534;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 2mm;
+}
+
+.exec-section-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 9pt;
+    margin-top: 4mm;
+}
+
+.exec-section-table th {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 7pt;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #64748b;
+    border-bottom: 1px solid #e2e8f0;
+    padding: 2mm 3mm;
+    text-align: left;
+}
+
+.exec-section-table td {
+    padding: 2.5mm 3mm;
+    border-bottom: 1px solid #f1f5f9;
+    vertical-align: middle;
+}
+
+.exec-section-table tr:hover td {
+    background: #f8fafc;
+}
+
+.badge {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 7pt;
+    font-weight: 700;
+    padding: 1pt 5pt;
+    border-radius: 2pt;
+    letter-spacing: 0.04em;
+}
+
+.badge-complete { background: #dcfce7; color: #166534; }
+.badge-partial  { background: #fef9c3; color: #854d0e; }
+.badge-missing  { background: #fee2e2; color: #991b1b; }
+
+/* ── Body pages ─────────────────────────────────────────────────────────── */
+.body-content {
+    page-break-before: always;
+}
+
+h1 {
+    font-size: 14pt;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: #0f172a;
+    margin: 8mm 0 3mm 0;
+    padding-bottom: 2mm;
+    border-bottom: 2px solid #22c55e;
+    page-break-after: avoid;
+}
+
+h2 {
+    font-size: 12pt;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: #0f172a;
+    margin: 6mm 0 2mm 0;
+    page-break-after: avoid;
+}
+
+h3 {
+    font-size: 10.5pt;
+    font-weight: 600;
+    color: #1e293b;
+    margin: 4mm 0 1.5mm 0;
+    page-break-after: avoid;
+}
+
+p {
+    margin-bottom: 3mm;
+    color: #374151;
+    text-align: justify;
+    hyphens: auto;
+}
+
+ul, ol {
+    padding-left: 6mm;
+    margin-bottom: 3mm;
+}
+
+li {
+    margin-bottom: 1.5mm;
+    color: #374151;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 9pt;
+    margin: 4mm 0;
+    page-break-inside: avoid;
+}
+
+th {
+    background: #0f172a;
+    color: #e2e8f0;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 7.5pt;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 2.5mm 3mm;
+    text-align: left;
+}
+
+td {
+    padding: 2.5mm 3mm;
+    border-bottom: 1px solid #e2e8f0;
+    color: #374151;
+    vertical-align: top;
+}
+
+tr:nth-child(even) td {
+    background: #f8fafc;
+}
+
+code {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 8.5pt;
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    padding: 0.5pt 3pt;
+    border-radius: 2pt;
+    color: #22c55e;
+}
+
+pre {
+    background: #0f172a;
+    border: 1px solid #1e293b;
+    border-left: 3px solid #22c55e;
+    padding: 5mm;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 8pt;
+    color: #e2e8f0;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    margin: 3mm 0;
+    page-break-inside: avoid;
+}
+
+blockquote {
+    border-left: 3px solid #22c55e;
+    padding: 2mm 5mm;
+    margin: 3mm 0;
+    background: #f0fdf4;
+    color: #374151;
+    font-style: italic;
+}
+
+/* ── Section divider ─────────────────────────────────────────────────────── */
+.section-block {
+    margin-top: 6mm;
+    page-break-inside: avoid;
+}
+
+.section-header {
+    background: #0f172a;
+    color: #e2e8f0;
+    padding: 2.5mm 4mm;
+    margin-bottom: 3mm;
+}
+
+.section-header .section-key {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 8pt;
+    color: #22c55e;
+    letter-spacing: 0.08em;
+}
+
+.section-header .section-title {
+    font-size: 11pt;
+    font-weight: 600;
+}
+
+.section-completeness {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 8pt;
+    float: right;
+}
+
+.section-gap-note {
+    background: #fff7ed;
+    border-left: 3px solid #f59e0b;
+    padding: 2mm 4mm;
+    margin-top: 2mm;
+    font-size: 9pt;
+    color: #92400e;
+}
+
+/* ── Signature block ─────────────────────────────────────────────────────── */
+.signature-block {
+    margin-top: 16mm;
+    border-top: 1px solid #e2e8f0;
+    padding-top: 6mm;
+    page-break-inside: avoid;
+}
+
+.signature-block h3 {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 8pt;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #64748b;
+    margin-bottom: 5mm;
+}
+
+.sig-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 8mm 0;
+}
+
+.sig-cell {
+    width: 33%;
+    vertical-align: bottom;
+    padding-bottom: 2mm;
+}
+
+.sig-line {
+    border-bottom: 1px solid #334155;
+    height: 10mm;
+    margin-bottom: 2mm;
+}
+
+.sig-label {
+    font-size: 8pt;
+    color: #64748b;
+    font-family: "JetBrains Mono", monospace;
+    letter-spacing: 0.06em;
+}
+
+/* ── Attestation ID banner ───────────────────────────────────────────────── */
+.attest-id-banner {
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    padding: 3mm 5mm;
+    margin-bottom: 6mm;
+    display: block;
+}
+
+.attest-id-label {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 7pt;
+    color: #64748b;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.attest-id-value {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 9pt;
+    color: #0f172a;
+    font-weight: 600;
+    word-break: break-all;
+}
+
+/* ── Squash branding footer ──────────────────────────────────────────────── */
+.squash-brand-footer {
+    margin-top: 12mm;
+    padding-top: 4mm;
+    border-top: 1px solid #e2e8f0;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 7.5pt;
+    color: #94a3b8;
+    text-align: center;
+}
+
+.squash-brand-footer strong {
+    color: #22c55e;
+}

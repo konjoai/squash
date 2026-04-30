@@ -677,7 +677,7 @@ class TestModuleCount:
         import subprocess, pathlib
         root = pathlib.Path(__file__).parent.parent / "squash"
         count = len(list(root.rglob("*.py")))
-        assert count == 74, (
+        assert count == 75, (
             f"Module count should be 74, got {count}. "
             "Track B / B8 added adapter_scanner.py (LoRA / adapter poisoning detection). "
             "New modules require deletion or written justification."

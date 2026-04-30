@@ -51,13 +51,13 @@ That's the moat. Credo AI and OneTrust are form-filling tools. Squash is a pipel
 
 ---
 
-## ⚡ Situation Report (April 30, 2026) — Post B1 + B3 ✅ — Track B Compounding
+## ⚡ Situation Report (April 30, 2026) — Post B2 ✅ — Track B at 5/6 (+ parallel B4/B5/B6)
 
 | Metric | Value |
 |--------|-------|
 | **EU AI Act enforcement deadline** | August 2, 2026 — **94 days** |
-| **Squash code maturity** | v1.10.0 · Track B / B1 + B3 shipped · 4064 tests passing · **Tier 2 100% · Track B at 2/6 done** |
-| **Python modules** | 72 standalone modules + VS Code extension · 100+ git commits |
+| **Squash code maturity** | v1.12.0 · Track B / B1 + B2 + B3 + B4 + B5 shipped · 4197 tests passing · **Tier 2 100% · Track B 5/6 done** |
+| **Python modules** | 75 standalone modules + VS Code extension + templates/ dir · 100+ git commits |
 | **Annex IV coverage** | ✅ 100% — 12-section generator, completeness scoring, PDF export |
 | **ISO 42001 coverage** | ✅ — 38-control readiness assessment, gap analysis, remediation roadmap |
 | **Trust Package** | ✅ — Signed vendor attestation bundle, `squash verify-trust-package` CLI |
@@ -149,7 +149,7 @@ Pure engineering that has zero dependency on Track A once A1 is live. Each item 
 | ID | Item | Effort | Date | ∥ With | Foundation | Sprint Spec |
 |---|---|---|---|---|---|---|
 | **B1** ✅ | **HF Public Scanner** — `squash scan hf://owner/model` | 4 days → **shipped** | ✅ 2026-04-30 | A3, C1, C2 | `scanner.py` + `policy.py` + new `hf_scanner.py` (W205) | Sprint 14 (W205) ✅ v1.9.0 |
-| **B2** | **Branded PDF Report** — cover + exec summary on existing `to_pdf()` | 2 days | May 8–10 | A4, C2, C3 | `annex_iv_generator.to_pdf()` works; design + template only | Sprint 15 (W208) |
+| **B2** ✅ | **Branded PDF Report** — cover page, KPI scorecard, exec summary, full Annex IV body, signature block | 2 days → **shipped** | ✅ 2026-04-30 | A4, C2, C3 | `pdf_report.py` (NEW) + WeasyPrint CSS + brand SVG logos from design handoff | Sprint 15 (W208) ✅ v1.12.0 |
 | **B3** ✅ | **Email Digest** — Weekly/monthly portfolio posture | 2 days → **shipped** | ✅ 2026-04-30 | C3, C4 | `notifications.py` extension + stdlib smtplib (Resend / Mailgun / SES via SMTP relay) | Sprint 15 (W209–W210) ✅ v1.10.0 |
 | **B4** | **Terraform/Pulumi Provider** — Go provider + Pulumi component | 10 days | May 15–26 | C3, C4, D1 | API stable after A1; new repo `terraform-provider-squash/` | Sprint 16 (W211–W214) |
 | **B5** | **API Gateway Plugin** — Kong + AWS Lambda authorizer | 8 days | May 27–Jun 5 | D1, C5 | Two packages (Kong Go/Lua + AWS Python) | (de-scoped Tier 3 #28; reinstated as B5) |
