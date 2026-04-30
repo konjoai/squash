@@ -1,9 +1,24 @@
 # SQUASH — Master Grand Plan
 ## From Zero to $10M ARR: EU AI Act Compliance Platform
 
-> **Last updated:** 2026-04-29
+> **Last updated:** 2026-04-30
 > **Status:** Living document — updated on every commit
 > **Horizon:** April 2026 → October 2027
+
+---
+
+## ⏰ The North Star — August 2, 2026
+
+> **EU AI Act high-risk enforcement: August 2, 2026 — 94 days.**
+>
+> Every sprint between today and August 2 is worth more than any sprint after.
+> The whole product strategy is anchored to one truth: regulators no longer
+> want policy statements. **They want proof.** Squash generates proof, in
+> CI, in 10 seconds. Everything else is decoration on this load-bearing
+> insight.
+
+The proof gap, not a technology gap. That is the through-line of the
+master plan.
 
 ---
 
@@ -76,13 +91,60 @@ That's the moat. Credo AI and OneTrust are form-filling tools. Squash is a pipel
 | **Competitor pricing** | Credo AI $30K–$150K/yr · OneTrust $50K–$200K/yr |
 | **Squash target pricing** | $0 (Community) → $299 (Pro) → $499 (Startup) → $899 (Team) → $4K+ (Enterprise) |
 
-**The clock is running.** High-risk AI enforcement hits August 2, 2026. Every week of delay is market share surrendered.
+**The clock is running.** High-risk AI enforcement hits August 2, 2026 — **94 days**. Every week of delay is market share surrendered to whoever ships first.
 
-**Market context update (April 2026):** The regulatory shift is structural, not cyclical. 75% of organizations will have formal AI governance frameworks by end of 2026 (up from <30% in 2023). The EU AI Act, Colorado AI Act (June 2026), SEC AI disclosure priority, and Italy's OpenAI GDPR fine confirm that regulators have crossed from intent to enforcement. They no longer want policy statements. **They want proof. Squash generates proof.**
+**Tier 1 + Tier 2 of the master plan: 100% complete (April 30, 2026).** Tier 3 sequencing reprioritised; Tier 4 (11 new market-opportunity sprints, W221–W250) scheduled in this revision. Every Tier 4 sprint operationalises one statistic from the Market Intelligence section above.
 
-**What's complete:** 90+ commits. v1.1.0. 56 Python modules. 3400+ tests across 5 completed sprints. Full engineering surface: Annex IV engine, ISO 42001 readiness, Trust Package exporter/verifier, OWASP Agentic AI Top 10, incident response, board report generator, cloud API + auth, CI/CD integration layer, Prometheus metrics, Slack/Teams/webhook notifications, JIRA/Linear/GitHub ticketing, FastAPI/Django compliance middleware, `squash demo`, `squash init`, `squash watch`, `squash install-hook`, shields.io-compatible badge SVG endpoint.
+**Market context update (April 2026):** The regulatory shift is structural, not cyclical. 75% of organizations will have formal AI governance frameworks by end of 2026 (up from <30% in 2023). The EU AI Act, Colorado AI Act (June 2026), SEC AI disclosure priority, and Italy's OpenAI GDPR fine confirm that regulators have crossed from intent to enforcement. **They no longer want policy statements. They want proof. Squash generates proof.**
+
+**What's complete:** 100+ commits. v1.8.0. 71 Python modules + VS Code extension. **3987 tests passing across 13 completed sprints.** Full engineering surface: Annex IV engine, ISO 42001 readiness, Trust Package exporter/verifier, OWASP Agentic AI Top 10, incident response, board report generator, cloud API + auth, CI/CD integration layer, Prometheus metrics, OpenTelemetry, ArgoCD/Flux GitOps gate, generic webhook delivery, SBOM diff, model-card first-class CLI + HF schema validator, **chain & pipeline composite attestation (RAG / agent / ensemble) with HMAC-SHA256 signing**, **registry auto-attest gates (MLflow / W&B / SageMaker)**, **5-tier pricing (Free / Pro / Startup $499 / Team $899 / Enterprise) with 13 entitlement bits**, Stripe billing, attestation registry, public regulatory feed (9 frameworks), M&A due-diligence package generator, JIRA/Linear/GitHub ticketing, FastAPI/Django compliance middleware, `squash demo`, `squash init`, `squash watch`, `squash install-hook`, `squash chain-attest`, `squash registry-gate`, shields.io-compatible badge SVG endpoint.
 
 **What's not done yet:** PyPI publication, live Fly.io production deployment, website, domain, Stripe checkout links, onboarding emails, and the launch itself. Sprint 4A is the critical path.
+
+---
+
+## 📊 Market Intelligence — Anchor Statistics & Messaging Framework
+
+These are the load-bearing statistics. Every product decision, sprint
+brief, sales conversation, and piece of marketing copy should be
+traceable back to one of them. They define the proof gap.
+
+### The Proof Gap (executive layer)
+
+| Stat | Source | What It Unlocks |
+|---|---|---|
+| **78%** of business executives lack strong confidence they could pass an independent AI governance audit within 90 days | Grant Thornton 2026 AI Impact Survey | The CFO / Audit Committee narrative. Sprint 22 (`squash simulate-audit`) is the direct response. |
+| **22%** of orgs confident they could pass an AI governance audit in 90 days | Grant Thornton 2026 | The negative framing of the same stat — used in HN posts and design-partner outreach. |
+| **20%** of organizations have a tested AI incident response plan | Industry research, 2026 | Sprint 19 (`squash freeze`) lands here — emergency response as a feature. |
+| **4×** revenue-growth multiple for orgs with strong AI governance | Industry research | The CFO ROI line, not just risk-averter pitch. |
+
+### The AI Identity Crisis (CISO layer)
+
+| Stat | What It Unlocks |
+|---|---|
+| **92%** of organizations lack full visibility into their AI identities | Sprint 21 (`squash attest-identity`) — AI Identity Governance |
+| **95%** doubt their ability to detect or contain misuse of AI agents | Sprint 21 + the existing `agent_audit.py` + `governor.py` audit log |
+| **16%** effectively govern AI agent access to core business systems | Sprint 21 — least-privilege validation hooks |
+| **60%** still use login-based auth for AI systems (no rotation) | Sprint 21 — token rotation policy attestation |
+| **73%** of CISOs would invest immediately if budget allowed | The buyer is already pre-sold — squash needs only to be *findable* and *verifiable* |
+
+### Messaging Framework — Six Lines, Five Audiences
+
+| Audience | The Line |
+|---|---|
+| ML Engineers (HN, dev.to, Slack) | "Squash violations, not velocity." |
+| CISOs (LinkedIn, conferences) | "92% of orgs can't see their AI identities. Squash makes them visible." |
+| CFO / Audit Committee | "78% can't pass an audit in 90 days. Squash compresses the readiness window from 6 weeks to 15 minutes." |
+| Chief Risk Officer / Insurance buyer | "AI cyber-insurance underwriters need quantified risk. Squash generates the package." |
+| Procurement / Vendor risk | "Verify any vendor's AI compliance posture in 10 seconds. `squash lookup`." |
+| Regulators / Auditors | "Cryptographically signed proof. Sigstore-backed. Tamper-evident." |
+
+### The Through-Line
+
+The proof gap, not a technology gap. Every Tier 4 sprint operationalises
+exactly one of the gap dimensions. No vanity features, no speculative
+adjacencies. If a sprint can't be tied back to a stat in this section,
+it doesn't ship.
 
 ---
 
@@ -782,25 +844,27 @@ The eight Tier 3 features (#23–#30) are batched into five sprints by proximity
 
 ---
 
-### Sprint 16 — Infrastructure-as-Code & Runtime API Gates (Tier 3 #26 + #28)
+### Sprint 16 — Terraform + Pulumi Provider (Tier 3 #26)
 
-**Goal:** Move squash from "tool the engineer runs" to "infrastructure the org provisions." Terraform/Pulumi resources let DevOps embed squash attestation in IaC pipelines. Kong + AWS API Gateway plugins block inference requests at runtime if the served model's attestation is expired or its CVEs flagged.
+**Goal:** Move squash from "tool the engineer runs" to "infrastructure the org provisions." Terraform and Pulumi resources let platform / DevOps teams embed squash attestation in IaC pipelines — `terraform apply` fails when the model's attestation is missing, expired, or below score threshold. Two providers cover ~95% of the IaC market: HashiCorp's Terraform and Pulumi.
 
-**Why now:** Tier 2 made the build-time gate. Tier 3 makes the *runtime* gate. Together they cover the whole lifecycle.
+**Why now:** Tier 2 made the build-time gate. Sprint 16 makes IaC the build-time gate's home. Once squash lives in `main.tf`, removing it requires a PR — that is the friction that converts adoption into stickiness.
+
+**Why no runtime gates here:** Kong / AWS API Gateway runtime plugins were considered and explicitly de-scoped. The compliance-conscious deployers are already gated at registry promotion time (Sprint 12) and at GitOps time (Sprint 9 `gitops.py`). A third runtime point of enforcement is duplication for marginal lift.
 
 | Wave | Module / Feature | What It Delivers |
 |------|-----------------|-----------------|
-| W211 | `terraform-provider-squash/` directory (NEW, Go) | TF provider scaffold with `squash_attestation` data source + `squash_policy_gate` resource; reads attestation via squash REST API; fails `terraform apply` on policy violation. Build instructions + minimal example under `examples/`. |
-| W212 | `squash/integrations/kong.py` (NEW Python) | Kong external auth plugin: validates `X-Squash-Attestation-ID` header on every inference request; rejects if attestation missing, expired, or below score threshold. Stateless: queries squash REST API. |
-| W213 | `squash/integrations/aws_api_gateway.py` (NEW) | AWS Lambda authorizer (`lambda_handler`) compatible with API Gateway custom authorizers; reads attestation ID from request, calls squash API, returns Allow/Deny IAM policy. CloudFormation template under `examples/`. |
-| W214 | `squash/cli.py` — `squash gateway-config` | Generates ready-to-use Kong plugin YAML + API Gateway authorizer JSON tailored to a given squash deployment URL + key. |
+| W211 | `terraform-provider-squash/` (NEW, Go) | Provider scaffold with `squash_attestation` data source (read attestation by ID or URI) + `squash_policy_gate` resource (block `terraform apply` on policy violation). Build instructions + `examples/` directory with minimal HCL. |
+| W212 | `terraform-provider-squash/` — model gate resource | `squash_model_gate` resource that wraps a model artefact reference (S3 URI / MLflow URI / HF repo); on `terraform plan` calls squash REST API and surfaces violations as Terraform diagnostics. |
+| W213 | `pulumi-squash/` (NEW, Python) | Pulumi provider as a Python package wrapping the squash REST API; exposes `Attestation`, `PolicyGate`, `ModelGate` resources matching the Terraform shapes 1:1 so users can switch IaC tools without re-learning the model. |
+| W214 | `squash/cli.py` — `squash iac-config` + integration tests | CLI generator: `squash iac-config terraform > main.tf` emits HCL skeleton; `squash iac-config pulumi > __main__.py` emits Pulumi skeleton. End-to-end tests verify both providers against an in-memory squash API. |
 
 **Sprint 16 exit criteria:**
 - `terraform-provider-squash` builds with `go build`; `terraform plan` works against a stubbed squash API
-- Kong plugin rejects a request with no `X-Squash-Attestation-ID`; allows a valid one (tested against an in-memory squash API)
-- AWS API Gateway authorizer returns Allow/Deny dicts matching the documented IAM-policy shape
-- 2 new Python modules (`kong.py`, `aws_api_gateway.py`); module count → 73; gates updated
-- `squash gateway-config` CLI emits valid Kong plugin YAML and API Gateway authorizer JSON
+- `pulumi-squash` installs from a wheel; `pulumi up` succeeds with example program against the same stubbed API
+- `squash iac-config terraform | pulumi` emits ready-to-paste skeletons
+- Both providers fail `apply` / `up` cleanly on policy violation with structured diagnostics
+- 0 new Python modules under `squash/` (provider code lives outside the Python package); module count stays at 71; 0 regressions
 
 ---
 
@@ -843,6 +907,256 @@ The eight Tier 3 features (#23–#30) are batched into five sprints by proximity
 - Evidence collection works against a 12-month attestation history fixture
 - 1 new module (`soc2.py`); module count → 74; gates updated
 - 0 regressions
+
+---
+
+## Tier 4 — Market-Opportunity Sprints (Sprints 19–29)
+
+Tier 1+2 made squash a paid product; Tier 3 made it long-tail
+infrastructure. Tier 4 is what wins the next 18 months: each sprint
+operationalises exactly one statistic from the Market Intelligence
+section above, capturing a buyer motion that does not yet have a
+canonical product. Eleven sprints, 30 waves, W221 → W250.
+
+The unifying thesis: **regulators no longer want policy statements,
+they want proof.** Tier 4 produces proof for every audience —
+executives, CISOs, auditors, insurance underwriters, procurement.
+No competitor has all of these. Most have none.
+
+**Tier 4 sprint sequencing rules:**
+1. Hard regulatory deadlines first (SEC AI-washing, EU Article 73 incidents)
+2. Buyer-pre-sold motions next (CISO 73% want-to-buy)
+3. Network-effect plays last (procurement scoring API, industry benchmarks)
+
+---
+
+### Sprint 19 — `squash freeze` Emergency Response Command (Tier 4 — incident response)
+
+**Goal:** The "red button." A single CLI command that revokes a model's attestation, pushes a signed revocation to the public registry, triggers the GitOps webhook to block all new deployments, posts Slack/webhook alerts, and generates an EU AI Act Article 73 incident-disclosure draft. **All five subsystems already exist** — Sprint 19 is integration work, not new modules.
+
+**The stat:** Only 20% of organizations have a tested AI incident response plan. Squash makes the response a *command*, not a runbook.
+
+**Why now:** EU AI Act Article 73 requires incident notification within 15 days. Today the org's first ten hours after a discovered violation are panic phone calls. Sprint 19 turns those ten hours into ten seconds.
+
+| Wave | Module / Feature | What It Delivers |
+|------|-----------------|-----------------|
+| W221 | `squash/cli.py` — `squash freeze` command | Single-shot orchestrator: takes `--attestation-id` (or `--model-path`), runs `attestation_registry.revoke()`, fires `webhook_delivery.notify()` event `attestation.frozen`, calls `gitops.webhook_block()` to inject a denylist annotation, dispatches `notifications.notify(event="attestation.frozen", plan=...)`, builds an `incident.IncidentPackage`. Atomic — any sub-step failure rolls back upstream side-effects. |
+| W222 | `squash freeze` — Article 73 disclosure template | Auto-generates an Article 73 incident-disclosure draft (PDF + Markdown) from the IncidentPackage; pre-fills serious-incident classification, affected systems, deployer impact, mitigation steps. Includes fields for the human approver to sign before the 15-day clock. |
+
+**Sprint 19 exit criteria:**
+- `squash freeze --attestation-id att://...` revokes, alerts, blocks GitOps, drafts disclosure in <10 s
+- Atomic rollback verified by injected failure tests at every sub-step
+- 0 new modules; 0 regressions
+
+---
+
+### Sprint 20 — AI Washing Detection (`squash detect-washing`) (Tier 4 — SEC compliance)
+
+**Goal:** Scan marketing collateral, investor decks, model cards, and product landing pages for AI capability claims; cross-reference against actually attested model capabilities; flag every divergence. SEC's top examination priority for 2026. No competitor has this product.
+
+**The stat:** SEC's 2026 examination priorities elevated AI / cyber to the top tier; "Operation AI Comply" already produced enforcement actions. Disclosure that overstates capability is now a fraud risk, not a marketing risk.
+
+**Why now:** The deadline is *now* — first wave of SEC AI-claim enforcement is already in court. Squash is the only tool that can compare prose claims against signed attestation evidence at scale.
+
+| Wave | Module / Feature | What It Delivers |
+|------|-----------------|-----------------|
+| W223 | `squash/washing_detector.py` (NEW) | Capability-claim extractor: parses Markdown / HTML / PDF / DOCX inputs (reusing `code_scanner_ast.py` parsing infrastructure where possible) and returns a normalised list of factual claims (e.g. "fine-tuned on 10M prompts", "passes BIG-bench at 87%", "GDPR-compliant"). |
+| W224 | `washing_detector.py` — divergence engine | Cross-references extracted claims against the attestation registry's per-model capability metadata + bias audit + Annex IV evaluation section. Each divergence ranked by severity (factual mismatch / undocumented superlative / unsupported claim). |
+| W225 | CLI: `squash detect-washing` + report builder | `squash detect-washing --docs ./investor-deck.pdf --models acme/* --severity high`. Produces a divergence report (JSON + Markdown) suitable for legal review. Fail-on-high-severity flag for CI on marketing-copy repos. |
+
+**Sprint 20 exit criteria:**
+- 1 new module (`washing_detector.py`); module count → 72 + Sprint 18 → 73; gates updated
+- Divergence engine produces deterministic output across input formats
+- 90%+ recall on a benchmark set of 50 hand-labelled marketing claims
+- Tests use sample fixtures only (no live SEC filings)
+
+---
+
+### Sprint 21 — AI Identity Governance (`squash attest-identity`) (Tier 4 — CISO buyer)
+
+**Goal:** Verify OAuth scopes, validate least-privilege, check token rotation policy, attest identity configuration of an AI agent or service account. Integrates with Okta, Azure AD, AWS IAM. **Zero competitors.** Extends existing `agent_audit.py` + `governor.py` audit log.
+
+**The stat:** 73% of CISOs would invest immediately if budget allowed; 92% of orgs lack full visibility into AI identities; 16% effectively govern AI agent access. The buyer is pre-sold; the product just has to exist.
+
+**Why now:** AI agents are proliferating faster than identity tooling. Most orgs are giving agents long-lived service-account credentials with no rotation. Squash is the only tool that can *attest* an identity configuration matches policy at any given timestamp.
+
+| Wave | Module / Feature | What It Delivers |
+|------|-----------------|-----------------|
+| W226 | `squash/identity_governor.py` (NEW) | Identity-attestation engine: ingests Okta / Azure AD / AWS IAM principals via their respective SDKs (mocked at boundary), produces an `IdentityAttestation` per agent — scopes, last rotation, MFA status, token-type, least-privilege score. Sigstore-signed. |
+| W227 | `identity_governor.py` — least-privilege analyzer | Compares each principal's actual permissions to a declared least-privilege policy file (`identity-policy.yml`); flags every excess permission with severity + remediation. Supports IAM JSON, Azure AD role definitions, Okta groups. |
+| W228 | CLI: `squash attest-identity` + integrations | `squash attest-identity okta://acme.okta.com --principals "ai-agent-*"`; `squash attest-identity aws-iam --role-arn arn:aws:iam:...`. Adds Okta / Azure AD / AWS IAM clients under `squash/integrations/` (lazy-imported, optional deps). |
+
+**Sprint 21 exit criteria:**
+- 1 new module (`identity_governor.py`); 3 new integration adapters; module count tracked accordingly
+- Least-privilege analyser produces deterministic violation list across all three providers
+- All SDK calls mocked at the import boundary in tests; 0 live identity-provider calls in CI
+
+---
+
+### Sprint 22 — Regulatory Examination Simulation (`squash simulate-audit`) (Tier 4 — readiness)
+
+**Goal:** Run a mock regulatory examination against the attested model portfolio. Pulls answers from existing attestation data (Annex IV, ISO 42001, NIST RMF, SEC, FDA), flags gaps, produces a readiness score + prioritized remediation plan. Frames itself as a $5K–$15K professional-service deliverable wrapped in a 60-second CLI.
+
+**The stat:** Only 22% confident they could pass an AI governance audit in 90 days. Squash compresses the readiness cycle from 6 weeks to 15 minutes.
+
+**Why now:** This is the highest-leverage CFO / Audit-Committee narrative. The product writes itself once you assemble the existing attestation primitives.
+
+| Wave | Module / Feature | What It Delivers |
+|------|-----------------|-----------------|
+| W229 | `squash/audit_simulator.py` (NEW) | Examination orchestrator: takes a regulator profile (`eu-ai-act` / `nist-rmf` / `sec-ai-disclosure` / `fda-ml-samd`), pulls per-control evidence from `attestation_registry`, `iso42001`, `regulatory_feed`, `data_lineage`, `bias_audit`. Returns a `ReadinessReport` with per-control PASS/PARTIAL/FAIL + prioritised gaps. |
+| W230 | `audit_simulator.py` — examination Q&A library | Each regulator profile carries 30–80 examiner questions with the squash-side answer source. Built from real examination transcripts where public; synthesised from regulatory guidance where not. |
+| W231 | CLI: `squash simulate-audit` + Markdown output | `squash simulate-audit --regulator eu-ai-act --models ./models --output ./readiness/`. Produces JSON + Markdown + executive summary; opinionated 90-day remediation roadmap with each gap mapped to the squash command that would close it. |
+
+**Sprint 22 exit criteria:**
+- 1 new module (`audit_simulator.py`); module count tracked
+- Readiness report covers ≥4 regulator profiles, each with ≥30 questions
+- Remediation roadmap is actionable (each gap → concrete squash command)
+
+---
+
+### Sprint 23 — Model Deployment Approval Workflow (`squash approve`) (Tier 4 — Article 9 / NIST)
+
+**Goal:** Generate cryptographically signed approval records — reviewer identity, attestation state at moment of review, timestamp, explicit approval/rejection rationale. Sigstore handles the crypto; squash provides the workflow shell. Required by EU AI Act Article 9 and NIST AI RMF "GOVERN" pillar.
+
+**The stat:** Both EU AI Act Article 9 and NIST AI RMF require *documented* human oversight. Most orgs have it as Confluence pages. Squash makes it cryptographic.
+
+**Why now:** The approval moment is where the Article 9 risk-management responsibility crystallises. A signed approval record is the single piece of evidence a regulator wants on day one of an examination.
+
+| Wave | Module / Feature | What It Delivers |
+|------|-----------------|-----------------|
+| W232 | `squash/approval_workflow.py` (NEW) | `ApprovalRecord` dataclass: reviewer identity (Sigstore identity / GitHub OAuth / email-OIDC), attestation snapshot (full content-hash), decision (`APPROVED` / `REJECTED` / `APPROVED_WITH_CONDITIONS`), rationale, timestamp, conditions. Sigstore-signed. |
+| W233 | `approval_workflow.py` — multi-reviewer orchestration | Threshold approvals (`require ≥2 of 3 reviewers`), role-gated (`require Compliance + Engineering`), with deterministic ordering and pending-state persistence in `~/.squash/approvals.db`. |
+| W234 | CLI: `squash approve` / `squash request-approval` | `squash request-approval --attestation att://... --reviewers ciso@acme,vp-eng@acme`; `squash approve <approval-id> --decision APPROVED --rationale "Bias audit clean, drift baseline acceptable"`. Email / Slack notifications on approval-state changes (gated by `slack_delivery` entitlement). |
+
+**Sprint 23 exit criteria:**
+- 1 new module (`approval_workflow.py`); module count tracked
+- Sigstore signature verifies on approval records
+- Multi-reviewer threshold logic covered for 1-of-1, 2-of-3, role-gated cases
+
+---
+
+### Sprint 24 — AI Insurance Package (`squash insurance-package`) (Tier 4 — new buyer motion)
+
+**Goal:** Generate standardised risk-quantification packages for AI cyber-insurance underwriting. Maps to Munich Re / Coalition / AIG frameworks. Output is a single signed ZIP: model inventory + risk tier, compliance score by framework, historical incident log, drift events, CVE exposure, bias results, response plan. **Opens a new buyer motion: Chief Risk Officer + insurance procurement.**
+
+**The stat:** AI cyber-insurance market crystallising in late 2026. Underwriters are publicly demanding standardised risk packages. Squash is positioned to be the de facto package format.
+
+**Why now:** First-mover advantage on the underwriting standard is enormous. Whoever's package format underwriters accept first becomes the default for everyone else.
+
+| Wave | Module / Feature | What It Delivers |
+|------|-----------------|-----------------|
+| W235 | `squash/insurance.py` (NEW) | `InsurancePackage` builder: aggregates `attestation_registry`, `incident`, `vex`, `bias_audit`, `drift` data into a single normalised risk record per model. Risk tiers map to Munich Re / Coalition published categories. |
+| W236 | `insurance.py` — underwriter-format adapters | Two output adapters: `MunichReAdapter` (their published JSON schema) and `CoalitionAdapter` (theirs). Generic JSON adapter for any underwriter that hasn't published a schema. Each adapter is round-trippable. |
+| W237 | CLI: `squash insurance-package` + signed ZIP | `squash insurance-package --underwriter munich-re --org acme --output ./insurance.zip`. ZIP contains JSON, signed attestation chain, exec summary PDF, integrity manifest. Optional Sigstore signature over the whole bundle. |
+
+**Sprint 24 exit criteria:**
+- 1 new module (`insurance.py`); module count tracked
+- Munich Re + Coalition adapter shapes match published schemas (with tests against sample-fixtures)
+- Generic adapter is documented as the fallback for non-standard underwriters
+
+---
+
+### Sprint 25 — Compliance SLA Dashboard (Tier 4 — enterprise procurement)
+
+**Goal:** Per-model SLA tracking — revalidation frequency, attestation expiry, remediation SLA, breach status. Extends the existing `dashboard.py` + `attestation_registry.py` with configurable breach alerts. Turns squash from a point-in-time tool into an SLA-managed service. Required by enterprise procurement contracts.
+
+**The stat:** Enterprise procurement increasingly demands SLA documentation for any AI tool in the supply chain. Today most ML teams document SLAs in spreadsheets. Squash makes them queryable.
+
+**Why now:** Required for any 6-figure deal. Procurement won't sign without SLA terms; squash should generate them, not require the customer to write them.
+
+| Wave | Module / Feature | What It Delivers |
+|------|-----------------|-----------------|
+| W238 | `squash/dashboard.py` extension — SLA tracker | New `SLAPolicy` dataclass per model: revalidation_days, max_attestation_age, max_remediation_days, escalation_recipients. Loaded from `~/.squash/sla.yml` or per-model `.squash-sla.yml`. Status computed against `attestation_registry` history. |
+| W239 | `dashboard.py` — breach alerts + CLI surface | Cron-friendly `squash dashboard --check-sla` exits non-zero on any breach; emits structured event `sla.breach` to webhook delivery. Dashboard view adds `SLA` column with traffic-light status + days-to-breach. |
+
+**Sprint 25 exit criteria:**
+- 0 new modules (extensions only); 0 regressions
+- `squash dashboard --check-sla` exits 1 on breach, 0 on green
+- SLA policy file format documented
+
+---
+
+### Sprint 26 — Multi-Jurisdiction Compliance Matrix (`squash compliance-matrix`) (Tier 4 — multinationals)
+
+**Goal:** `squash compliance-matrix --regions eu,us,uk,sg,ca` runs every applicable policy check simultaneously, generates a cross-referenced matrix showing which attestation fields satisfy which requirements in which jurisdictions, identifies gaps. Eliminates months of manual legal-mapping work per model deployment for multinationals.
+
+**The stat:** A multinational LLM deployment touches 6+ jurisdictions on average. Today the legal compliance mapping is a one-week consulting engagement per deployment.
+
+**Why now:** Multi-jurisdiction is the buying pain for the highest-ACV segment. Squash already has 9 frameworks in `regulatory_feed.py` — just needs the cross-reference layer.
+
+| Wave | Module / Feature | What It Delivers |
+|------|-----------------|-----------------|
+| W240 | `squash/compliance_matrix.py` (NEW) | `ComplianceMatrix.build()`: takes a list of regions (`eu`, `us`, `uk`, `sg`, `ca`, `au`, …) and an attestation, returns a 2D matrix `requirement × jurisdiction → status`. Reuses policy.py rules + regulatory_feed regulations. |
+| W241 | `compliance_matrix.py` — gap analyser + remediation | For each `(requirement, jurisdiction) = FAIL` cell, identifies the closest-matching squash control + remediation step. Outputs a sequenced remediation plan that maximises coverage per fix. |
+| W242 | CLI: `squash compliance-matrix` + HTML report | `squash compliance-matrix --regions eu,us,uk --models ./models --output ./matrix.html`. HTML output is colour-coded, sortable by jurisdiction or by requirement, exportable as legal-review PDF. |
+
+**Sprint 26 exit criteria:**
+- 1 new module (`compliance_matrix.py`); module count tracked
+- Matrix correctly cross-references at least 5 jurisdictions × 9 frameworks
+- HTML output renders without JavaScript dependencies
+
+---
+
+### Sprint 27 — Continuous Regulatory Watch Daemon (Tier 4 — daily intelligence)
+
+**Goal:** Real-time monitoring of primary regulatory sources — SEC.gov, NIST.gov, EUR-Lex, state-legislature feeds. Parses new guidance, maps to squash policy framework, sends structured alerts with gap analysis against attested models. **Turns squash from a quarterly tool into a daily intelligence service.**
+
+**The stat:** Regulatory cadence is accelerating: EU AI Act delegated acts, SEC guidance, state-level AI bills, FDA SaMD updates. The org that learns about a new requirement on Day 1 instead of Day 90 has a 90-day moat.
+
+**Why now:** Daily-touch products win retention. A weekly-touch product loses to whichever competitor adds daily.
+
+| Wave | Module / Feature | What It Delivers |
+|------|-----------------|-----------------|
+| W243 | `squash/regulatory_watch.py` (NEW) | Polling daemon: subscribes to SEC EDGAR, NIST publication feed, EUR-Lex AI Act register, state-legislature RSS. Each source parsed by a small adapter; new entries normalised into `RegulatoryEvent` records persisted in `~/.squash/regulatory.db`. |
+| W244 | `regulatory_watch.py` — gap analysis on new events | When a new event lands, runs a diff against `regulatory_feed.py`'s current control mapping and the user's attested models; surfaces "this new event would cause models X,Y to need re-attestation" with severity + days-to-act. |
+| W245 | CLI: `squash watch-regulatory` daemon + alert delivery | `squash watch-regulatory --interval 6h --alert-channel slack`. Runs as a background daemon (or one-shot for cron). Alerts route through `notifications.py` (subject to `slack_delivery` / `teams_delivery` entitlements). |
+
+**Sprint 27 exit criteria:**
+- 1 new module (`regulatory_watch.py`); module count tracked
+- 4 source adapters covered: SEC, NIST, EUR-Lex, generic state-RSS
+- Gap analyser produces deterministic alert text given known fixture events
+
+---
+
+### Sprint 28 — AI Procurement Scoring API (Tier 4 — network effect)
+
+**Goal:** Public REST endpoint `GET api.getsquash.dev/v1/score/{vendor_name}` returning a compliance score for any vendor with published trust packages. **The credit-score API for AI compliance.** Freemium: basic score free, breakdown requires Pro, real-time monitoring is Enterprise. Network effect: more vendors → more buyers → more vendors. **The SSL-CA-of-AI play.**
+
+**The stat:** Every Fortune 500 procurement team is now writing AI vendor questionnaires. They take 4 weeks each. Squash already has Trust Packages (W171). Sprint 28 turns the trust package into a queryable API.
+
+**Why now:** Whoever's score the buyer asks for becomes the de facto standard. Aggressive timing wins this category.
+
+| Wave | Module / Feature | What It Delivers |
+|------|-----------------|-----------------|
+| W246 | `squash/api.py` extension — `GET /v1/score/{vendor}` | Public unauthenticated endpoint returning `{score, last_attested, frameworks, breakdown_url}`. Free-tier rate-limited; Pro tier unlocks `breakdown` field with per-framework scores. Backed by `attestation_registry` + `vendor_registry`. |
+| W247 | `squash/api.py` extension — `GET /v1/score/{vendor}/history` | Time-series of vendor scores over the past 12 months. Enterprise-tier real-time webhook (`squash webhook` register the vendor; on every new attestation by that vendor, fire `vendor.score_changed`). |
+| W248 | CLI: `squash score <vendor>` + landing-page integration | `squash score acme-corp` returns the same data as the API. Public-website widget snippet that any vendor can embed: live `getsquash.dev/badge/vendor/acme-corp` SVG. Documentation for procurement teams. |
+
+**Sprint 28 exit criteria:**
+- 0 new modules (api.py extensions only)
+- Public endpoint stable under 100 RPS load test
+- Free / Pro / Enterprise tier gating verified by entitlement tests
+- Embeddable badge SVG mirrors shields.io semantics
+
+---
+
+### Sprint 29 — Compliance Drift Rate Benchmarking (`squash industry-benchmark`) (Tier 4 — QBR conversation)
+
+**Goal:** Anonymized aggregate analytics across all squash users — drift rate by model family, most common violations by framework, average time-to-first-drift, score distribution by industry sector. `squash industry-benchmark --sector financial-services` shows how a company compares to sector peers. **Built specifically to be the conversation starter in enterprise QBRs.**
+
+**The stat:** Every enterprise customer wants to know "how do I compare?" Squash is uniquely positioned: only product with a cross-customer dataset of compliance attestations.
+
+**Why now:** Aggregate-data products require N customers before they can launch — by Sprint 29 squash should have enough volume to publish meaningful percentiles.
+
+| Wave | Module / Feature | What It Delivers |
+|------|-----------------|-----------------|
+| W249 | `squash/benchmark.py` (NEW) | Aggregate analytics builder: anonymises per-tenant attestation streams (DP-style noise on small buckets, k-anonymity ≥10), computes industry-sector aggregates (drift-rate p50/p90, top-N violation classes, score-distribution histogram). Privacy review checklist included. |
+| W250 | CLI: `squash industry-benchmark` + report builder | `squash industry-benchmark --sector financial-services --period 6mo --output ./qbr.pdf`. Output is QBR-ready: cover page, exec summary ("you are at p72 in your sector"), per-metric comparison tables, opportunities-for-improvement section. |
+
+**Sprint 29 exit criteria:**
+- 1 new module (`benchmark.py`); module count tracked
+- Anonymisation passes a documented privacy-review checklist (k-anonymity, no per-tenant identifiability)
+- QBR report builds without proprietary fonts (stdlib + WeasyPrint only)
 
 ---
 
@@ -950,7 +1264,7 @@ All 30 features ranked by acquisition impact, revenue leverage, and defensibilit
 | 25 | **Compliance email digest** | `squash/notifications.py` | Weekly/monthly portfolio posture summary. Passive retention. |
 | 26 | **Terraform/Pulumi provider** | `squash-terraform-provider` (Go) | Compliance as infrastructure. DevOps teams adopt immediately. |
 | 27 | **Pre-built HuggingFace Spaces deployment** | HF Spaces | Free, visible to entire HF community. Zero marketing cost. |
-| 28 | **API gateway plugin** | Kong/AWS API Gateway | Block inference requests at runtime if attestation expired or CVE flagged. |
+| 28 | **API gateway plugin** *(de-scoped 2026-04-30)* | Kong/AWS API Gateway | De-scoped from Sprint 16 in the Tier 3 reprioritisation: build-time gates (Sprint 12 registry + Sprint 9 GitOps) cover the same enforcement surface. Retained in this table as a future option, not an active sprint. |
 | 29 | **Audit trail blockchain anchoring** | `squash/provenance.py` | Ethereum OP_RETURN anchoring. Immutable proof for financial services/medical/defense. |
 | 30 | **SOC 2 Type II** | Business/legal | Enterprise procurement unblocked. Start readiness phase now. |
 
@@ -1044,29 +1358,29 @@ The US enterprise buyer who doesn't care about GDPR absolutely cares about a DoD
 
 ---
 
-## Quick Reference: The Next 30 Days
+## Quick Reference: The August 2 Countdown — 94 Days
 
-| Date | Action |
-|------|--------|
-| **Apr 28** | Repo separated. ✅ |
-| **Apr 29** | Create `konjoai/squash` repo on GitHub, push |
-| **Apr 30** | Branch protection + CI green |
-| **May 2** | `pip install squash-ai` works from source |
-| **May 5** | Start Wave 128 (TensorBoard parser) |
-| **May 9** | Announce upcoming launch on LinkedIn (teaser) |
-| **May 12** | Wave 129–130 (MLflow, W&B) complete |
-| **May 16** | Wave 131–132 (dataset tracker, code scanner) complete |
-| **May 23** | Wave 133 (Annex IV generator) complete — MVP ready |
-| **May 26** | Deploy cloud API to staging (Fly.io) |
-| **May 28** | Stripe integration complete |
-| **May 30** | First design partner invited to closed beta |
+The North Star sprint sequence between today (April 30) and the EU AI
+Act enforcement deadline. Anything past August 2 is post-deadline; the
+plan has slack but every week before the deadline is highest leverage.
 
----
+| Window | Sprints | What ships |
+|--------|---------|------------|
+| **May 2026** (Weeks 1–4) | Sprint 14 (HF Scanner + Spaces) · Sprint 19 (`squash freeze`) · Sprint 20 (AI washing detection) | Top-of-funnel growth + emergency response + SEC compliance product |
+| **June 2026** (Weeks 5–8) | Sprint 15 (Branded PDF + Email Digest) · Sprint 21 (Identity Governance) · Sprint 22 (Audit Simulation) | CISO leave-behind + 73%-pre-sold buyer + 78%-can't-pass-an-audit narrative |
+| **July 2026** (Weeks 9–12, pre-deadline push) | Sprint 16 (TF + Pulumi) · Sprint 23 (Approval Workflow) · Sprint 25 (SLA Dashboard) | DevOps embed + Article 9 documentation + procurement-ready SLAs |
+| **August 2** | **EU AI Act enforcement day.** Marketing surge: "Squash users are compliant. Are you?" Activate every press / community channel. Squash Standard installed in every CI pipeline by close-of-week. |
+| **August–September 2026** | Sprint 17 (Blockchain) · Sprint 18 (SOC 2) · Sprint 24 (Insurance Package) | High-assurance verticals (BFSI / healthcare / defence) + procurement unblocking |
+| **October 2026 → April 2027** | Sprints 26–29 (multi-jurisdiction, regulatory watch, procurement scoring API, industry benchmarks) | Network-effect plays once base + revenue motion are proven |
 
-*"The deadline is real. The market is real. The code is already written. Ship it."*
+The sequence is intentional: Tier 4 sprints with hardest deadlines (Sprint 19 incident response, Sprint 20 SEC washing) front-run Tier 3 sprints. Anything not on this list is a distraction until August 2 ships.
 
 ---
 
-**Document version:** 1.1 (separation complete)
-**Next review:** May 9, 2026
+*"The deadline is real. The market is real. The proof gap is everyone's gap except squash's. Ship it."*
+
+---
+
+**Document version:** 1.4 (Tier 4 expansion + Aug 2 North Star anchor)
+**Next review:** May 14, 2026 — review Tier 4 sprint sequencing against shipped Tier 3 progress
 **Owner:** Wesley Scholl, Konjo AI
