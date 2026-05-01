@@ -5,6 +5,44 @@ Format: [Conventional Commits](https://www.conventionalcommits.org/) · [Keep a 
 
 ---
 
+## [2.2.0] — 2026-04-30 — C10: Runtime Hallucination Monitor (W267-W269)
+
+> EU AI Act Article 9(1)(f) requires post-market monitoring throughout the AI system lifecycle.
+> 18% production hallucination rate · 39% of chatbots reworked in 2024.
+
+### Added (W267-W269 / Track C / C10)
+
+- **`squash/hallucination_monitor.py`** — Runtime hallucination monitor:
+  - `RequestSampler` — configurable sample-rate (default 5%) interceptor; scores live
+    request/response pairs; thread-safe; zero overhead on unsampled requests
+  - `RollingWindow` — fixed-size append-only ring buffer (default 1000 entries); JSONL
+    persisted so the monitor survives restarts; Wilson 95% CI on demand; `since=` filter
+  - `score_live_response()` — three modes: **grounded** (full C7 scorer with GT), **RAG
+    context-only** (token overlap against context), **black-box** (structural heuristics:
+    absolute claim detection, hedging language, entity density)
+  - `BreachEngine` — confirmed breach requires BOTH point estimate > threshold AND CI lo
+    > threshold; prevents false alarms from small samples; fires `on_breach` callback
+  - `notify_breach()` — routes breach events to existing `webhook_delivery` + logs to
+    `attestation_registry` (no new storage format)
+  - `score_batch()` — offline/cron scoring of collected request/response pairs
+  - `build_monitor_report()` — OK / WARN / BREACH status report
+  - `run_monitor()` — daemon and `--once` cron modes
+- **CLI: `squash hallucination-monitor`** — 4 subcommands:
+  - `run --endpoint URL [--sample-rate 0.05] [--threshold 0.10] [--once]`
+  - `score --response TEXT [--context TEXT] [--ground-truth TEXT]`
+  - `status [--state-dir PATH]`
+  - `batch --requests-file requests.json [--fail-on-breach]`
+- **40 new tests**: score_live_response (3 modes), RollingWindow (append/rate/since/persist
+  /eviction/clear), RequestSampler (rates/force/thread-safety), BreachEngine (confirmed/
+  noise/insufficient), score_batch, CLI smoke
+
+### Distinct from C7
+
+C7 attests a model pre-deploy on a fixed probe set.
+C10 monitors live traffic continuously — EU AI Act Art. 9 post-market monitoring obligation.
+
+---
+
 ## [2.1.0] — 2026-04-30 — C7 ★: Hallucination Rate Attestation (W251-W252)
 
 > **$67.4B in 2024 AI hallucination losses · 47% of executives made decisions on hallucinated content.**

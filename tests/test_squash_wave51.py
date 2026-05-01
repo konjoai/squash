@@ -626,7 +626,7 @@ class TestModuleCount(unittest.TestCase):
         count = len(py_files)
         self.assertGreaterEqual(
             count,
-            51,
+            88,
             msg=f"Expected at least 51 Python files in squash/, found {count}.",
         )
 

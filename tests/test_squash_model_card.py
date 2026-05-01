@@ -658,7 +658,7 @@ class TestModuleCountGate(unittest.TestCase):
         # · Sprint 22 audit_sim.py (77) · Sprint 24 insurance.py (78).
         self.assertEqual(
             count,
-            86,
+            88,
             msg=f"squash/ has {count} Python files (expected 86 after W251/C7). "
                 "If you added a file, update this gate.",
         )

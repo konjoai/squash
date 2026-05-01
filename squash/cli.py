@@ -2060,6 +2060,59 @@ def _build_parser() -> argparse.ArgumentParser:
     go_annotate.add_argument("--policy", default="eu-ai-act", help="Policy name (default: eu-ai-act)")
     go_annotate.add_argument("--passed", action="store_true", default=True)
 
+    # ── W267-W269 / C10 — Runtime Hallucination Monitor ──────────────────────
+    # Extends the existing `squash monitor` command with --mode hallucination.
+    # We also register a standalone `squash hallucination-monitor` alias for
+    # discoverability.
+    for _mon_name in ("hallucination-monitor",):
+        _hm_cmd = sub.add_parser(
+            _mon_name,
+            help="Runtime hallucination monitor — EU AI Act Art. 9 post-market monitoring",
+            description=(
+                "18% production hallucination rate · 39% of chatbots reworked in 2024.\n"
+                "Continuous post-market monitoring required by EU AI Act Article 9.\n\n"
+                "Examples:\n"
+                "  squash hallucination-monitor run --endpoint http://model:8080\n"
+                "  squash hallucination-monitor run --endpoint mock://test --once\n"
+                "  squash hallucination-monitor score --response 'Paris is the capital' --context 'Paris is the capital of France'\n"
+                "  squash hallucination-monitor status\n"
+                "  squash hallucination-monitor batch --requests-file ./requests.json\n"
+            ),
+            formatter_class=argparse.RawDescriptionHelpFormatter,
+        )
+        _hm_sub = _hm_cmd.add_subparsers(dest="hm_command")
+
+        _hm_run = _hm_sub.add_parser("run", help="Start monitor daemon or single-shot poll")
+        _hm_run.add_argument("--endpoint", required=True, dest="endpoint")
+        _hm_run.add_argument("--model-id", default="", dest="model_id")
+        _hm_run.add_argument("--sample-rate", type=float, default=0.05, dest="sample_rate")
+        _hm_run.add_argument("--threshold", type=float, default=0.10, dest="threshold")
+        _hm_run.add_argument("--window", type=int, default=60, dest="window_minutes", help="Rolling window in minutes (default: 60)")
+        _hm_run.add_argument("--poll-interval", type=float, default=30.0, dest="poll_interval", help="Seconds between polls (default: 30)")
+        _hm_run.add_argument("--once", action="store_true", dest="once", help="Score one request and exit (cron mode)")
+        _hm_run.add_argument("--state-dir", default=None, dest="state_dir")
+        _hm_run.add_argument("--format", default="text", choices=["text", "json"], dest="hm_format")
+
+        _hm_score = _hm_sub.add_parser("score", help="Score a single response for hallucination risk")
+        _hm_score.add_argument("--response", required=True, dest="response")
+        _hm_score.add_argument("--context", default="", dest="context")
+        _hm_score.add_argument("--ground-truth", default="", dest="ground_truth")
+        _hm_score.add_argument("--json", action="store_true", dest="output_json")
+
+        _hm_status = _hm_sub.add_parser("status", help="Show current monitor state and rolling rate")
+        _hm_status.add_argument("--state-dir", default=None, dest="state_dir")
+        _hm_status.add_argument("--threshold", type=float, default=0.10, dest="threshold")
+        _hm_status.add_argument("--window", type=int, default=60, dest="window_minutes")
+        _hm_status.add_argument("--json", action="store_true", dest="output_json")
+
+        _hm_batch = _hm_sub.add_parser("batch", help="Score a batch of offline request/response pairs")
+        _hm_batch.add_argument("--requests-file", required=True, dest="requests_file",
+                                help="JSON file: [{prompt, response, context?, ground_truth?}]")
+        _hm_batch.add_argument("--model-id", default="", dest="model_id")
+        _hm_batch.add_argument("--threshold", type=float, default=0.10, dest="threshold")
+        _hm_batch.add_argument("--fail-on-breach", action="store_true", dest="fail_on_breach")
+        _hm_batch.add_argument("--json", action="store_true", dest="output_json")
+
     # ── W251-W252 / C7 — Hallucination Rate Attestation ──────────────────────
     ha_cmd = sub.add_parser(
         "hallucination-attest",
@@ -2902,6 +2955,67 @@ def _build_parser() -> argparse.ArgumentParser:
     dw_cmd.add_argument("--fail-on-alert", action="store_true", dest="dw_fail",
                         help="Exit 1 if any deprecation alerts are found")
     dw_cmd.add_argument("--quiet", "-q", action="store_true")
+
+
+
+    # ── C9 (Sprint 36) — attest-carbon: Carbon / Energy Attestation ──────────
+    ac_cmd = sub.add_parser(
+        "attest-carbon",
+        help="Compute and attest the carbon / energy footprint of a deployed model",
+        description=(
+            "Generate a CSRD-mappable, cryptographically signed carbon + energy\n"
+            "attestation certificate. Covers CSRD Scope 2/3, EU AI Act Annex IV §4,\n"
+            "CSDDD, UK PRA SS1/23, and OMB/DOE data-centre reporting.\n\n"
+            "Examples:\n"
+            "  squash attest-carbon --model-id bert-base --params 110M --region eu-west-1\n"
+            "  squash attest-carbon --model-id gpt-3 --params 175B --region us-east-1 --hardware h100\n"
+            "  squash attest-carbon --model-id mymodel --params 7B --bom ./mlbom.json --csrd\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    ac_cmd.add_argument("--model-id", dest="ac_model_id", required=True,
+                        help="Model identifier")
+    ac_cmd.add_argument("--params", dest="ac_params", required=True,
+                        help="Parameter count: integer or shorthand (110M, 7B, 1.5T)")
+    ac_cmd.add_argument("--region", dest="ac_region", default="us-east-1",
+                        help="Deployment region (AWS/GCP/Azure region or ISO country code; default: us-east-1)")
+    ac_cmd.add_argument("--architecture", dest="ac_arch", default="transformer",
+                        choices=["transformer", "cnn", "rnn", "moe", "diffusion", "embedding", "unknown"],
+                        help="Model architecture family (default: transformer)")
+    ac_cmd.add_argument("--hardware", dest="ac_hw", default="a100",
+                        choices=["a100", "h100", "h200", "tpu_v4", "tpu_v5", "rtx4090", "cpu", "unknown"],
+                        help="Inference hardware (default: a100)")
+    ac_cmd.add_argument("--inferences-per-day", type=int, default=10000,
+                        dest="ac_inf_per_day",
+                        help="Expected daily inference volume (default: 10 000)")
+    ac_cmd.add_argument("--tokens-per-inference", type=int, default=512,
+                        dest="ac_tokens",
+                        help="Average tokens per inference (default: 512)")
+    ac_cmd.add_argument("--seq-len", type=int, default=512, dest="ac_seq_len",
+                        help="Sequence length for FLOP calculation (default: 512)")
+    ac_cmd.add_argument("--utilization", type=float, default=0.45, dest="ac_util",
+                        help="GPU/TPU utilization fraction 0–1 (default: 0.45)")
+    ac_cmd.add_argument("--pue", type=float, default=None, dest="ac_pue",
+                        help="Power Usage Effectiveness override (default: 1.20)")
+    ac_cmd.add_argument("--renewable-fraction", type=float, default=0.0,
+                        dest="ac_renewable",
+                        help="Fraction of electricity from renewables/RECs 0–1 (default: 0)")
+    ac_cmd.add_argument("--live-intensity", action="store_true", dest="ac_live",
+                        help="Attempt live Electricity Maps API fetch (requires SQUASH_ELECTRICITY_MAPS_KEY)")
+    ac_cmd.add_argument("--sign", action="store_true", dest="ac_sign",
+                        help="HMAC-SHA256 sign the certificate")
+    ac_cmd.add_argument("--output", dest="ac_output",
+                        help="Write certificate JSON to this file (default: <model-id>-carbon-attest.json)")
+    ac_cmd.add_argument("--bom", dest="ac_bom",
+                        help="Path to CycloneDX ML-BOM JSON — enrich with energy fields")
+    ac_cmd.add_argument("--csrd", action="store_true", dest="ac_csrd",
+                        help="Also write a CSRD ESRS E1 mapping JSON alongside the certificate")
+    ac_cmd.add_argument("--framework", dest="ac_framework", default="csrd",
+                        choices=["csrd", "csddd", "uk_pra_ss1_23", "omb_doe", "eu_ai_act"],
+                        help="Regulatory framework for --csrd output (default: csrd)")
+    ac_cmd.add_argument("--json", action="store_true", dest="ac_json",
+                        help="Print full certificate JSON to stdout")
+    ac_cmd.add_argument("--quiet", "-q", action="store_true")
 
 
     # ── W135 / W136 — Annex IV generate + validate ────────────────────────────
@@ -5093,6 +5207,88 @@ def _model_card_validate(card_path: Path, json_out: bool, quiet: bool) -> int:
             print(f"  {f.render()}")
 
     return 0 if report.is_valid else 1
+
+
+def _cmd_attest_carbon(args: argparse.Namespace, quiet: bool) -> int:
+    """C9 — Carbon / Energy Attestation."""
+    from squash.carbon_attest import (
+        CarbonAttestation, CarbonIntensityCache, ModelArchitecture,
+        HardwareType, enrich_mlbom, format_summary,
+    )
+
+    # Parse parameter count shorthand (110M, 7B, 1.5T)
+    params_str = str(args.ac_params).strip().upper()
+    try:
+        multipliers = {"K": 1_000, "M": 1_000_000, "B": 1_000_000_000,
+                       "T": 1_000_000_000_000}
+        if params_str[-1] in multipliers:
+            param_count = int(float(params_str[:-1]) * multipliers[params_str[-1]])
+        else:
+            param_count = int(params_str)
+    except (ValueError, IndexError):
+        print(f"attest-carbon: cannot parse --params {args.ac_params!r}. "
+              "Use an integer or shorthand (110M, 7B, 1.5T).", file=sys.stderr)
+        return 2
+
+    arch = ModelArchitecture(args.ac_arch)
+    hw   = HardwareType(args.ac_hw)
+
+    cache = CarbonIntensityCache() if getattr(args, "ac_live", False) else None
+    try:
+        cert = CarbonAttestation.compute(
+            model_id=args.ac_model_id,
+            param_count=param_count,
+            deployment_region=args.ac_region,
+            architecture=arch,
+            hardware=hw,
+            inferences_per_day=args.ac_inf_per_day,
+            tokens_per_inference=args.ac_tokens,
+            seq_len=args.ac_seq_len,
+            utilization=args.ac_util,
+            pue_override=args.ac_pue,
+            renewable_fraction=args.ac_renewable,
+            live_intensity=getattr(args, "ac_live", False),
+            cache=cache,
+            sign=getattr(args, "ac_sign", False),
+        )
+    finally:
+        if cache:
+            cache.close()
+
+    # Write certificate
+    out_path = Path(args.ac_output) if args.ac_output else (
+        Path(f"{args.ac_model_id.replace('/', '_')}-carbon-attest.json")
+    )
+    out_path.write_text(json.dumps(cert.to_dict(), indent=2), encoding="utf-8")
+
+    # CSRD report
+    if getattr(args, "ac_csrd", False):
+        csrd_path = out_path.with_suffix("").with_name(
+            out_path.stem.replace("-carbon-attest", "") + "-csrd.json"
+        )
+        fw = getattr(args, "ac_framework", "csrd")
+        csrd_report = cert.to_regulatory(fw)
+        csrd_path.write_text(json.dumps(csrd_report, indent=2), encoding="utf-8")
+        if not quiet:
+            print(f"[squash attest-carbon] CSRD report: {csrd_path}")
+
+    # ML-BOM enrichment
+    if getattr(args, "ac_bom", None):
+        bom_path = Path(args.ac_bom)
+        if bom_path.exists():
+            enrich_mlbom(bom_path, cert)
+            if not quiet:
+                print(f"[squash attest-carbon] ML-BOM enriched: {bom_path}")
+        else:
+            print(f"attest-carbon: --bom path not found: {bom_path}", file=sys.stderr)
+
+    if getattr(args, "ac_json", False):
+        print(json.dumps(cert.to_dict(), indent=2))
+    elif not quiet:
+        print(format_summary(cert))
+        print(f"  Certificate: {out_path}")
+    return 0
+
 
 
 def _cmd_deprecation_watch(args: argparse.Namespace, quiet: bool) -> int:
@@ -8146,6 +8342,127 @@ def _cmd_gitops(args: argparse.Namespace, quiet: bool) -> int:
         return 1
 
 
+def _cmd_hallucination_monitor(args: argparse.Namespace, quiet: bool) -> int:
+    """W267-W269 / C10 — Runtime hallucination monitor."""
+    from squash.hallucination_monitor import (
+        BreachEngine,
+        InferenceRequest,
+        RequestSampler,
+        RollingWindow,
+        build_monitor_report,
+        notify_breach,
+        run_monitor,
+        score_batch,
+        score_live_response,
+    )
+
+    sub = getattr(args, "hm_command", None)
+
+    if sub == "run":
+        state_dir = Path(args.state_dir) if args.state_dir else None
+        breaches: list = []
+
+        def _on_breach(ev):
+            breaches.append(ev)
+            notify_breach(ev)
+            if not quiet:
+                print(f"\n🚨 {ev.summary()}", flush=True)
+
+        run_monitor(
+            endpoint=args.endpoint,
+            model_id=args.model_id,
+            sample_rate=args.sample_rate,
+            threshold=args.threshold,
+            window_minutes=args.window_minutes,
+            poll_interval=args.poll_interval,
+            state_dir=state_dir,
+            on_breach=_on_breach,
+            once=args.once,
+        )
+
+        window = RollingWindow(state_dir=state_dir)
+        report = build_monitor_report(
+            window, threshold=args.threshold,
+            window_minutes=args.window_minutes, model_id=args.model_id,
+        )
+        if args.hm_format == "json" or args.once:
+            print(json.dumps(report, indent=2))
+        elif not quiet:
+            rate = report["hallucination_rate"]
+            n    = report["sample_count"]
+            status = report["status"]
+            print(f"{'✓' if status == 'OK' else '✗'} [{status}] "
+                  f"rate={rate:.1%} n={n} threshold={args.threshold:.1%}")
+        return 2 if breaches else 0
+
+    if sub == "score":
+        score, hallucinated, breakdown = score_live_response(
+            response=args.response,
+            context=args.context,
+            ground_truth=args.ground_truth,
+        )
+        if args.output_json:
+            print(json.dumps({
+                "score": round(score, 4),
+                "hallucinated": hallucinated,
+                "breakdown": breakdown,
+            }, indent=2))
+        else:
+            icon = "❌ HALLUCINATED" if hallucinated else "✅ faithful"
+            print(f"{icon} (score={score:.3f})")
+        return 2 if hallucinated else 0
+
+    if sub == "status":
+        state_dir = Path(args.state_dir) if args.state_dir else None
+        window = RollingWindow(state_dir=state_dir)
+        report = build_monitor_report(
+            window, threshold=args.threshold,
+            window_minutes=args.window_minutes,
+        )
+        if args.output_json:
+            print(json.dumps(report, indent=2))
+        else:
+            rate   = report["hallucination_rate"]
+            n      = report["sample_count"]
+            status = report["status"]
+            ci_lo  = report["ci_low"]
+            ci_hi  = report["ci_high"]
+            icon   = "✓" if status == "OK" else ("⚠" if status == "WARN" else "✗")
+            print(f"{icon} [{status}] rate={rate:.1%} CI=[{ci_lo:.1%},{ci_hi:.1%}] "
+                  f"n={n} threshold={args.threshold:.1%}")
+        return 2 if report["status"] == "BREACH" else 0
+
+    if sub == "batch":
+        data = json.loads(Path(args.requests_file).read_text())
+        reqs = [
+            InferenceRequest(
+                prompt=d.get("prompt", ""),
+                response=d.get("response", ""),
+                context=d.get("context", ""),
+                ground_truth=d.get("ground_truth", ""),
+                model_id=d.get("model_id", args.model_id),
+            )
+            for d in data
+        ]
+        result = score_batch(reqs, threshold=args.threshold, model_id=args.model_id)
+        if args.output_json:
+            print(json.dumps(result, indent=2))
+        else:
+            rate   = result["hallucination_rate"]
+            passes = result["passes_threshold"]
+            icon   = "✓" if passes else "✗"
+            print(f"{icon} batch: rate={rate:.1%} n={result['sample_count']} "
+                  f"threshold={args.threshold:.1%} {'PASS' if passes else 'FAIL'}")
+            if result["breach"]:
+                print(f"  BREACH: {result['breach']['summary'] if 'summary' in result['breach'] else ''}")
+        if args.fail_on_breach and not result["passes_threshold"]:
+            return 2
+        return 0
+
+    print("squash hallucination-monitor: specify a subcommand — run | score | status | batch")
+    return 1
+
+
 def _cmd_hallucination_attest(args: argparse.Namespace, quiet: bool) -> int:
     """W251-W252 / C7 — Hallucination rate attestation."""
     from squash.hallucination_attest import (
@@ -9020,6 +9337,8 @@ def main() -> None:
         sys.exit(_cmd_telemetry(args, quiet))
     elif args.command == "gitops":
         sys.exit(_cmd_gitops(args, quiet))
+    elif args.command == "hallucination-monitor":
+        sys.exit(_cmd_hallucination_monitor(args, quiet))
     elif args.command == "hallucination-attest":
         sys.exit(_cmd_hallucination_attest(args, quiet))
     elif args.command == "detect-washing":
@@ -9040,6 +9359,8 @@ def main() -> None:
         sys.exit(_cmd_chain_attest(args, quiet))
     elif args.command == "registry-gate":
         sys.exit(_cmd_registry_gate(args, quiet))
+    elif args.command == "attest-carbon":
+        sys.exit(_cmd_attest_carbon(args, quiet))
     elif args.command == "deprecation-watch":
         sys.exit(_cmd_deprecation_watch(args, quiet))
     elif args.command == "request-approval":

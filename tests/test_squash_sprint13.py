@@ -361,7 +361,7 @@ class TestSprint13ModuleCountUnchanged(unittest.TestCase):
         py_files = [
             f for f in squash_dir.rglob("*.py") if "__pycache__" not in str(f)
         ]
-        self.assertEqual(len(py_files), 86,
+        self.assertEqual(len(py_files), 88,
                          msg="Sprint 13 added 0 modules; B1 (W205) added hf_scanner.py.")
 
 
