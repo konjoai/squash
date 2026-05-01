@@ -1,14 +1,14 @@
 ---
 title: Squash Scanner
 emoji: 🛡️
-colorFrom: orange
-colorTo: red
+colorFrom: red
+colorTo: yellow
 sdk: gradio
 sdk_version: 4.44.0
 app_file: app.py
 pinned: true
 license: apache-2.0
-short_description: Scan HuggingFace models for security vulnerabilities and EU AI Act compliance
+short_description: Scan HF models for security & EU AI Act compliance
 ---
 
 # 🛡️ Squash Scanner
