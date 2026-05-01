@@ -1,0 +1,3 @@
+gradio>=4.44.0
+squash-ai>=2.7.0
+huggingface-hub>=0.23

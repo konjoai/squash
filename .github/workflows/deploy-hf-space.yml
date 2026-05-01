@@ -1,0 +1,46 @@
+name: Deploy to HuggingFace Spaces
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "spaces/squash-scanner/**"
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-hf-space
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: true
+
+      - name: Push to HuggingFace Space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          git config --global user.email "ci@konjoai.com"
+          git config --global user.name "konjoai-ci"
+
+          git clone https://konjoai:${HF_TOKEN}@huggingface.co/spaces/konjoai/squash-scanner hf-space
+
+          # Sync only the Space files; preserve the HF .git directory
+          rsync -av --delete \
+            --exclude='.git' \
+            spaces/squash-scanner/ hf-space/
+
+          cd hf-space
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to deploy."
+          else
+            git commit -m "deploy: sync from konjoai/squash@$(git -C .. rev-parse --short HEAD)"
+            git push
+          fi
