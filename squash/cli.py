@@ -2830,6 +2830,105 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Suppress non-essential output.",
     )
 
+    # ── Sprint 39 W272-W274 (Track C / C11) — genealogy + copyright-check ──────
+    geo_cmd = sub.add_parser(
+        "genealogy",
+        help="Trace model derivation chain + copyright contamination cert",
+        description=(
+            "Trace the model's derivation chain (base → fine-tune → adapter),\n"
+            "flag copyright-heavy training sources, and optionally run\n"
+            "memorisation probes. Produces a signed certificate for the GC.\n\n"
+            "Examples:\n"
+            "  squash genealogy --model ./model --deployment-domain legal-drafting\n"
+            "  squash genealogy --model ./model --endpoint http://localhost:8080/v1/complete\n"
+            "  squash genealogy --model ./model --block-on-contamination\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    geo_cmd.add_argument(
+        "--model", "--model-path", "--models-dir",
+        default=".", dest="geo_model_path",
+        help="Model directory containing squash artefacts. Default: cwd.",
+    )
+    geo_cmd.add_argument(
+        "--deployment-domain",
+        default="default",
+        dest="geo_domain",
+        choices=["content-generation", "legal-drafting", "code-assistance",
+                 "customer-support", "internal-summarization", "research", "default"],
+        help="Deployment domain (determines copyright threshold). Default: default.",
+    )
+    geo_cmd.add_argument(
+        "--endpoint", default="", dest="geo_endpoint",
+        help="Optional inference endpoint URL for live memorisation probing.",
+    )
+    geo_cmd.add_argument(
+        "--probe-file", default=None, dest="geo_probe_file",
+        metavar="PATH",
+        help="JSON file with extra probe passages (public-domain only).",
+    )
+    geo_cmd.add_argument(
+        "--output-dir", default=None, dest="geo_output_dir",
+        help="Directory to write squash-genealogy.{json,md}.",
+    )
+    geo_cmd.add_argument(
+        "--json", action="store_true", dest="geo_json",
+        help="Print structured JSON to stdout.",
+    )
+    geo_cmd.add_argument(
+        "--block-on-contamination",
+        action="store_true", dest="geo_block",
+        help="Exit 1 if verdict is BLOCKED; exit 2 if WARNING.",
+    )
+    geo_cmd.add_argument(
+        "--quiet", action="store_true",
+        help="Suppress non-essential output.",
+    )
+
+    cc_cmd = sub.add_parser(
+        "copyright-check",
+        help="SPDX licence detection + copyright risk assessment for a model",
+        description=(
+            "Detect SPDX licences for model weights and training data,\n"
+            "check licence compatibility, track copyright holders,\n"
+            "and produce a signed certificate for the General Counsel.\n\n"
+            "Examples:\n"
+            "  squash copyright-check --model ./model --deployment-use commercial\n"
+            "  squash copyright-check --model ./model --json\n"
+            "  squash copyright-check --model ./model --deployment-use research\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    cc_cmd.add_argument(
+        "--model", "--model-path", "--models-dir",
+        default=".", dest="cc_model_path",
+        help="Model directory containing squash artefacts. Default: cwd.",
+    )
+    cc_cmd.add_argument(
+        "--deployment-use",
+        default="commercial",
+        dest="cc_use",
+        choices=["commercial", "research", "internal"],
+        help="Intended deployment use. Default: commercial.",
+    )
+    cc_cmd.add_argument(
+        "--output-dir", default=None, dest="cc_output_dir",
+        help="Directory to write squash-copyright.{json,md}.",
+    )
+    cc_cmd.add_argument(
+        "--json", action="store_true", dest="cc_json",
+        help="Print structured JSON to stdout.",
+    )
+    cc_cmd.add_argument(
+        "--fail-on-incompatible",
+        action="store_true", dest="cc_fail",
+        help="Exit 1 if compatible=False; exit 2 if compatible=None (uncertain).",
+    )
+    cc_cmd.add_argument(
+        "--quiet", action="store_true",
+        help="Suppress non-essential output.",
+    )
+
     # ── Sprint 27 W243-W245 (Track C / C4) — watch-regulatory daemon ──────────
     wr_cmd = sub.add_parser(
         "watch-regulatory",
@@ -5761,6 +5860,122 @@ def _cmd_digest(args: argparse.Namespace, quiet: bool) -> int:
 
     print(f"squash digest: unknown subcommand {sub_cmd!r}", file=sys.stderr)
     return 2
+
+
+def _cmd_genealogy(args: argparse.Namespace, quiet: bool) -> int:
+    """Sprint 39 W274 — `squash genealogy`. Model derivation chain + copyright cert."""
+    try:
+        from squash.genealogy import GenealogyBuilder
+    except ImportError as exc:
+        print(f"squash genealogy unavailable: {exc}", file=sys.stderr)
+        return 2
+
+    model_path = Path(getattr(args, "geo_model_path", ".") or ".")
+    if not model_path.exists():
+        print(f"genealogy: path not found: {model_path}", file=sys.stderr)
+        return 2
+
+    quiet_mode = quiet or getattr(args, "quiet", False)
+    domain     = getattr(args, "geo_domain", "default") or "default"
+    endpoint   = getattr(args, "geo_endpoint", "") or ""
+    probe_file_s = getattr(args, "geo_probe_file", None)
+    probe_file = Path(probe_file_s) if probe_file_s else None
+
+    try:
+        report = GenealogyBuilder().build(
+            model_path,
+            deployment_domain=domain,
+            endpoint=endpoint,
+            probe_file=probe_file,
+        )
+    except Exception as exc:  # noqa: BLE001
+        print(f"genealogy: build failed: {exc}", file=sys.stderr)
+        return 1
+
+    output_dir_s = getattr(args, "geo_output_dir", None)
+    output_dir   = Path(output_dir_s) if output_dir_s else model_path
+    written = report.save(output_dir)
+
+    if getattr(args, "geo_json", False):
+        print(report.to_json())
+    elif not quiet_mode:
+        verdict_icon = {"CLEAN": "✅", "WARNING": "⚠️", "BLOCKED": "🔴"}.get(
+            report.contamination_verdict, "⚪"
+        )
+        print(
+            f"{verdict_icon} Genealogy [{report.deployment_domain}] "
+            f"{report.contamination_verdict} · "
+            f"Risk: {report.copyright_risk_tier} ({report.copyright_risk_score}/100) · "
+            f"Chain depth: {report.chain.depth}"
+        )
+        srcs = report.chain.worst_copyright_sources()
+        if srcs:
+            print(f"   Copyright sources: {', '.join(srcs[:3])}")
+        for fmt, p in written.items():
+            print(f"   [{fmt}] {p}")
+
+    block = getattr(args, "geo_block", False)
+    if block:
+        if report.contamination_verdict == "BLOCKED":
+            return 1
+        if report.contamination_verdict == "WARNING":
+            return 2
+    return 0
+
+
+def _cmd_copyright_check(args: argparse.Namespace, quiet: bool) -> int:
+    """Sprint 39 W274 — `squash copyright-check`. SPDX + compatibility analysis."""
+    try:
+        from squash.copyright import CopyrightAnalyzer
+    except ImportError as exc:
+        print(f"squash copyright-check unavailable: {exc}", file=sys.stderr)
+        return 2
+
+    model_path = Path(getattr(args, "cc_model_path", ".") or ".")
+    if not model_path.exists():
+        print(f"copyright-check: path not found: {model_path}", file=sys.stderr)
+        return 2
+
+    quiet_mode = quiet or getattr(args, "quiet", False)
+    use        = getattr(args, "cc_use", "commercial") or "commercial"
+
+    try:
+        report = CopyrightAnalyzer().analyze(model_path, deployment_use=use)
+    except Exception as exc:  # noqa: BLE001
+        print(f"copyright-check: analysis failed: {exc}", file=sys.stderr)
+        return 1
+
+    output_dir_s = getattr(args, "cc_output_dir", None)
+    output_dir   = Path(output_dir_s) if output_dir_s else model_path
+    written = report.save(output_dir)
+
+    if getattr(args, "cc_json", False):
+        print(report.to_json())
+    elif not quiet_mode:
+        compat_str = (
+            "compatible" if report.compatible
+            else "INCOMPATIBLE" if report.compatible is False
+            else "uncertain — legal review needed"
+        )
+        compat_icon = "✅" if report.compatible else ("❌" if report.compatible is False else "⚠️")
+        print(
+            f"{compat_icon} Copyright check [{use}]: {compat_str} · "
+            f"Risk: {report.risk_tier} ({report.risk_score}/100) · "
+            f"Model licence: {report.model_license.spdx_id}"
+        )
+        for issue in report.compatibility_issues[:3]:
+            sev_icon = {"CRITICAL": "🔴", "HIGH": "🟠", "MEDIUM": "🟡"}.get(issue.severity, "ℹ️")
+            print(f"   {sev_icon} {issue.severity}: {issue.issue[:80]}")
+        for fmt, p in written.items():
+            print(f"   [{fmt}] {p}")
+
+    fail = getattr(args, "cc_fail", False)
+    if fail:
+        if report.compatible is False:
+            return 1
+        if report.compatible is None:
+            return 2
+    return 0
 
 
 def _cmd_insurance_package(args: argparse.Namespace, quiet: bool) -> int:
@@ -9375,6 +9590,10 @@ def main() -> None:
         sys.exit(_cmd_approval_export(args, quiet))
     elif args.command == "digest":
         sys.exit(_cmd_digest(args, quiet))
+    elif args.command == "genealogy":
+        sys.exit(_cmd_genealogy(args, quiet))
+    elif args.command == "copyright-check":
+        sys.exit(_cmd_copyright_check(args, quiet))
     elif args.command == "insurance-package":
         sys.exit(_cmd_insurance_package(args, quiet))
     elif args.command == "simulate-audit":

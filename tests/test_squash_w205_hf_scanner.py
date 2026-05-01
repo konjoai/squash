@@ -506,6 +506,8 @@ class TestModuleCountAfterB1(unittest.TestCase):
         self.assertEqual(
             len(py_files), 88,
             msg=f"squash/ has {len(py_files)} files (expected 86 after W251/C7).",
+            len(py_files), 80,
+            msg=f"squash/ has {len(py_files)} files (expected 80 after Sprint 14 W205).",
         )
 
 

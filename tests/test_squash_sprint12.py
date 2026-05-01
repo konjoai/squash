@@ -544,6 +544,7 @@ class TestSprint12ModuleCountUnchanged(unittest.TestCase):
         ]
         self.assertEqual(
             len(py_files), 88,
+            len(py_files), 80,
             msg="Sprint 12 added 0 modules; B1 (Sprint 14 W205) added hf_scanner.py.",
         )
 

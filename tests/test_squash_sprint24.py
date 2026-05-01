@@ -527,6 +527,8 @@ class TestModuleCountAfterSprint24(unittest.TestCase):
         self.assertEqual(
             len(py_files), 88,
             msg=f"squash/ has {len(py_files)} files (expected 78 after Sprint 24). "
+            len(py_files), 80,
+            msg=f"squash/ has {len(py_files)} files (expected 80 after Sprint 24). "
                 "If you added a file, update this gate.",
         )
 

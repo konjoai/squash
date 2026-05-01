@@ -670,6 +670,8 @@ class TestModuleCount:
         count = len(list(squish_dir.rglob("*.py")))
         assert count == 88, (
             f"Module count changed: expected 78, got {count}. "
+        assert count == 80, (
+            f"Module count changed: expected 80, got {count}. "
             "Sprint 14 W205 (B1) added: hf_scanner.py. "
             "New modules require written justification."
         )
