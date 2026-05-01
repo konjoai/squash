@@ -292,6 +292,69 @@ C10 monitors live traffic continuously — EU AI Act Art. 9 post-market monitori
 
 ---
 
+## [1.17.0] — 2026-05-01 — Sprint 18 W218–W220 / Track D-6: SOC 2 Type II Readiness
+
+### Added (W218–W220 — Track D / D6 — SOC 2 Type II Readiness — Enterprise Procurement Unblocker)
+
+SOC 2 Type II is the most-requested item in enterprise procurement (MEDDPICC). Without it, most $50K+ ACVs cannot proceed to contract. Sprint 18 wraps squash's existing building blocks — signed attestations, hash-chained audit log, policy engine, RBAC, uptime monitoring — in the AICPA Trust Services Criteria and produces an auditor-ready evidence bundle on demand.
+
+```
+# Coverage report across all 65 TSC controls
+squash soc2 readiness
+
+# Filter to specific category or status
+squash soc2 readiness --category CC --status PARTIAL --json
+
+# Build auditor-ready ZIP evidence bundle
+squash soc2 evidence --output ./evidence/ --window 365
+```
+
+- **`squash/soc2.py`** (NEW) — complete SOC 2 Type II readiness engine (W218–W220):
+
+  **W218 — 65-control TSC catalogue with squash mappings:**
+  - CC1–CC9 (Common Criteria / Security): 34 controls — 24 COVERED, 10 PARTIAL
+  - A1 (Availability): 4 controls — 1 COVERED, 3 PARTIAL
+  - PI1 (Processing Integrity): 4 controls — **4/4 COVERED** (squash is a processing tool)
+  - C1 (Confidentiality): 2 controls — 1 COVERED, 1 PARTIAL
+  - P1–P8 (Privacy): 21 controls — 4 COVERED, 17 PARTIAL
+  - **0 GAP controls** — every criterion is at least PARTIAL
+  - Effective coverage: 75.4% (COVERED counts 1.0×; PARTIAL counts 0.5×)
+
+  **W219 — EvidenceCollector:**
+  - `EvidenceCollector.collect_all(catalogue)` → per-control `ControlDossier`
+  - Pulls from: audit log (hash-chained JSONL), AttestationRegistry (12-month window), KeyStore (RBAC evidence), policy engine, monitoring endpoints
+  - `window_days` parameter: 365 for Type II (default), 1 for Type I point-in-time
+  - `ControlDossier.to_dict()` / `to_markdown()` — per-control evidence narrative
+
+  **W220 — CLI + ZIP evidence bundle:**
+  - `Soc2CoverageReport.build()` — coverage stats + category bars + gap/partial lists
+  - `Soc2EvidenceBundle.build()` — auditor-ready ZIP:
+    - `controls_index.json` — all 65 controls with status
+    - `coverage_summary.md` — human-readable report
+    - `dossiers/{ID}_evidence.json` + `*.md` — one pair per control (130 files)
+    - `attestations/` — last 10 signed attestation payloads
+    - `SHA256SUMS` — SHA-256 integrity manifest for every file (independently verifiable)
+
+- **`squash/cli.py`** — `squash soc2 readiness` + `squash soc2 evidence`:
+  - readiness: `--window`, `--json`, `--category` filter, `--status` filter
+  - evidence: `--output`, `--window`, `--no-attestations`
+
+**Key squash → TSC mappings:**
+
+| TSC Control | Squash Component | Status |
+|-------------|-----------------|--------|
+| CC6.1 Logical Access | auth.py + oms_signer.py + Sigstore | COVERED |
+| CC6.8 Malicious Software | scanner.py + adapter_scanner.py | COVERED |
+| CC7.2 Monitoring | governor.py hash-chained audit log | COVERED |
+| CC7.4 Incident Response | incident.py + squash freeze | COVERED |
+| CC8.1 Change Management | slsa.py + approval_workflow.py | COVERED |
+| CC9.2 Vendor Risk | vendor_registry.py + procurement_scoring.py | COVERED |
+| PI1.1–PI1.4 Processing | attest.py + attestation_registry.py | 4/4 COVERED |
+
+**Module count:** 99 → 100 (soc2.py).
+
+---
+
 ## [1.16.0] — 2026-04-30 — Sprint 39 W272–W274 / Track C-11: Model Genealogy + Copyright Attestation
 
 ### Added (W272–W274 — Track C / C11 — Genealogy + Copyright Cert)
