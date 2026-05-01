@@ -5,6 +5,24 @@ Format: [Conventional Commits](https://www.conventionalcommits.org/) · [Keep a 
 
 ---
 
+## [1.16.0] — 2026-04-30 — Sprint 39 W272–W274 / Track C-11: Model Genealogy + Copyright Attestation
+
+### Added (W272–W274 — Track C / C11 — Genealogy + Copyright Cert)
+
+New buyer: General Counsel. The GC approving an AI model for content generation, legal drafting, or code assistance needs a signed certificate answering three questions: What is the derivation chain? What copyright-heavy training sources exist? Has the model memorised copyrighted text?
+
+```bash
+squash genealogy --model ./model --deployment-domain legal-drafting
+squash genealogy --model ./model --endpoint http://localhost:8080/v1/complete
+squash genealogy --model ./model --block-on-contamination
+squash copyright-check --model ./model --deployment-use commercial
+squash copyright-check --model ./model --json --fail-on-incompatible
+```
+
+**Stats:** 60 new tests · 0 regressions · 4416 passing · 78 → 80 modules
+
+---
+
 ## [1.15.0] — 2026-04-30 — Sprint 24 W235–W237 / Track C-6: AI Insurance Risk Package
 
 ### Added (W235–W237 — Track C / C6 — AI Insurance Risk Package)

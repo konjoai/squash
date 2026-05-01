@@ -693,8 +693,8 @@ class TestModuleCountGate(unittest.TestCase):
         ]
         count = len(py_files)
         self.assertEqual(
-            count, 78,
-            msg=f"squash/ has {count} Python files (expected 78 after Sprint 14 W205). "
+            count, 80,
+            msg=f"squash/ has {count} Python files (expected 80 after Sprint 14 W205). "
                 "If you added a file, update this gate.",
         )
 
