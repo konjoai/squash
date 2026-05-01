@@ -177,7 +177,7 @@ High-ROI items derived from market research. Each operationalises a specific anc
 | **C6** | **Insurance Risk Package** — Munich Re / Coalition format | 7 days | Jun 16–24 | D2, D3 | AI cyber-insurance market crystallising late 2026 | Sprint 24 (W235–W237) |
 | **C7 ★** ✅ | **Hallucination Rate Attestation** — `squash hallucination-attest` | shipped 2026-04-30 | C2, B2 | $67.4B · 47% · 200 domain probes · signed CI-bounded cert · 51 tests. | Sprint 30 (W251–W252) ✅ |
 | **C8** ✅ | **Model Deprecation Watch** — `squash deprecation-watch` cross-references registry vs provider sunsets | 4 days | Jun 25–30 | C6, D2 | OpenAI / Anthropic / Google sunsets break attested deployments quarterly | Sprint 35 (W265–W266) |
-| **C9** | **Carbon / Energy Attestation** — `squash attest-carbon --deployment-region us-east-1` | 6 days | Jul 1–9 | D3 | CSRD reporting (all large EU orgs from 2025) · OMB DOE AI data-centre rule | Sprint 36 (W259–W261) |
+| **C9** ✅ | **Carbon / Energy Attestation** — `squash attest-carbon --deployment-region us-east-1` | 6 days | Jul 1–9 | D3 | CSRD reporting (all large EU orgs from 2025) · OMB DOE AI data-centre rule | Sprint 36 (W259–W261) |
 | **C10** ✅ | **Runtime Hallucination Monitor** — `squash hallucination-monitor` | shipped 2026-04-30 | D3 | EU AI Act Art. 9 post-market monitoring · 18% production hallucination rate · 40 tests. | Sprint 37 (W267–W269) ✅ |
 | **C11** | **Genealogy + Copyright Contamination Cert** — `squash genealogy --memorisation-probe ./probes/` | 7 days | Jul 21–30 | D5 | NYT v. OpenAI legal theory · GC buyer · Books3 / copyleft-code exposure | Sprint 39 (W272–W274) |
 
@@ -1430,7 +1430,7 @@ deliverable is one more proof artefact.
 
 ---
 
-### Sprint 36 — Carbon / Energy Attestation (`squash attest-carbon`) · **Track C / C9 — CSRD buyer**
+### Sprint 36 — Carbon / Energy Attestation (`squash attest-carbon`) · **Track C / C9 — CSRD buyer** ✅ COMPLETE
 
 **Goal:** `squash attest-carbon --model ./model --deployment-region us-east-1` calculates kWh/inference using FLOP count + regional grid carbon intensity (Electricity Maps API), computes CO₂ equivalents per inference + per 1M tokens, generates a CSRD-mappable carbon attestation, embeds energy fields in the CycloneDX ML-BOM.
 

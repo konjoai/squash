@@ -119,6 +119,63 @@ squash insurance-package --models-dir ./models --json --underwriter munich-re
 
 ---
 
+## [1.15.0] — 2026-05-01 — Sprint 36 W259–W261 / Track C-9: Carbon / Energy Attestation
+
+### Added (W259–W261 — Track C / C9 — Carbon / Energy Attestation — CSRD buyer)
+
+The ESG / sustainability office is a new buyer motion. CSRD applies to all large EU companies from 2025. Squash carbon attestation is the machine-readable, cryptographically signed proof these frameworks demand.
+
+```
+# BERT-base in Ireland, 100K inferences/day
+squash attest-carbon \
+  --model-id bert-base \
+  --params 110M \
+  --region eu-west-1 \
+  --hardware a100 \
+  --inferences-per-day 100000 \
+  --csrd --sign
+
+# 7B model in Stockholm (green grid) vs Sydney (coal)
+squash attest-carbon --model-id llama-7b --params 7B --region eu-north-1 --json
+squash attest-carbon --model-id llama-7b --params 7B --region ap-southeast-2 --json
+
+# Enrich existing ML-BOM with energy fields
+squash attest-carbon --model-id bert-base --params 110M --region us-east-1 --bom ./mlbom.json
+```
+
+- **`squash/carbon_attest.py`** (NEW) — complete carbon + energy attestation engine:
+
+  **W259 — FLOP estimator × carbon intensity × compute engine:**
+  - `estimate_flops(param_count, architecture, seq_len)` — 6 architecture families: transformer (2·N·L, Kaplan 2020), MoE (2·(N/8)·L sparse routing), embedding (capped L=128), diffusion (2·N·T_steps, T=20), CNN (2·N), RNN (2·N·L)
+  - Hardware efficiency table: A100/H100/H200/TPU-v4/TPU-v5/RTX4090/CPU (TFLOPs/W from datasheets)
+  - PUE table per provider (AWS 1.20, GCP 1.10, Azure 1.18, on-premise 1.60)
+  - `lookup_grid_intensity(region, cache, live)` — 90+ regions covering all major AWS/GCP/Azure zones + ISO country codes; live Electricity Maps API with SQLite cache
+  - `estimate_energy(flop_estimate, hardware, utilization, tokens, pue)` → kWh/inference, kWh/1M-tokens
+  - `CarbonAttestation.compute(...)` → gCO₂eq/inference, kgCO₂eq/day, tCO₂eq/year (location + market-based), HMAC-SHA256 signed
+
+  **W260 — CSRD/CSDDD/UK PRA/OMB-DOE/EU AI Act field mapping:**
+  - `to_csrd(renewable_energy_fraction, scope3_embodied_factor)` → ESRS E1-4/E1-5 Scope 2 (location + market-based) + Scope 3 estimated fields
+  - `to_regulatory(framework)` → csrd | csddd | uk_pra_ss1_23 | omb_doe | eu_ai_act
+
+  **W261 — ML-BOM CycloneDX enrichment + CLI:**
+  - `enrich_mlbom(bom_path, cert)` — injects `environmentalConsiderations.squash_carbon` into first component; adds `squash-carbon-attestation` external reference; idempotent
+
+- **`squash/cli.py`** — `squash attest-carbon` subcommand:
+  - `--model-id`, `--params` (int or shorthand 110M/7B/1.5T), `--region`, `--architecture`, `--hardware`
+  - `--inferences-per-day`, `--tokens-per-inference`, `--seq-len`, `--utilization`, `--pue`
+  - `--renewable-fraction`, `--live-intensity` (Electricity Maps)
+  - `--sign`, `--output`, `--bom` (ML-BOM enrichment), `--csrd`, `--framework`, `--json`
+
+**Grid intensity table covers 90+ regions:**
+- AWS: all 25 current production regions
+- GCP: all 35 current production regions
+- Azure: 30+ regions
+- Country codes: DE, FR, GB, US, CN, IN, AU, JP, KR, BR, SE, NO, FI, CH
+
+**Module count:** 86 → 88 (carbon_attest.py; 2 additional modules added by concurrent sprints).
+
+---
+
 ## [1.14.0] — 2026-04-30 — Sprint 22 W229–W231 / Track C-5: Regulatory Examination Simulation
 
 ### Added (W229–W231 — Track C / C5 — Regulatory Examination Simulation)
