@@ -41,20 +41,10 @@ body {
 }
 
 /* ─── Custom Scrollbar ──────────────────────────────────────────────────── */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-::-webkit-scrollbar-track {
-  background: var(--bg);
-}
-::-webkit-scrollbar-thumb {
-  background: #1a2540;
-  border-radius: 3px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #22c55e40;
-}
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: #1a2540; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #22c55e40; }
 
 /* ─── Terminal Blocks ───────────────────────────────────────────────────── */
 .terminal {
@@ -83,7 +73,6 @@ body {
   flex-shrink: 0;
 }
 
-/* Hero terminal gets green tint border */
 .terminal-hero {
   border-color: var(--border-green);
 }
@@ -103,24 +92,22 @@ body {
   box-shadow: 0 0 20px rgba(34, 197, 94, 0.1);
 }
 
+.glow-red {
+  box-shadow: 0 0 30px rgba(239, 68, 68, 0.15), 0 0 60px rgba(239, 68, 68, 0.07);
+}
+
 /* ─── Urgency Bar ───────────────────────────────────────────────────────── */
 @keyframes urgency-pulse {
   0%, 100% { opacity: 1; background-color: rgba(127, 29, 29, 0.6); }
   50%       { opacity: 0.88; background-color: rgba(153, 27, 27, 0.5); }
 }
-
-.urgency-bar {
-  animation: urgency-pulse 2.5s ease-in-out infinite;
-}
+.urgency-bar { animation: urgency-pulse 2.5s ease-in-out infinite; }
 
 @keyframes dot-pulse {
   0%, 100% { opacity: 1; transform: scale(1); }
   50%       { opacity: 0.4; transform: scale(0.8); }
 }
-
-.urgency-dot {
-  animation: dot-pulse 1.5s ease-in-out infinite;
-}
+.urgency-dot { animation: dot-pulse 1.5s ease-in-out infinite; }
 
 /* ─── Gradient Text ─────────────────────────────────────────────────────── */
 .gradient-text {
@@ -142,7 +129,6 @@ body {
   0%, 49% { opacity: 1; }
   50%, 100% { opacity: 0; }
 }
-
 .cursor-blink {
   animation: cursor-blink 1.1s step-end infinite;
   display: inline-block;
@@ -154,19 +140,15 @@ body {
 }
 
 /* ─── Scanline Retro Effect ─────────────────────────────────────────────── */
-.scanline {
-  position: relative;
-}
+.scanline { position: relative; }
 .scanline::after {
   content: "";
   position: absolute;
   inset: 0;
   background: repeating-linear-gradient(
     to bottom,
-    transparent 0px,
-    transparent 2px,
-    rgba(0, 0, 0, 0.04) 2px,
-    rgba(0, 0, 0, 0.04) 4px
+    transparent 0px, transparent 2px,
+    rgba(0, 0, 0, 0.04) 2px, rgba(0, 0, 0, 0.04) 4px
   );
   pointer-events: none;
   border-radius: inherit;
@@ -179,6 +161,18 @@ body {
     linear-gradient(rgba(34, 197, 94, 0.03) 1px, transparent 1px),
     linear-gradient(90deg, rgba(34, 197, 94, 0.03) 1px, transparent 1px);
   background-size: 40px 40px;
+}
+
+/* ─── Noise texture overlay ─────────────────────────────────────────────── */
+.noise-overlay::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0.018;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 200px 200px;
+  pointer-events: none;
+  z-index: 0;
 }
 
 /* ─── Section Label ─────────────────────────────────────────────────────── */
@@ -217,10 +211,9 @@ body {
   line-height: 1.8;
   color: #94a3b8;
 }
-
-.output-tree .tree-file { color: #e2e8f0; }
-.output-tree .tree-pass { color: #22c55e; }
-.output-tree .tree-size { color: #475569; }
+.output-tree .tree-file  { color: #e2e8f0; }
+.output-tree .tree-pass  { color: #22c55e; }
+.output-tree .tree-size  { color: #475569; }
 .output-tree .tree-label { color: #64748b; }
 
 /* ─── Step Number ───────────────────────────────────────────────────────── */
@@ -240,13 +233,21 @@ body {
   flex-shrink: 0;
 }
 
-/* ─── Transition Utilities ──────────────────────────────────────────────── */
-.hover-lift {
-  transition: transform 200ms ease, box-shadow 200ms ease;
-}
+/* ─── Hover Lift ────────────────────────────────────────────────────────── */
+.hover-lift { transition: transform 200ms ease, box-shadow 200ms ease; }
 .hover-lift:hover {
   transform: translateY(-2px);
   box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+}
+
+/* ─── Hover Glow Card ───────────────────────────────────────────────────── */
+.hover-glow-card {
+  transition: border-color 200ms ease, box-shadow 200ms ease, transform 200ms ease;
+}
+.hover-glow-card:hover {
+  border-color: rgba(34,197,94,0.35) !important;
+  box-shadow: 0 0 24px rgba(34,197,94,0.08), 0 4px 20px rgba(0,0,0,0.3);
+  transform: translateY(-2px);
 }
 
 /* ─── Footnote Citations ────────────────────────────────────────────────── */
@@ -265,4 +266,111 @@ body {
   transform-origin: center;
   color: #22c55e;
   font-weight: 900;
+}
+
+/* ─── Marquee / Framework Strip ─────────────────────────────────────────── */
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+.marquee-track {
+  display: flex;
+  width: max-content;
+  animation: marquee 28s linear infinite;
+}
+
+.marquee-track:hover {
+  animation-play-state: paused;
+}
+
+.marquee-outer {
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%);
+          mask-image: linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%);
+}
+
+/* ─── Before/After Comparison ───────────────────────────────────────────── */
+.compare-x { color: #f87171; }
+.compare-check { color: #22c55e; }
+
+/* ─── Timeline ──────────────────────────────────────────────────────────── */
+.timeline-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid var(--brand-500);
+  background: var(--bg);
+  flex-shrink: 0;
+  position: relative;
+}
+.timeline-dot.active {
+  background: var(--brand-500);
+  box-shadow: 0 0 12px rgba(34,197,94,0.5);
+}
+.timeline-dot.past {
+  border-color: #475569;
+  background: #1a2540;
+}
+
+/* ─── Testimonial Card ───────────────────────────────────────────────────── */
+.testimonial-card {
+  background: #0d1421;
+  border: 1px solid #1a2540;
+  border-radius: 1rem;
+  padding: 1.5rem;
+  transition: border-color 200ms ease, transform 200ms ease;
+}
+.testimonial-card:hover {
+  border-color: rgba(34,197,94,0.3);
+  transform: translateY(-2px);
+}
+
+/* ─── Benchmark Bar ──────────────────────────────────────────────────────── */
+@keyframes bar-fill {
+  from { width: 0%; }
+  to   { width: var(--bar-width); }
+}
+.bench-bar {
+  height: 8px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #22c55e, #4ade80);
+  animation: bar-fill 1.2s cubic-bezier(0.16,1,0.3,1) forwards;
+  animation-play-state: paused;
+}
+.bench-bar.animated {
+  animation-play-state: running;
+}
+
+/* ─── Floating badge pulse ───────────────────────────────────────────────── */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-6px); }
+}
+.float-badge {
+  animation: float 3.5s ease-in-out infinite;
+}
+
+/* ─── Progress ring ──────────────────────────────────────────────────────── */
+@keyframes ring-fill {
+  from { stroke-dashoffset: 251; }
+}
+.ring-progress {
+  transition: stroke-dashoffset 1.4s cubic-bezier(0.16,1,0.3,1);
+  transform: rotate(-90deg);
+  transform-origin: center;
+}
+
+/* ─── Stats number shine ─────────────────────────────────────────────────── */
+@keyframes stat-shine {
+  0%   { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+.stat-shine {
+  background: linear-gradient(90deg, #22c55e 0%, #86efac 40%, #22c55e 80%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: stat-shine 3s linear infinite;
 }
