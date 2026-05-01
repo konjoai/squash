@@ -5,6 +5,61 @@ Format: [Conventional Commits](https://www.conventionalcommits.org/) · [Keep a 
 
 ---
 
+## [1.15.0] — 2026-04-30 — Sprint 24 W235–W237 / Track C-6: AI Insurance Risk Package
+
+### Added (W235–W237 — Track C / C6 — AI Insurance Risk Package)
+
+New buyer motion: Chief Risk Officer + insurance procurement.
+AI cyber-insurance is crystallising in 2026. Underwriters demand
+standardised evidence packages before quoting. Squash generates the
+whole submission in one command.
+
+```bash
+squash insurance-package --models-dir ./models --org "Acme Corp"
+squash insurance-package --models-dir ./models --zip ./insurance-bundle.zip
+squash insurance-package --models-dir ./models --json --underwriter munich-re
+```
+
+- **`squash/insurance.py`** (NEW MODULE — W235–W236):
+  - `ModelRiskProfile` — per-model: risk tier (HIGH/MEDIUM/LOW), compliance score, CVE count, drift events, incident count, bias status, last_attested, attestation_id, scan_status, control presence flags
+  - `InsurancePackage` — aggregate: risk score 0–100, compliance score, response-plan status, total models, risk distribution, to_json/to_markdown/save/save_zip
+  - `InsuranceBuilder.build(models_dir, org_name)` — reads squash artefacts (attest, scan, VEX, drift, incident, bias, lineage, annex IV) from model dir tree; graceful degradation when artefacts absent
+  - **Risk tier scoring formula:** `risk = 100 − compliance_score + 20×(critical_cves>0) + 10×(scan_unsafe) + 10×(drift>5) + 15×(incidents>0) + 20×(no_policy)`, clipped [0,100]
+  - **Multi-model discovery** — auto-detects per-model subdirectories or single-model root
+
+  - **`MunichReAdapter`** (W236) — Munich Re AI cyber schema: 5 control domains (Technical Security, Operational Excellence, AI Governance, Data Quality Provenance, Incident Resilience) each rated A–D, overall AI Maturity Level 1–4, coverage recommendation (STANDARD / ENHANCED / SPECIALIST)
+  - **`CoalitionAdapter`** (W236) — Coalition AI Risk Assessment: 5 categories (AI Model Security, AI Operational Risk, AI Governance, AI Incident History, Third-Party AI Risk) scored 0–100 with weighted aggregate; assessment text per category
+  - **`GenericAdapter`** (W236) — flat, field-rich schema for underwriters without a published format
+
+- **`squash/cli.py`** — `squash insurance-package` first-class command (W237):
+  - `--models-dir PATH` (default: cwd)
+  - `--org NAME`
+  - `--output-dir DIR` (writes `insurance-package.{json,md}`)
+  - `--zip PATH` (writes signed ZIP bundle with integrity manifest)
+  - `--json` (structured JSON to stdout)
+  - `--underwriter {munich-re,coalition,generic}` (print specific format with --json)
+  - `--quiet`
+
+- **ZIP bundle** (`save_zip()`): 6 files + integrity.sha256 SHA-256 manifest:
+  - `insurance-package.json` · `insurance-munich-re.json` · `insurance-coalition.json` · `insurance-generic.json` · `insurance-executive-summary.md` · `integrity.sha256`
+
+- **`tests/test_squash_sprint24.py`** (NEW) — 48 tests:
+  - InsuranceBuilder: empty/populated dirs, CVE counting (affected vs fixed), risk tier scoring, bias fail detection, model ID extraction
+  - ModelRiskProfile: to_dict() fields, controls block
+  - MunichReAdapter: schema, maturity level range, 5 domains, A–D rating, coverage recommendation, empty→low maturity
+  - CoalitionAdapter: schema, 5 categories, score 0–100, higher compliance → higher score
+  - GenericAdapter: schema, required sections, model_profiles
+  - InsurancePackage: to_json() structure, 3 adapter formats in JSON, 7 markdown sections, save(), save_zip() (6 files + manifest), SHA-256 integrity, executive summary
+  - CLI: help (7 flags + 3 underwriters), default writes artefacts, JSON structure, munich-re/coalition outputs, --zip bundle, misconfig exit 2, populated > empty compliance, multi-model directory
+
+### Stats
+- **48 new tests** · **0 regressions** · **4356 total tests passing**
+- **1 new module** (`insurance.py`) · 77 → 78 modules
+- **1 new CLI command** (`insurance-package`) with 7 flags
+- **3 underwriter adapters** (Munich Re, Coalition, Generic)
+
+---
+
 ## [1.14.0] — 2026-04-30 — Sprint 22 W229–W231 / Track C-5: Regulatory Examination Simulation
 
 ### Added (W229–W231 — Track C / C5 — Regulatory Examination Simulation)
