@@ -1,9 +1,11 @@
-name: Deploy squash.works
+name: Deploy website to GitHub Pages
 
 on:
   push:
     branches: [main]
-    paths: ["website/**"]
+    paths:
+      - "website/**"
+      - ".github/workflows/pages.yml"
   workflow_dispatch:
 
 permissions:
@@ -13,11 +15,14 @@ permissions:
 
 concurrency:
   group: pages
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: website
     steps:
       - uses: actions/checkout@v4
 
@@ -27,18 +32,17 @@ jobs:
           cache: npm
           cache-dependency-path: website/package-lock.json
 
-      - name: Install deps
+      - name: Install
         run: npm ci
-        working-directory: website
 
-      - name: Build static export
-        run: npm run build
-        working-directory: website
+      - name: Build (static export)
         env:
-          NODE_ENV: production
+          PAGES: "1"
+        run: npm run build
 
-      - name: Add .nojekyll
-        run: touch website/out/.nojekyll
+      # Static export lands in website/out
+      - name: Disable Jekyll (preserve _next dir)
+        run: touch out/.nojekyll
 
       - uses: actions/upload-pages-artifact@v3
         with:
@@ -51,6 +55,5 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
+      - id: deployment
         uses: actions/deploy-pages@v4
