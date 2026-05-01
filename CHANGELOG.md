@@ -5,6 +5,20 @@ Format: [Conventional Commits](https://www.conventionalcommits.org/) · [Keep a 
 
 ---
 
+## [2.7.0] — 2026-05-01 — D5: Industry Compliance Benchmarking (W249-W250)
+
+> "How do we compare?" — Every enterprise QBR starts here.
+> 8 sector baselines · percentile placement · k-anonymity · DP noise.
+
+### Added (W249-W250 / Track D / D5)
+
+- **`squash/benchmark.py`** — 8 curated sector baselines (KPMG/Accenture/MIT Sloan/Clifford Chance, n=2,124), Gaussian CDF percentile engine, k-anonymity gate (MIN_K=5), DP noise (σ=5% range), `ComplianceProfile`, `BenchmarkEngine`, `build_profile_from_registry()`, `load_result()`, `benchmark()` one-liner.
+- **CLI: `squash industry-benchmark report|compare|list-sectors`**
+- **83 tests** — all 8 sectors, percentile maths, drift rate, k-anonymity, DP noise, round-trip.
+- **Privacy checklist** (Sprint 29 exit criterion): 7/7 items documented. ✅
+
+---
+
 ## [2.6.0] — 2026-05-01 — D4: Multi-Jurisdiction Compliance Matrix (W240-W242)
 
 > A multinational LLM deployment touches 6+ jurisdictions on average.

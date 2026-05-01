@@ -3429,6 +3429,58 @@ def _build_parser() -> argparse.ArgumentParser:
     score_cmd.add_argument("--quiet", "-q", action="store_true")
 
 
+
+    # ── D6 (Sprint 18) — soc2: SOC 2 Type II Readiness ──────────────────────
+    soc2_cmd = sub.add_parser(
+        "soc2",
+        help="SOC 2 Type II readiness assessment and auditor-ready evidence bundle",
+        description=(
+            "SOC 2 Type II is the most-requested item in enterprise procurement.\n"
+            "squash soc2 maps the Trust Services Criteria (all 65 controls) to squash\n"
+            "building blocks and produces an auditor-ready evidence bundle.\n\n"
+            "Examples:\n"
+            "  squash soc2 readiness\n"
+            "  squash soc2 readiness --json --window 365\n"
+            "  squash soc2 evidence --output ./evidence/\n"
+            "  squash soc2 evidence --output ./evidence/ --window 365\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    soc2_sub = soc2_cmd.add_subparsers(dest="soc2_command", metavar="SUBCOMMAND")
+    soc2_sub.required = True
+
+    soc2_readiness = soc2_sub.add_parser(
+        "readiness",
+        help="Print coverage report across all 65 TSC controls",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    soc2_readiness.add_argument("--window", type=int, default=365, dest="soc2_window",
+                                help="Evidence collection window in days (default: 365)")
+    soc2_readiness.add_argument("--json", action="store_true", dest="soc2_json",
+                                help="Emit full JSON report")
+    soc2_readiness.add_argument("--category", dest="soc2_category", default=None,
+                                choices=["CC", "A", "PI", "C", "P"],
+                                help="Filter to one TSC category")
+    soc2_readiness.add_argument("--status", dest="soc2_status", default=None,
+                                choices=["COVERED", "PARTIAL", "GAP", "NOT_APPLICABLE"],
+                                help="Filter by control status")
+    soc2_readiness.add_argument("--quiet", "-q", action="store_true")
+
+    soc2_evidence = soc2_sub.add_parser(
+        "evidence",
+        help="Build auditor-ready evidence ZIP bundle",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    soc2_evidence.add_argument("--output", dest="soc2_output", default=None,
+                               help="Output directory for the ZIP bundle (default: ./)")
+    soc2_evidence.add_argument("--window", type=int, default=365, dest="soc2_window",
+                               help="Evidence collection window in days (default: 365)")
+    soc2_evidence.add_argument("--no-attestations", action="store_true",
+                               dest="soc2_no_attest",
+                               help="Exclude attestation artifacts from bundle")
+    soc2_evidence.add_argument("--quiet", "-q", action="store_true")
+
+
     # ── W135 / W136 — Annex IV generate + validate ────────────────────────────
     annex_iv_cmd = sub.add_parser(
         "annex-iv",
@@ -5618,6 +5670,69 @@ def _model_card_validate(card_path: Path, json_out: bool, quiet: bool) -> int:
             print(f"  {f.render()}")
 
     return 0 if report.is_valid else 1
+
+
+def _cmd_soc2(args: argparse.Namespace, quiet: bool) -> int:
+    """D6 — SOC 2 Type II readiness / evidence."""
+    from squash.soc2 import (
+        Soc2CoverageReport, Soc2EvidenceBundle,
+        TscCategory, ControlStatus,
+    )
+
+    cmd = getattr(args, "soc2_command", None)
+    window = getattr(args, "soc2_window", 365)
+    as_json = getattr(args, "soc2_json", False)
+
+    if cmd == "readiness":
+        report = Soc2CoverageReport.build(window_days=window)
+
+        # Category / status filter
+        cat_filter = getattr(args, "soc2_category", None)
+        stat_filter = getattr(args, "soc2_status", None)
+        controls = report.controls
+        if cat_filter:
+            controls = [c for c in controls if c.category.value == cat_filter]
+        if stat_filter:
+            controls = [c for c in controls if c.status.value == stat_filter]
+
+        if as_json:
+            out_report = report.to_dict()
+            if cat_filter or stat_filter:
+                out_report["controls"] = [c.to_dict() for c in controls]
+            print(json.dumps(out_report, indent=2))
+        elif not quiet:
+            print(report.summary_text())
+            if cat_filter or stat_filter:
+                print(f"\n  Filtered: {len(controls)} control(s)")
+                for c in controls:
+                    icon = {"COVERED": "✅", "PARTIAL": "⚠️", "GAP": "❌",
+                            "NOT_APPLICABLE": "➖"}.get(c.status.value, "•")
+                    print(f"    {icon} {c.id}  {c.title}")
+        return 0
+
+    if cmd == "evidence":
+        out_dir = Path(args.soc2_output) if args.soc2_output else Path.cwd()
+        include_att = not getattr(args, "soc2_no_attest", False)
+        if not quiet:
+            print(f"[squash soc2 evidence] Building evidence bundle "
+                  f"({window}-day window)…")
+        bundle = Soc2EvidenceBundle.build(
+            output_dir=out_dir,
+            window_days=window,
+            include_attestations=include_att,
+        )
+        if not quiet:
+            import zipfile
+            with zipfile.ZipFile(bundle) as zf:
+                file_count = len(zf.namelist())
+            size_kb = bundle.stat().st_size // 1024
+            print(f"[squash soc2 evidence] ✅ Bundle written: {bundle}")
+            print(f"  Files: {file_count}  Size: {size_kb} KB")
+        return 0
+
+    print("squash soc2: specify a subcommand — readiness | evidence", file=sys.stderr)
+    return 1
+
 
 
 def _cmd_score(args: argparse.Namespace, quiet: bool) -> int:
@@ -10669,6 +10784,8 @@ def main() -> None:
         sys.exit(_cmd_chain_attest(args, quiet))
     elif args.command == "registry-gate":
         sys.exit(_cmd_registry_gate(args, quiet))
+    elif args.command == "soc2":
+        sys.exit(_cmd_soc2(args, quiet))
     elif args.command == "score":
         sys.exit(_cmd_score(args, quiet))
     elif args.command == "attest-carbon":

@@ -44,7 +44,7 @@ import re
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Any, Callable, Iterable, Mapping
+from typing import Any, Callable, Iterable, Mapping, Optional
 
 log = logging.getLogger(__name__)
 
@@ -177,7 +177,7 @@ class CellStatus(str, Enum):
 # ──────────────────────────────────────────────────────────────────────────────
 
 
-EvidencePredicate = Callable[[Mapping[str, Any], Path | None], "EvidenceCheck"]
+EvidencePredicate = Callable[[Mapping[str, Any], "Optional[Path]"], "EvidenceCheck"]
 
 
 @dataclass
