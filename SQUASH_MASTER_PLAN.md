@@ -1,7 +1,7 @@
 # SQUASH — Master Grand Plan
 ## From Zero to $10M ARR: EU AI Act Compliance Platform
 
-> **Last updated:** 2026-04-30
+> **Last updated:** 2026-05-01 — added Phase G "Bulletproof Edition"
 > **Status:** Living document — updated on every commit
 > **Horizon:** April 2026 → October 2027
 
@@ -1692,6 +1692,121 @@ The US enterprise buyer who doesn't care about GDPR absolutely cares about a DoD
 | $50K MRR | 1 FT engineer or 1 FT account executive |
 | $83K MRR ($1M ARR) | Marketing hire + AE |
 | $150K MRR | Series A territory — full team build |
+
+---
+
+## Phase G — Bulletproof Edition (v3.0.0 evidence-grade hardening)
+
+> **Codified:** 2026-05-01 · companion docs `AUDIT_BASELINE.md` · `TIER_MAP.md`
+> **Premise:** Tier 1 + Tier 2 of this plan delivered functional surface. Phase G converts that surface from "rich" to **evidentiary** — every signed artefact byte-identical on rerun, every claim back-pointed to a hashed input, every release reproducible end-to-end through SLSA Build Level 3 + RFC 3161 + Sigstore Rekor.
+> **Scope:** orthogonal to Tracks A/B/C/D — Phase G runs in the background as a hardening lane while feature work continues on the August-2 critical path.
+> **Year-one cost ceiling:** $36K–$68K (Phase 6 cash; Phases 1–5 are engineering only).
+
+### The five pillars
+
+1. **Determinism** — same input → byte-identical attestation every time.
+2. **Cryptographic integrity** — input manifest + RFC 8785 canonical JSON + Ed25519 + RFC 3161 trusted timestamp + Sigstore Rekor inclusion proof + SLSA Build L3 provenance.
+3. **Coverage** — line ≥ 95% / branch ≥ 95% / mutation ≥ 80% (Tier 0: 100/100/90; Tier 1: 95/90/80) — see `TIER_MAP.md`.
+4. **Provenance** — SLSA Build Level 3 on every released wheel + Docker image + GitHub Action; `squash self-verify` CLI verifies its own chain end-to-end.
+5. **Evidence-grade output** — every claim in every report is a re-verifiable `(claim_id, sha256, byte_range)` pointer back to the input that produced it.
+
+### Sprint-level ticket grid
+
+#### Phase G.1 — Audit & Baseline (2 weeks · zero new features)
+
+| Ticket | Deliverable | Owner cue |
+|--------|-------------|-----------|
+| **G.1.1** | `coverage` configured (`branch=true`); `pyproject.toml` `[tool.coverage.*]` lands; `scripts/coverage_baseline.sh` records the first measured line+branch number per Tier-0 module; results committed to `audit/coverage.txt`. | infra |
+| **G.1.2** | `mutmut` installed; first run on the Tier-0 list (`oms_signer.py`, `anchor.py`, `attest.py`, `slsa.py`, `chain_attest.py`); raw mutation score recorded in `audit/mutation_baseline.txt` (expect <30% on first run — that's fine; it's the floor). | crypto |
+| **G.1.3** | `radon cc -nc -a` wired into CI; baseline cyclomatic-complexity report committed to `audit/cc_report.txt`; the **60 D/E/F functions** and **7 F-grade functions** named in `AUDIT_BASELINE.md` §4 enter the Phase 5 refactor backlog. | infra |
+| **G.1.4** | `TIER_MAP.md` published (✅ done in this commit); CI lint asserts every `squash/*.py` is classified exactly once. | architecture |
+| **G.1.5** | `AUDIT_BASELINE.md` (✅ done in this commit) — the 22-point fix list (§7) enters the Phase 2 backlog. | crypto |
+
+**Exit gate:** baseline numbers exist. No fixes yet. Just facts on file.
+
+#### Phase G.2 — Determinism (3 weeks · Tier-0/1 byte-identity)
+
+| Ticket | Deliverable | Files touched |
+|--------|-------------|---------------|
+| **G.2.1** | `squash/_canonical.py` — wraps `rfc8785.dumps()`; raises on unknown types (no `default=str`). | new |
+| **G.2.2** | `squash/_clock.py` + `squash/_ids.py` — injectable `Clock` callable, `cert_id(prefix, *, canonical_payload)` using `uuid5(NAMESPACE, payload)`. | new |
+| **G.2.3** | Apply canonical encoder + clock + uuid5 to **every Tier 0 site**: `attest.py:405,461,481,619`, `anchor.py:118,569,593,603`, `slsa.py:65,122,141,271`, `chain_attest.py:247,250,487`. | per `AUDIT_BASELINE.md` §1 |
+| **G.2.4** | Same sweep across Tier 1 emitters: `hallucination_attest.py`, `drift_certificate.py`, `carbon_attest.py`, `data_lineage.py:252` (the wallclock-in-hash-input bug), `freeze.py`, `incident.py`, `approval_workflow.py`, `hallucination_monitor.py`, `oms_signer.py:233–241`. | per `AUDIT_BASELINE.md` §1 |
+| **G.2.5** | Reproducibility test class: one test per Tier-0/1 module asserts that two consecutive runs with the same frozen clock and inputs yield byte-identical SHA-256. **Target: 45+ reproducibility tests** (5 Tier-0 + ~40 Tier-1). | `tests/test_reproducibility.py` |
+| **G.2.6** | `squash/webhook_delivery.py:441` — drop deprecated `datetime.utcnow()`; switch to `datetime.now(timezone.utc)` and accept injected clock. | webhook |
+
+**Exit gate:** every Tier 0/1 test in `test_reproducibility.py` green. CI fails any PR where the same input produces a different output hash.
+
+#### Phase G.3 — Cryptographic Chain (4 weeks)
+
+| Ticket | Deliverable |
+|--------|-------------|
+| **G.3.1** | `squash/_input_manifest.py` — first step of every CLI subcommand that ingests files; emits `input_manifest.json` listing every file path + size + SHA-256 + mtime (note: mtime in manifest, not in signed body). |
+| **G.3.2** | `squash/_tsa.py` — RFC 3161 client (DigiCert primary, FreeTSA fallback). `$200/yr` budget line item enters Phase 6 cash plan. Every Tier-0 cert acquires a `tsa_token` field. |
+| **G.3.3** | `squash/_rekor.py` — Sigstore Rekor inclusion (uploads canonical body hash, retrieves inclusion proof, embeds proof in cert). Replaces the local-only `anchor.py` log as the **public** transparency surface. |
+| **G.3.4** | `.github/workflows/release.yml` — calls `slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml`. Every published wheel + Docker image + composite action now SLSA Build L3. |
+| **G.3.5** | `squash self-verify` CLI command — given an attestation file, walks: input_manifest → canonical JSON → Ed25519 signature → RFC 3161 timestamp → Rekor inclusion → SLSA provenance. Returns 0 only if every link verifies. Must run offline against bundled trust roots when network unavailable. |
+| **G.3.6** | `squash verify --check-timestamp` flag — opt-in TSA roundtrip on user-side verify. |
+
+**Exit gate:** a fresh CI run of `squash attest …` produces a cert that `squash self-verify --strict` accepts; running on a different machine with the same inputs produces an **identical** cert hash.
+
+#### Phase G.4 — Coverage to gates (5 weeks)
+
+| Ticket | Deliverable |
+|--------|-------------|
+| **G.4.1** | Raise Tier 0 to **100/100/90**: line, branch, mutation. |
+| **G.4.2** | Raise Tier 1 to **95/90/80**. |
+| **G.4.3** | **Hypothesis property tests** for every probabilistic function: DPD ∈ [0,1], Wilson CI symmetry around p, PSI bin-order invariance, etc. Goal ≥ 80 properties. |
+| **G.4.4** | **Atheris fuzz harnesses** for every parser: SafeTensors, GGUF, ONNX, pickle, HF metadata JSON, MLflow JSON, model-card frontmatter. Nightly 100K-iter run wired in Phase 7 CI. |
+| **G.4.5** | Seven test classes wired up: positive (existing), negative (+1,800 new), edge (+1,200 new), concurrency (+150 new), security regression (+80 new), reproducibility (✅ from G.2), snapshot (+120 golden files). **Target test count: 8,500+.** |
+
+**Exit gate:** CI badges (line, branch, mutation, scorecard.dev) live and green at the targets above.
+
+#### Phase G.5 — Static analysis & refactor (3 weeks)
+
+| Ticket | Deliverable |
+|--------|-------------|
+| **G.5.1** | `mypy --strict` clean across all of `squash/` — drop `ignore_missing_imports = true` everywhere except a hand-edited allowlist. |
+| **G.5.2** | `bandit` + `semgrep` (security-audit ruleset) wired pre-commit + CI. |
+| **G.5.3** | **Custom Semgrep rule:** `no-json-dumps-in-attestation-paths` — fails CI on any `json.dumps` reachable from `squash/attest.py`, `squash/oms_signer.py`, `squash/anchor.py`, `squash/chain_attest.py`, `squash/slsa.py`, or any Tier 1 emitter. Forces canonical encoder. |
+| **G.5.4** | `pip-audit` + `trivy` + `gitleaks` + OSV-Scanner daily; CycloneDX SBOM produced on every release tag. |
+| **G.5.5** | Refactor every CC > 10 function flagged in `AUDIT_BASELINE.md` §4. Specifically split: `squash/cli.py` (10,829 lines, `main` at CC F) → `squash/cli/<cmd>.py` per subcommand; `squash/license_conflict.py` (1,357 lines) → `database.py / scanner.py / reporter.py`; `squash/attest.py::AttestPipeline` (CC F) → composition of small handlers. |
+| **G.5.6** | All deps **pinned exact** in `uv.lock`; weekly Renovate PRs gated by green Phase G.4 suite. |
+
+**Exit gate:** `mypy --strict` green, average radon CC ≤ B, no Semgrep `no-json-dumps-in-attestation-paths` finding.
+
+#### Phase G.6 — External audits (4 weeks calendar; spend window opens once G.5 is green)
+
+| Ticket | Deliverable | Cost |
+|--------|-------------|------|
+| **G.6.1** | Security firm engagement — Trail of Bits / NCC Group / Cure53. White-box review of Tier 0 + signing pipeline + transparency-log integration. HIGH findings remediated before v3.0.0. | $15K–$25K |
+| **G.6.2** | AI legal methodology review — Orrick / Cooley. Opinion letter on Annex IV / ISO 42001 / NIST AI RMF mapping correctness. Cite the letter on the methodology page. | $5K–$15K |
+| **G.6.3** | SOC 2 Type II observation period start — 6-month window. | $12K–$20K |
+
+**Exit gate:** signed firm-letterhead audit reports filed under `audit/external/`; HIGH findings closed; SOC 2 observation in flight.
+
+#### Phase G.7 — Perpetual CI gates (forever)
+
+| Ticket | Deliverable |
+|--------|-------------|
+| **G.7.1** | Coverage / mutation / security gates **never regress**. PR fails the moment any per-tier number dips below the gate in `pyproject.toml` `[tool.coverage.*]` + `[tool.mutmut]`. |
+| **G.7.2** | Nightly: rotating-module mutation testing (one Tier-1 module per night), 100K-iteration atheris fuzz, dependency-drift CVE check, performance regression. |
+| **G.7.3** | Public verification surface: live coverage badge, mutation-score badge, scorecard.dev badge, transparency-log link, methodology page citing G.6.2 opinion letter. |
+| **G.7.4** | `docs/transparency/` — every release publishes `coverage.json`, `mutation.json`, `cc_report.txt`, `sbom.cdx.json`, `slsa.intoto.jsonl`, `rekor_inclusion.json` as static artefacts. |
+
+### v3.0.0 Exit Criteria (the seaworthy line)
+
+- ✅ **Determinism:** byte-identical Tier 0+1 attestations across two consecutive runs on different hosts.
+- ✅ **Coverage:** Tier 0 100/100/90, Tier 1 95/90/80, **8,500+ tests**.
+- ✅ **Crypto chain:** input manifest → canonical JSON (RFC 8785) → Ed25519 → RFC 3161 → Sigstore Rekor → SLSA Build L3 → optional Ethereum anchor. Every link verified by `squash self-verify`.
+- ✅ **External assurance:** security audit complete (HIGH findings remediated), AI legal methodology opinion letter on file, SOC 2 Type II in observation.
+- ✅ **CI gates:** locked, never regress, public verification surface live at `getsquash.dev/transparency`.
+
+### Where Phase G fits in the calendar
+
+Phase G runs **alongside** the August-2 critical path, not in front of it. The four-track grid in the August 2 Countdown is unchanged. Phase G is a fifth track — **Track E · Evidence** — that an evidence-engineer-shaped human can grind on between feature sprints.
+
+> **Make it konjo.** *Yilugnta* says the next engineer (and every regulator and procurement officer) opens this repo and finds proof, not promises. *根性* says we ship the hardening lane even when the deadline whispers "just enough is good enough." *건조* says we delete the comfort code, the `default=str` shortcut, the `uuid.uuid4()` convenience, the local-only anchor — and replace each with the load-bearing primitive. *ᨀᨚᨐᨚ* says the vessel must carry weight. Phase G is what makes squash seaworthy.
 
 ---
 
