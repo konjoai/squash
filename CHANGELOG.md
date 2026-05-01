@@ -5,6 +5,50 @@ Format: [Conventional Commits](https://www.conventionalcommits.org/) · [Keep a 
 
 ---
 
+## [2.4.0] — 2026-04-30 — C1 ★: `squash freeze` — Emergency Response (W221-W222)
+
+> ★ The Red Button. Highest drama-per-hour ratio in the entire roadmap.
+> 20% of organisations have a tested AI incident-response plan. This is one of them.
+
+### Added (W221-W222 / Track C / C1 ★)
+
+- **`squash/freeze.py`** — Emergency response orchestrator:
+  - `FreezeOrchestrator` — single-shot, atomically coordinates five existing
+    subsystems (`attestation_registry`, `webhook_delivery`, ledger, `notifications`,
+    `incident`) into one CLI command
+  - `FreezeStep` enum — `REGISTRY_REVOKE` / `WEBHOOK_BROADCAST` / `LEDGER_LOG` /
+    `NOTIFICATION` / `INCIDENT_PACKAGE`
+  - `FreezeReceipt` — tamper-evident record (SHA-256 + Ed25519) of every freeze
+    invocation; `to_json()`, `summary()`, `canonical_payload_bytes()`
+  - `freeze()` — module-level convenience entry point
+  - `read_ledger()` — append-only JSONL audit trail at
+    `~/.squash/freeze_ledger.jsonl`
+  - `verify_receipt()` — Ed25519 signature check + tamper detection
+  - **Atomicity model**: registry revoke is the only abort-on-failure step; if
+    it fails, no broadcast side-effects fire. Steps 2–5 are best-effort and
+    record their own outcomes so the responder knows what to manually finish.
+- **CLI: `squash freeze`** — three subcommands:
+  - `squash freeze --attestation-id att://… --reason "CVE-2026-1234"` (default)
+  - `squash freeze --model-path ./model.safetensors --severity critical`
+  - `squash freeze ledger --limit 20`
+  - `squash freeze verify ./freeze_receipt.json`
+  - `--priv-key`, `--out`, `--format json|md|text`, `--no-incident`,
+    `--state-dir`, `--webhook-timeout`, `--actor`, `--reason`, `--severity`,
+    `--category`, `--affected-persons`, `--incident-dir`
+  - Exit codes: 0 (all ok) · 1 (partial: revoke ok, ≥1 broadcast failed) ·
+    2 (aborted: revoke failed, no side-effects) · 3 (config/argument error)
+- **`squash/webhook_delivery.py`** — `WebhookEvent.ATTESTATION_FROZEN` added
+- **`squash/notifications.py`** — `ATTESTATION_FROZEN` constant + title template
+- **35 new tests** — covers every step, every failure mode, signing & tamper
+  detection, CLI handler exit codes, ledger append, dispatch integration
+
+### Regulatory basis
+
+EU AI Act Article 73 (serious incident reporting) · NIST AI RMF MANAGE 4.1
+(incident response) · ISO 42001 §9.1 (corrective action)
+
+---
+
 ## [2.3.0] — 2026-04-30 — D2: AI Identity Attestation (W226-W228)
 
 > 92% of organisations lack full visibility into their AI identities.
@@ -109,6 +153,9 @@ C10 monitors live traffic continuously — EU AI Act Art. 9 post-market monitori
 ---
 
 ## [2.0.0] — 2026-04-30 — C2: AI Washing Detection (W223-W225)
+
+---
+
 ## [1.16.0] — 2026-04-30 — Sprint 39 W272–W274 / Track C-11: Model Genealogy + Copyright Attestation
 
 ### Added (W272–W274 — Track C / C11 — Genealogy + Copyright Cert)

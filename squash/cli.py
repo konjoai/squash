@@ -2216,6 +2216,74 @@ def _build_parser() -> argparse.ArgumentParser:
     ha_probes.add_argument("--domain", default="general", choices=["legal", "medical", "financial", "code", "general"])
     ha_probes.add_argument("--json", action="store_true", dest="output_json")
 
+    # ── W221-W222 / C1 ★ — squash freeze (Emergency Response Orchestrator) ────
+    fz_cmd = sub.add_parser(
+        "freeze",
+        help="EMERGENCY: revoke + broadcast + log + notify + incident package",
+        description=(
+            "The Red Button. One command, in <10 s, atomically:\n"
+            "  1. Revokes every live attestation for a model in the registry\n"
+            "  2. Broadcasts attestation.frozen webhook to every subscriber\n"
+            "  3. Writes a signed freeze ledger entry (Ed25519 audit trail)\n"
+            "  4. Dispatches a notifications.notify(event=attestation.frozen)\n"
+            "  5. Builds an Incident Package (Article 73 disclosure draft)\n\n"
+            "Examples:\n"
+            "  squash freeze --attestation-id att://acme/llm-v2/abc123 \\\n"
+            "      --reason 'CVE-2026-1234 — RCE in tokenizer'\n"
+            "  squash freeze --model-path ./model.safetensors \\\n"
+            "      --reason 'data poisoning detected' --severity critical\n"
+            "  squash freeze --attestation-id att://... --priv-key ~/.squash/freeze.priv.pem\n"
+            "  squash freeze ledger --limit 20\n"
+            "  squash freeze verify ./freeze_receipt.json\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    fz_sub = fz_cmd.add_subparsers(dest="fz_command")
+
+    fz_run = fz_sub.add_parser(
+        "run",
+        help="(default) Execute a freeze. May be omitted — `squash freeze --attestation-id …` works.",
+    )
+    for _p in (fz_cmd, fz_run):
+        _p.add_argument("--attestation-id", default=None, dest="fz_attestation_id")
+        _p.add_argument("--model-path", default=None, dest="fz_model_path")
+        _p.add_argument("--model-id", default="", dest="fz_model_id")
+        _p.add_argument("--reason", default="", dest="fz_reason")
+        _p.add_argument("--actor", default="", dest="fz_actor")
+        _p.add_argument(
+            "--severity", default="critical",
+            choices=["critical", "serious", "moderate", "minor"], dest="fz_severity",
+        )
+        _p.add_argument(
+            "--category", default="other",
+            choices=[
+                "fundamental_rights", "health_safety", "discrimination",
+                "infrastructure", "other",
+            ],
+            dest="fz_category",
+        )
+        _p.add_argument("--affected-persons", type=int, default=0, dest="fz_affected")
+        _p.add_argument("--incident-dir", default=None, dest="fz_incident_dir")
+        _p.add_argument("--state-dir", default=None, dest="fz_state_dir")
+        _p.add_argument("--priv-key", default=None, dest="fz_priv_key")
+        _p.add_argument("--no-incident", action="store_true", dest="fz_no_incident")
+        _p.add_argument("--webhook-timeout", type=float, default=10.0, dest="fz_webhook_timeout")
+        _p.add_argument("--out", default=None, dest="fz_out")
+        _p.add_argument(
+            "--format", default="text",
+            choices=["text", "json", "md"], dest="fz_format",
+        )
+        _p.add_argument("--quiet", action="store_true", dest="fz_quiet")
+
+    fz_ledger = fz_sub.add_parser("ledger", help="Show freeze ledger entries (newest last)")
+    fz_ledger.add_argument("--state-dir", default=None, dest="fz_state_dir")
+    fz_ledger.add_argument("--limit", type=int, default=20, dest="fz_limit")
+    fz_ledger.add_argument("--json", action="store_true", dest="output_json")
+
+    fz_verify = fz_sub.add_parser("verify", help="Verify a freeze receipt's Ed25519 signature")
+    fz_verify.add_argument("receipt_path")
+    fz_verify.add_argument("--json", action="store_true", dest="output_json")
+
     # ── W223-W225 / C2 — AI Washing Detection ─────────────────────────────────
     aw_cmd = sub.add_parser(
         "detect-washing",
@@ -6299,6 +6367,113 @@ def _cmd_watch_regulatory(args: argparse.Namespace, quiet: bool) -> int:
     return 1 if had_error else 0
 
 
+def _cmd_freeze(args: argparse.Namespace, quiet: bool) -> int:
+    """Sprint 19 W221-W222 — `squash freeze` ★ (Track C / C1).
+
+    Emergency response orchestrator. Exit codes:
+      0  freeze succeeded — every step ok
+      1  freeze partial — registry revoke ok, but >=1 broadcast step failed
+      2  freeze aborted — registry revoke failed (no side-effects performed)
+      3  configuration / argument error
+    """
+    from squash import freeze as freeze_mod
+
+    sub = getattr(args, "fz_command", None)
+    quiet = quiet or bool(getattr(args, "fz_quiet", False))
+
+    if sub == "ledger":
+        entries = freeze_mod.read_ledger(
+            state_dir=getattr(args, "fz_state_dir", None),
+            limit=getattr(args, "fz_limit", None),
+        )
+        if getattr(args, "output_json", False):
+            print(json.dumps(entries, indent=2, sort_keys=True))
+            return 0
+        if not entries:
+            if not quiet:
+                print("(no freeze ledger entries)")
+            return 0
+        for e in entries:
+            print(
+                f"{e.get('logged_at', '?')}  "
+                f"{e.get('freeze_id', '?')}  "
+                f"actor={e.get('actor', '?')}  "
+                f"revoked={len(e.get('revoked_entries', []))}  "
+                f"reason={e.get('reason', '')!r}"
+            )
+        return 0
+
+    if sub == "verify":
+        receipt_path = Path(getattr(args, "receipt_path"))
+        if not receipt_path.exists():
+            print(f"squash freeze verify: {receipt_path} not found", file=sys.stderr)
+            return 3
+        try:
+            receipt_data = json.loads(receipt_path.read_text())
+        except Exception as exc:
+            print(f"squash freeze verify: failed to parse receipt: {exc}", file=sys.stderr)
+            return 3
+        ok, msg = freeze_mod.verify_receipt(receipt_data)
+        if getattr(args, "output_json", False):
+            print(json.dumps({"valid": ok, "message": msg}, indent=2))
+            return 0 if ok else 1
+        if ok:
+            print(f"✓ receipt {receipt_data.get('freeze_id', '?')} verified ({msg})")
+            return 0
+        print(f"✗ receipt verification failed: {msg}", file=sys.stderr)
+        return 1
+
+    # Default: run a freeze.
+    attestation_id = getattr(args, "fz_attestation_id", None)
+    model_path = getattr(args, "fz_model_path", None)
+    if not attestation_id and not model_path:
+        print(
+            "squash freeze: must provide --attestation-id or --model-path",
+            file=sys.stderr,
+        )
+        return 3
+
+    try:
+        receipt = freeze_mod.freeze(
+            attestation_id=attestation_id,
+            model_path=model_path,
+            model_id=getattr(args, "fz_model_id", "") or "",
+            reason=getattr(args, "fz_reason", "") or "",
+            actor=getattr(args, "fz_actor", "") or "",
+            severity=getattr(args, "fz_severity", "critical") or "critical",
+            category=getattr(args, "fz_category", "other") or "other",
+            affected_persons=int(getattr(args, "fz_affected", 0) or 0),
+            incident_dir=getattr(args, "fz_incident_dir", None),
+            state_dir=getattr(args, "fz_state_dir", None),
+            priv_key_pem=getattr(args, "fz_priv_key", None),
+            write_incident=not bool(getattr(args, "fz_no_incident", False)),
+            webhook_timeout_s=float(getattr(args, "fz_webhook_timeout", 10.0)),
+        )
+    except ValueError as exc:
+        print(f"squash freeze: {exc}", file=sys.stderr)
+        return 3
+
+    fmt = (getattr(args, "fz_format", "text") or "text").lower()
+    out_path = getattr(args, "fz_out", None)
+    if fmt == "json":
+        body = receipt.to_json()
+    elif fmt == "md":
+        body = "```\n" + receipt.summary() + "\n```\n"
+    else:
+        body = receipt.summary()
+
+    if out_path:
+        Path(out_path).write_text(body)
+        if not quiet:
+            print(f"freeze receipt written to {out_path}")
+    elif not quiet:
+        print(body)
+
+    if not receipt.revoke_ok:
+        return 2
+    return 0 if receipt.all_ok else 1
+
+
 def _cmd_registry_gate(args: argparse.Namespace, quiet: bool) -> int:
     """W201 — `squash registry-gate`. Pre-registration policy gate.
 
@@ -9801,6 +9976,8 @@ def main() -> None:
         sys.exit(_cmd_simulate_audit(args, quiet))
     elif args.command == "watch-regulatory":
         sys.exit(_cmd_watch_regulatory(args, quiet))
+    elif args.command == "freeze":
+        sys.exit(_cmd_freeze(args, quiet))
     else:
         parser.print_help()
         sys.exit(1)
