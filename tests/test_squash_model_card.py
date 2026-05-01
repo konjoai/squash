@@ -659,8 +659,8 @@ class TestModuleCountGate(unittest.TestCase):
         # · Sprint 39 genealogy.py + copyright.py (80).
         self.assertEqual(
             count,
-            80,
-            msg=f"squash/ has {count} Python files (expected 80 after Sprint 39). "
+            95,
+            msg=f"squash/ has {count} Python files (expected 95 after C1 freeze.py). "
                 "If you added a file, update this gate.",
         )
 

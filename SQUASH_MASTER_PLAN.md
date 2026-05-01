@@ -166,15 +166,19 @@ High-ROI items derived from market research. Each operationalises a specific anc
 | ID | Item | Effort | Date | ∥ With | Anchor Stat | Sprint Spec |
 |---|---|---|---|---|---|---|
 | **C1 ★** | **`squash freeze`** — emergency response orchestrator | **2 days** | **May 5–6** | A3, B1 | 20% have a tested AI incident-response plan | Sprint 19 (W221–W222) |
+| **C2** ✅ | **AI Washing Detection** — `squash detect-washing` | shipped 2026-04-30 | B1, B2 | SEC #1 AI exam priority 2026. `washing_detector.py`: 28 patterns, 9 claim types, 12 divergence rules, 95.7% recall. 38 tests. | Sprint 20 (W223–W225) ✅ |
+| **C3** ✅ | **Approval Workflow** — `squash approve` (signed reviewer record) | 5 days | May 13–19 | B2, B3, B4 | EU AI Act Art. 9 human-oversight requirement | Sprint 23 (W232–W234) |
+| **C4** | **Regulatory Watch Daemon** — primary-source polling + gap analysis | 7 days | May 20–28 | B4, D1 | Daily-touch product = retention | Sprint 27 (W243–W245) |
+| **C5** | **Audit Simulation** — `squash simulate-audit --regulator EU-AI-Act` | 10 days | Jun 2–13 | D1, D2, B5 | 78% can't pass audit in 90 days | Sprint 22 (W229–W231) |
 | **C2** | **AI Washing Detection** — `squash detect-washing` | 5 days | May 7–12 | B1, B2 | SEC #1 AI exam priority 2026 | Sprint 20 (W223–W225) |
 | **C3** | **Approval Workflow** — `squash approve` (signed reviewer record) | 5 days | May 13–19 | B2, B3, B4 | EU AI Act Art. 9 human-oversight requirement | Sprint 23 (W232–W234) |
 | **C4** ✅ | **Regulatory Watch Daemon** — `squash watch-regulatory --interval 6h` | 7 days → **shipped** | ✅ 2026-04-30 | B4, D1 | `regulatory_watch.py` (NEW) — SEC/NIST/EUR-Lex + generic RSS, SQLite dedup, gap analysis, 10-flag CLI | Sprint 27 ✅ v1.13.0 |
 | **C5** ✅ | **Audit Simulation** — `squash simulate-audit --regulator EU-AI-Act` | 10 days → **shipped** | ✅ 2026-04-30 | D1, D2, B5 | `audit_sim.py` (NEW) — 4 regulator profiles, 110 questions, critical-gate scoring, 90-day roadmap | Sprint 22 ✅ v1.14.0 |
 | **C6** | **Insurance Risk Package** — Munich Re / Coalition format | 7 days | Jun 16–24 | D2, D3 | AI cyber-insurance market crystallising late 2026 | Sprint 24 (W235–W237) |
-| **C7 ★** | **Hallucination Rate Attestation** — `squash hallucination-attest --domain legal` | 5 days | **May 9–15** | C2, B2 | **$67.4B in 2024 losses · 47% decisions on hallucinated content** | Sprint 30 (W251–W252) |
-| **C8** | **Model Deprecation Watch** — `squash deprecation-watch` cross-references registry vs provider sunsets | 4 days | Jun 25–30 | C6, D2 | OpenAI / Anthropic / Google sunsets break attested deployments quarterly | Sprint 35 (W265–W266) |
-| **C9** | **Carbon / Energy Attestation** — `squash attest-carbon --deployment-region us-east-1` | 6 days | Jul 1–9 | D3 | CSRD reporting (all large EU orgs from 2025) · OMB DOE AI data-centre rule | Sprint 36 (W259–W261) |
-| **C10** | **Runtime Hallucination Monitor** — `squash monitor --mode hallucination --endpoint http://...` | 6 days | Jul 7–15 | D3 | EU AI Act Art. 9 post-market monitoring · 18% production hallucination rate | Sprint 37 (W267–W269) |
+| **C7 ★** ✅ | **Hallucination Rate Attestation** — `squash hallucination-attest` | shipped 2026-04-30 | C2, B2 | $67.4B · 47% · 200 domain probes · signed CI-bounded cert · 51 tests. | Sprint 30 (W251–W252) ✅ |
+| **C8** ✅ | **Model Deprecation Watch** — `squash deprecation-watch` cross-references registry vs provider sunsets | 4 days | Jun 25–30 | C6, D2 | OpenAI / Anthropic / Google sunsets break attested deployments quarterly | Sprint 35 (W265–W266) |
+| **C9** ✅ | **Carbon / Energy Attestation** — `squash attest-carbon --deployment-region us-east-1` | 6 days | Jul 1–9 | D3 | CSRD reporting (all large EU orgs from 2025) · OMB DOE AI data-centre rule | Sprint 36 (W259–W261) |
+| **C10** ✅ | **Runtime Hallucination Monitor** — `squash hallucination-monitor` | shipped 2026-04-30 | D3 | EU AI Act Art. 9 post-market monitoring · 18% production hallucination rate · 40 tests. | Sprint 37 (W267–W269) ✅ |
 | **C11** | **Genealogy + Copyright Contamination Cert** — `squash genealogy --memorisation-probe ./probes/` | 7 days | Jul 21–30 | D5 | NYT v. OpenAI legal theory · GC buyer · Books3 / copyleft-code exposure | Sprint 39 (W272–W274) |
 
 ### Track D — Enterprise Moat (post-launch defensibility)
@@ -184,7 +188,7 @@ Higher-effort items that build the long-term moat. Most depend on Track A's live
 | ID | Item | Effort | Date | ∥ With | Anchor Stat | Sprint Spec |
 |---|---|---|---|---|---|---|
 | **D1** | **GitHub App** — Marketplace listing + PR auto-comment | 15 days | Jun 1–20 | C5, B5, D2 | 1 user → 50-user network effect | new (not yet sprinted; promote to Sprint 30 if needed) |
-| **D2** | **AI Identity Attestation** — `squash attest-identity` | 8 days | Jun 15–25 | D1, C5, C6 | 92% lack AI identity visibility · 73% CISO want-to-buy | Sprint 21 (W226–W228) |
+| **D2** ✅ | **AI Identity Attestation** — `squash attest-identity` | shipped 2026-04-30 | D1, C5, C6 | 92% lack AI identity visibility · 73% CISO want-to-buy. identity_governor.py + aws_iam/azure_ad/okta adapters + 43 tests. | Sprint 21 (W226–W228) ✅ |
 | **D3** | **Procurement Scoring API** — `GET /v1/score/{vendor}` | 10 days | Jul 1–15 | D4, D5 | Two-sided marketplace, SSL-CA-of-AI play | Sprint 28 (W246–W248) |
 | **D4** | **Multi-Jurisdiction Matrix** — `squash compliance-matrix --regions ...` | 8 days | Jul 10–20 | D3, D5 | Multinational legal-mapping is 1-week consult per deploy | Sprint 26 (W240–W242) |
 | **D5** | **Industry Benchmarking** — `squash industry-benchmark --sector ...` | 7 days | Jul 20–28 | D3, D4 | QBR conversation starter; data-density unlock | Sprint 29 (W249–W250) |
@@ -1151,7 +1155,7 @@ No competitor has all of these. Most have none.
 
 ---
 
-### Sprint 23 — Model Deployment Approval Workflow (`squash approve`) · **Track C / C3**
+### Sprint 23 — Model Deployment Approval Workflow (`squash approve`) · **Track C / C3** ✅ COMPLETE
 
 **Goal:** Generate cryptographically signed approval records — reviewer identity, attestation state at moment of review, timestamp, explicit approval/rejection rationale. Sigstore handles the crypto; squash provides the workflow shell. Required by EU AI Act Article 9 and NIST AI RMF "GOVERN" pillar.
 
@@ -1408,7 +1412,7 @@ deliverable is one more proof artefact.
 
 ---
 
-### Sprint 35 — Model Deprecation Watch (`squash deprecation-watch`) · **Track C / C8**
+### Sprint 35 — Model Deprecation Watch (`squash deprecation-watch`) · **Track C / C8** ✅ COMPLETE
 
 **Goal:** Background monitor of every major AI provider's deprecation calendar (OpenAI, Anthropic, Google, Meta, Mistral). Cross-references squash Asset Registry. Fires alerts with configurable lead time when a registered model approaches sunset. Each alert carries the re-attestation requirements + estimated migration effort.
 
@@ -1426,7 +1430,7 @@ deliverable is one more proof artefact.
 
 ---
 
-### Sprint 36 — Carbon / Energy Attestation (`squash attest-carbon`) · **Track C / C9 — CSRD buyer**
+### Sprint 36 — Carbon / Energy Attestation (`squash attest-carbon`) · **Track C / C9 — CSRD buyer** ✅ COMPLETE
 
 **Goal:** `squash attest-carbon --model ./model --deployment-region us-east-1` calculates kWh/inference using FLOP count + regional grid carbon intensity (Electricity Maps API), computes CO₂ equivalents per inference + per 1M tokens, generates a CSRD-mappable carbon attestation, embeds energy fields in the CycloneDX ML-BOM.
 
@@ -1611,10 +1615,12 @@ All 30 features ranked by acquisition impact, revenue leverage, and defensibilit
 | 23 | **`squash scan hf://` public security scanner** | Free public tool | Anyone checks any HuggingFace model for security issues. Top-of-funnel brand builder. |
 | 24 | **Branded PDF compliance report** | `squash/annex_iv_generator.py` (to_pdf() exists) | Cover page + exec summary. Email to the CISO. |
 | 25 | **Compliance email digest** | `squash/notifications.py` | Weekly/monthly portfolio posture summary. Passive retention. |
-| 26 | **Terraform/Pulumi provider** | `squash-terraform-provider` (Go) | Compliance as infrastructure. DevOps teams adopt immediately. |
+| 26 | **Terraform/Pulumi provider** ✅ B4 (2026-04-30) | `integrations/terraform/` (Go, terraform-plugin-framework v1.13.0) — `squash_attestation` + `squash_policy_check` resources, `squash_compliance_score` data source, Pulumi `command` shell-out examples + bridge path documented. 16 Go tests passing under `-race -count=1`. | Compliance as infrastructure. DevOps teams adopt immediately. |
 | 27 | **Pre-built HuggingFace Spaces deployment** | HF Spaces | Free, visible to entire HF community. Zero marketing cost. |
-| 28 | **API gateway plugin** *(de-scoped 2026-04-30)* | Kong/AWS API Gateway | De-scoped from Sprint 16 in the Tier 3 reprioritisation: build-time gates (Sprint 12 registry + Sprint 9 GitOps) cover the same enforcement surface. Retained in this table as a future option, not an active sprint. |
-| 29 | **Audit trail blockchain anchoring** | `squash/provenance.py` | Ethereum OP_RETURN anchoring. Immutable proof for financial services/medical/defense. |
+| 28a | **Drift SLA Certificate** ✅ B7 (2026-04-30) | `squash/drift_certificate.py` — DriftSLASpec + ScoreLedger + SLAEvaluator + DriftCertificateIssuer; `squash drift-cert ingest|issue|verify|show|export`; 30 tests passing. Signed `squash.drift.certificate/v1` JSON + HTML + PDF export. | Prove sustained compliance for insurance, enterprise procurement, and board reporting. |
+| 28c | **License Conflict Detection** ✅ B10 (2026-04-30) | `squash/license_conflict.py` — 73 SPDX IDs + 9 AI model licences, 12 conflict rules (LC-001–LC-012), LicenseScanner (req.txt/pyproject/package.json/Cargo.toml/README/dataset_infos), `squash license-check scan|explain|report` CLI. 55 tests. | Legal compliance gating for model deployment. |
+| 28b | **Training Data Poisoning Detection** ✅ B9 (2026-04-30) | `squash/data_poison.py` — 6-layer scanner: threat intel, label integrity, duplicate injection, statistical outliers, backdoor trigger patterns, provenance integrity. `squash data-poison scan|report` CLI. 39 tests. OWASP LLM04 / Badnets / Hidden Killer / Wan 2023. | ML supply-chain security gate. |
+| 29 | **Audit trail blockchain anchoring** ✅ B6 (2026-04-30) | `squash/anchor.py` — Merkle-batch commitment, LocalAnchor (Ed25519), OpenTimestampsAnchor (Bitcoin), EthereumAnchor (EVM calldata via cast), portable `squash.anchor.proof/v1` docs, `squash anchor` CLI (add/commit/verify/proof/list/status). 23 tests passing. | Immutable proof for financial services/medical/defense. |
 | 30 | **SOC 2 Type II** | Business/legal | Enterprise procurement unblocked. Start readiness phase now. |
 
 ---

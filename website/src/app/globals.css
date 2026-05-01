@@ -1,66 +1,268 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap");
-
+/* ─── CSS Variables ─────────────────────────────────────────────────────── */
 :root {
-  --brand-green: #22c55e;
-  --brand-dark: #0b1120;
+  --bg:           #080c14;
+  --surface:      #0d1421;
+  --elevated:     #111927;
+  --border:       #1a2540;
+  --border-green: #1f3a28;
+
+  --brand-500: #22c55e;
+  --brand-600: #16a34a;
+  --brand-700: #15803d;
+
+  --text-primary:   #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted:     #475569;
+
+  --red-400: #f87171;
+  --red-600: #dc2626;
+
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", "Cascadia Code", monospace;
 }
 
+/* ─── Base ──────────────────────────────────────────────────────────────── */
 html {
   scroll-behavior: smooth;
 }
 
 body {
-  background-color: var(--brand-dark);
-  color: #f1f5f9;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background-color: var(--bg);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* Terminal / code block styling */
+/* ─── Custom Scrollbar ──────────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg);
+}
+::-webkit-scrollbar-thumb {
+  background: #1a2540;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #22c55e40;
+}
+
+/* ─── Terminal Blocks ───────────────────────────────────────────────────── */
 .terminal {
-  background: #0f1923;
-  border: 1px solid #1e3a2f;
+  background: #060b13;
+  border: 1px solid var(--border);
   border-radius: 0.75rem;
-  font-family: "JetBrains Mono", "Fira Code", monospace;
+  font-family: var(--font-mono);
+  position: relative;
+  overflow: hidden;
 }
 
 .terminal-header {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.75rem 1rem;
-  border-bottom: 1px solid #1e3a2f;
-  background: #0a1118;
+  padding: 0.6rem 1rem;
+  border-bottom: 1px solid var(--border);
+  background: #0a0f1a;
   border-radius: 0.75rem 0.75rem 0 0;
 }
 
 .terminal-dot {
-  width: 12px;
-  height: 12px;
+  width: 11px;
+  height: 11px;
   border-radius: 50%;
+  flex-shrink: 0;
 }
 
+/* Hero terminal gets green tint border */
+.terminal-hero {
+  border-color: var(--border-green);
+}
+.terminal-hero .terminal-header {
+  border-bottom-color: var(--border-green);
+}
+
+/* ─── Glow Effects ──────────────────────────────────────────────────────── */
 .glow-green {
-  box-shadow: 0 0 40px rgba(34, 197, 94, 0.15);
+  box-shadow:
+    0 0 0 1px rgba(34, 197, 94, 0.15),
+    0 0 40px rgba(34, 197, 94, 0.12),
+    0 0 80px rgba(34, 197, 94, 0.06);
 }
 
-/* Gradient text */
+.glow-green-sm {
+  box-shadow: 0 0 20px rgba(34, 197, 94, 0.1);
+}
+
+/* ─── Urgency Bar ───────────────────────────────────────────────────────── */
+@keyframes urgency-pulse {
+  0%, 100% { opacity: 1; background-color: rgba(127, 29, 29, 0.6); }
+  50%       { opacity: 0.88; background-color: rgba(153, 27, 27, 0.5); }
+}
+
+.urgency-bar {
+  animation: urgency-pulse 2.5s ease-in-out infinite;
+}
+
+@keyframes dot-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.4; transform: scale(0.8); }
+}
+
+.urgency-dot {
+  animation: dot-pulse 1.5s ease-in-out infinite;
+}
+
+/* ─── Gradient Text ─────────────────────────────────────────────────────── */
 .gradient-text {
-  background: linear-gradient(135deg, #22c55e 0%, #4ade80 50%, #86efac 100%);
+  background: linear-gradient(135deg, #22c55e 0%, #4ade80 55%, #86efac 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
-/* Countdown urgency bar */
-@keyframes urgency-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
+.gradient-text-subtle {
+  background: linear-gradient(135deg, #16a34a 0%, #22c55e 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
-.urgency-bar {
-  animation: urgency-pulse 2s ease-in-out infinite;
+/* ─── Cursor Blink ──────────────────────────────────────────────────────── */
+@keyframes cursor-blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+.cursor-blink {
+  animation: cursor-blink 1.1s step-end infinite;
+  display: inline-block;
+  width: 0.55em;
+  height: 1.1em;
+  background: var(--brand-500);
+  vertical-align: text-bottom;
+  margin-left: 1px;
+}
+
+/* ─── Scanline Retro Effect ─────────────────────────────────────────────── */
+.scanline {
+  position: relative;
+}
+.scanline::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 2px,
+    rgba(0, 0, 0, 0.04) 2px,
+    rgba(0, 0, 0, 0.04) 4px
+  );
+  pointer-events: none;
+  border-radius: inherit;
+  z-index: 1;
+}
+
+/* ─── Hero Grid Pattern ─────────────────────────────────────────────────── */
+.hero-grid {
+  background-image:
+    linear-gradient(rgba(34, 197, 94, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(34, 197, 94, 0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* ─── Section Label ─────────────────────────────────────────────────────── */
+.section-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--brand-500);
+}
+
+/* ─── Feature Card Number ───────────────────────────────────────────────── */
+.feature-num {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--brand-500);
+  opacity: 0.6;
+}
+
+/* ─── Stat Pill ─────────────────────────────────────────────────────────── */
+.stat-pill {
+  background: #0d1421;
+  border: 1px solid #1a2540;
+  border-left: 2px solid var(--brand-500);
+  border-radius: 0.5rem;
+  padding: 0.75rem 1.25rem;
+}
+
+/* ─── Output Tree ───────────────────────────────────────────────────────── */
+.output-tree {
+  font-family: var(--font-mono);
+  font-size: 0.825rem;
+  line-height: 1.8;
+  color: #94a3b8;
+}
+
+.output-tree .tree-file { color: #e2e8f0; }
+.output-tree .tree-pass { color: #22c55e; }
+.output-tree .tree-size { color: #475569; }
+.output-tree .tree-label { color: #64748b; }
+
+/* ─── Step Number ───────────────────────────────────────────────────────── */
+.step-number {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 0.75rem;
+  background: linear-gradient(135deg, #0d1421, #111927);
+  border: 1px solid #1a2540;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--brand-500);
+  flex-shrink: 0;
+}
+
+/* ─── Transition Utilities ──────────────────────────────────────────────── */
+.hover-lift {
+  transition: transform 200ms ease, box-shadow 200ms ease;
+}
+.hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+}
+
+/* ─── Footnote Citations ────────────────────────────────────────────────── */
+.citation {
+  font-size: 0.65rem;
+  vertical-align: super;
+  color: #475569;
+  font-family: var(--font-mono);
+  cursor: default;
+}
+
+/* ─── Logo Wordmark ─────────────────────────────────────────────────────── */
+.logo-h {
+  display: inline-block;
+  transform: scaleY(0.45);
+  transform-origin: center;
+  color: #22c55e;
+  font-weight: 900;
 }

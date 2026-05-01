@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 200" width="600" height="200" font-family="Inter, system-ui, sans-serif">
+  <text x="0" y="150" font-size="160" font-weight="800" letter-spacing="-8" fill="#0b1120">squas</text>
+  <g transform="translate(425 150) scale(1 0.45)">
+    <text x="0" y="0" font-size="160" font-weight="800" fill="#16a34a">h</text>
+  </g>
+  <rect x="0" y="158" width="600" height="6" rx="2" fill="#16a34a"></rect>
+  <text x="0" y="190" font-family="&#39;JetBrains Mono&#39;, ui-monospace, monospace" font-size="14" letter-spacing="2" fill="#52525b">SQUASH VIOLATIONS, NOT VELOCITY.</text>
+</svg>

@@ -50,6 +50,7 @@ log = logging.getLogger(__name__)
 
 ATTESTATION_PASSED = "attestation.passed"
 ATTESTATION_FAILED = "attestation.failed"
+ATTESTATION_FROZEN = "attestation.frozen"
 DRIFT_DETECTED = "drift.detected"
 VEX_NEW_CVE = "vex.new_cve"
 QUOTA_EXHAUSTED = "quota.exhausted"
@@ -399,6 +400,7 @@ def _make_title(event: str, model_id: str) -> str:
     templates = {
         ATTESTATION_PASSED: "Attestation passed{model}",
         ATTESTATION_FAILED: "Attestation failed{model} — policy violation",
+        ATTESTATION_FROZEN: "EMERGENCY FREEZE{model} — attestation revoked",
         DRIFT_DETECTED: "Model drift detected{model}",
         VEX_NEW_CVE: "New CVE affects{model}",
         QUOTA_EXHAUSTED: "Monthly attestation quota exhausted{model}",

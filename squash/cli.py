@@ -34,6 +34,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
 import sys
 from pathlib import Path
 
@@ -2059,6 +2060,443 @@ def _build_parser() -> argparse.ArgumentParser:
     go_annotate.add_argument("--policy", default="eu-ai-act", help="Policy name (default: eu-ai-act)")
     go_annotate.add_argument("--passed", action="store_true", default=True)
 
+    # ── W226-W228 / D2 — AI Identity Attestation ──────────────────────────────
+    ai_cmd = sub.add_parser(
+        "attest-identity",
+        help="AI identity attestation — least-privilege analysis for AI agents (92% lack visibility)",
+        description=(
+            "Attest the identity configuration of an AI agent or service account.\n"
+            "Verifies scopes, rotation age, MFA, and least-privilege policy compliance.\n"
+            "Providers: AWS IAM · Azure AD · Okta\n\n"
+            "Examples:\n"
+            "  squash attest-identity attest --provider aws-iam --principal ai-agent-prod\n"
+            "  squash attest-identity attest --provider okta --domain acme.okta.com --principal ai-bot\n"
+            "  squash attest-identity attest --principal-file principal.json --policy policy.json\n"
+            "  squash attest-identity list-principals --provider aws-iam\n"
+            "  squash attest-identity policy-init --principal ai-agent-prod\n"
+            "  squash attest-identity verify cert.json\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    ai_sub = ai_cmd.add_subparsers(dest="ai_command")
+
+    ai_attest = ai_sub.add_parser("attest", help="Attest an AI principal's identity configuration")
+    ai_attest.add_argument("--provider", choices=["aws-iam", "azure-ad", "okta", "file"],
+                            default="file", help="Identity provider (default: file)")
+    ai_attest.add_argument("--principal", default="", dest="principal_name",
+                            help="Principal name / role ARN / app label to attest")
+    ai_attest.add_argument("--principal-file", default=None, dest="principal_file",
+                            help="JSON file containing a pre-built IdentityPrincipal")
+    ai_attest.add_argument("--policy", default=None, dest="policy_file",
+                            help="Least-privilege policy JSON file")
+    ai_attest.add_argument("--priv-key", default=None, dest="priv_key",
+                            help="Ed25519 .priv.pem for signing")
+    ai_attest.add_argument("--out", default=None, help="Write certificate to PATH")
+    ai_attest.add_argument("--format", default="json", choices=["json", "md", "text"],
+                            dest="ai_format")
+    ai_attest.add_argument("--fail-on-violation", action="store_true", dest="fail_on_violation",
+                            help="Exit 2 if any CRITICAL violation found")
+    # Provider-specific
+    ai_attest.add_argument("--domain", default="", help="Okta domain (e.g. acme.okta.com)")
+    ai_attest.add_argument("--token", default="", dest="api_token",
+                            help="API token (or set OKTA_API_TOKEN / AZURE_ACCESS_TOKEN)")
+    ai_attest.add_argument("--tenant-id", default="", dest="tenant_id",
+                            help="Azure AD tenant ID")
+    ai_attest.add_argument("--region", default="us-east-1", dest="aws_region")
+
+    ai_verify = ai_sub.add_parser("verify", help="Verify an attestation certificate's signature")
+    ai_verify.add_argument("cert_path")
+    ai_verify.add_argument("--json", action="store_true", dest="output_json")
+
+    ai_list = ai_sub.add_parser("list-principals", help="List AI principals from a provider")
+    ai_list.add_argument("--provider", required=True, choices=["aws-iam", "azure-ad", "okta"])
+    ai_list.add_argument("--filter", default="", dest="filter_tag",
+                          help="Filter by tag value / label substring")
+    ai_list.add_argument("--domain", default="", help="Okta domain")
+    ai_list.add_argument("--token", default="", dest="api_token")
+    ai_list.add_argument("--tenant-id", default="", dest="tenant_id")
+    ai_list.add_argument("--region", default="us-east-1", dest="aws_region")
+    ai_list.add_argument("--json", action="store_true", dest="output_json")
+
+    ai_policy = ai_sub.add_parser("policy-init", help="Scaffold a least-privilege policy JSON file")
+    ai_policy.add_argument("--principal", default="ai-agent-prod", dest="principal_name")
+    ai_policy.add_argument("--out", default=None)
+
+    # ── W267-W269 / C10 — Runtime Hallucination Monitor ──────────────────────
+    # Extends the existing `squash monitor` command with --mode hallucination.
+    # We also register a standalone `squash hallucination-monitor` alias for
+    # discoverability.
+    for _mon_name in ("hallucination-monitor",):
+        _hm_cmd = sub.add_parser(
+            _mon_name,
+            help="Runtime hallucination monitor — EU AI Act Art. 9 post-market monitoring",
+            description=(
+                "18% production hallucination rate · 39% of chatbots reworked in 2024.\n"
+                "Continuous post-market monitoring required by EU AI Act Article 9.\n\n"
+                "Examples:\n"
+                "  squash hallucination-monitor run --endpoint http://model:8080\n"
+                "  squash hallucination-monitor run --endpoint mock://test --once\n"
+                "  squash hallucination-monitor score --response 'Paris is the capital' --context 'Paris is the capital of France'\n"
+                "  squash hallucination-monitor status\n"
+                "  squash hallucination-monitor batch --requests-file ./requests.json\n"
+            ),
+            formatter_class=argparse.RawDescriptionHelpFormatter,
+        )
+        _hm_sub = _hm_cmd.add_subparsers(dest="hm_command")
+
+        _hm_run = _hm_sub.add_parser("run", help="Start monitor daemon or single-shot poll")
+        _hm_run.add_argument("--endpoint", required=True, dest="endpoint")
+        _hm_run.add_argument("--model-id", default="", dest="model_id")
+        _hm_run.add_argument("--sample-rate", type=float, default=0.05, dest="sample_rate")
+        _hm_run.add_argument("--threshold", type=float, default=0.10, dest="threshold")
+        _hm_run.add_argument("--window", type=int, default=60, dest="window_minutes", help="Rolling window in minutes (default: 60)")
+        _hm_run.add_argument("--poll-interval", type=float, default=30.0, dest="poll_interval", help="Seconds between polls (default: 30)")
+        _hm_run.add_argument("--once", action="store_true", dest="once", help="Score one request and exit (cron mode)")
+        _hm_run.add_argument("--state-dir", default=None, dest="state_dir")
+        _hm_run.add_argument("--format", default="text", choices=["text", "json"], dest="hm_format")
+
+        _hm_score = _hm_sub.add_parser("score", help="Score a single response for hallucination risk")
+        _hm_score.add_argument("--response", required=True, dest="response")
+        _hm_score.add_argument("--context", default="", dest="context")
+        _hm_score.add_argument("--ground-truth", default="", dest="ground_truth")
+        _hm_score.add_argument("--json", action="store_true", dest="output_json")
+
+        _hm_status = _hm_sub.add_parser("status", help="Show current monitor state and rolling rate")
+        _hm_status.add_argument("--state-dir", default=None, dest="state_dir")
+        _hm_status.add_argument("--threshold", type=float, default=0.10, dest="threshold")
+        _hm_status.add_argument("--window", type=int, default=60, dest="window_minutes")
+        _hm_status.add_argument("--json", action="store_true", dest="output_json")
+
+        _hm_batch = _hm_sub.add_parser("batch", help="Score a batch of offline request/response pairs")
+        _hm_batch.add_argument("--requests-file", required=True, dest="requests_file",
+                                help="JSON file: [{prompt, response, context?, ground_truth?}]")
+        _hm_batch.add_argument("--model-id", default="", dest="model_id")
+        _hm_batch.add_argument("--threshold", type=float, default=0.10, dest="threshold")
+        _hm_batch.add_argument("--fail-on-breach", action="store_true", dest="fail_on_breach")
+        _hm_batch.add_argument("--json", action="store_true", dest="output_json")
+
+    # ── W251-W252 / C7 — Hallucination Rate Attestation ──────────────────────
+    ha_cmd = sub.add_parser(
+        "hallucination-attest",
+        help="Hallucination rate attestation — signed domain-calibrated certificate ($67.4B stat)",
+        description=(
+            "Produce a signed certificate of your model's hallucination rate on a\n"
+            "domain-specific probe set. Five domains with calibrated thresholds:\n"
+            "  legal/medical 2% · financial 3% · code 5% · general 10%\n\n"
+            "Examples:\n"
+            "  squash hallucination-attest attest --model http://localhost:8080 --domain legal\n"
+            "  squash hallucination-attest attest --model mock://test --domain general\n"
+            "  squash hallucination-attest verify ./cert.json\n"
+            "  squash hallucination-attest list-probes --domain medical\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    ha_sub = ha_cmd.add_subparsers(dest="ha_command")
+
+    ha_attest = ha_sub.add_parser("attest", help="Run hallucination probe set and issue certificate")
+    ha_attest.add_argument("--model", required=True, dest="model_endpoint")
+    ha_attest.add_argument("--domain", required=True, choices=["legal", "medical", "financial", "code", "general"])
+    ha_attest.add_argument("--model-id", default="", dest="model_id")
+    ha_attest.add_argument("--max-rate", type=float, default=None, dest="max_rate")
+    ha_attest.add_argument("--probes-file", default=None, dest="probes_file")
+    ha_attest.add_argument("--probe-limit", type=int, default=None, dest="probe_limit")
+    ha_attest.add_argument("--priv-key", default=None, dest="priv_key")
+    ha_attest.add_argument("--out", default=None)
+    ha_attest.add_argument("--format", default="json", choices=["json", "md", "text"], dest="ha_format")
+    ha_attest.add_argument("--fail-on-exceed", action="store_true", dest="fail_on_exceed")
+
+    ha_verify = ha_sub.add_parser("verify", help="Verify a certificate's Ed25519 signature")
+    ha_verify.add_argument("cert_path")
+    ha_verify.add_argument("--json", action="store_true", dest="output_json")
+
+    ha_show = ha_sub.add_parser("show", help="Render a certificate as Markdown")
+    ha_show.add_argument("cert_path")
+
+    ha_probes = ha_sub.add_parser("list-probes", help="List built-in probes for a domain")
+    ha_probes.add_argument("--domain", default="general", choices=["legal", "medical", "financial", "code", "general"])
+    ha_probes.add_argument("--json", action="store_true", dest="output_json")
+
+    # ── W221-W222 / C1 ★ — squash freeze (Emergency Response Orchestrator) ────
+    fz_cmd = sub.add_parser(
+        "freeze",
+        help="EMERGENCY: revoke + broadcast + log + notify + incident package",
+        description=(
+            "The Red Button. One command, in <10 s, atomically:\n"
+            "  1. Revokes every live attestation for a model in the registry\n"
+            "  2. Broadcasts attestation.frozen webhook to every subscriber\n"
+            "  3. Writes a signed freeze ledger entry (Ed25519 audit trail)\n"
+            "  4. Dispatches a notifications.notify(event=attestation.frozen)\n"
+            "  5. Builds an Incident Package (Article 73 disclosure draft)\n\n"
+            "Examples:\n"
+            "  squash freeze --attestation-id att://acme/llm-v2/abc123 \\\n"
+            "      --reason 'CVE-2026-1234 — RCE in tokenizer'\n"
+            "  squash freeze --model-path ./model.safetensors \\\n"
+            "      --reason 'data poisoning detected' --severity critical\n"
+            "  squash freeze --attestation-id att://... --priv-key ~/.squash/freeze.priv.pem\n"
+            "  squash freeze ledger --limit 20\n"
+            "  squash freeze verify ./freeze_receipt.json\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    fz_sub = fz_cmd.add_subparsers(dest="fz_command")
+
+    fz_run = fz_sub.add_parser(
+        "run",
+        help="(default) Execute a freeze. May be omitted — `squash freeze --attestation-id …` works.",
+    )
+    for _p in (fz_cmd, fz_run):
+        _p.add_argument("--attestation-id", default=None, dest="fz_attestation_id")
+        _p.add_argument("--model-path", default=None, dest="fz_model_path")
+        _p.add_argument("--model-id", default="", dest="fz_model_id")
+        _p.add_argument("--reason", default="", dest="fz_reason")
+        _p.add_argument("--actor", default="", dest="fz_actor")
+        _p.add_argument(
+            "--severity", default="critical",
+            choices=["critical", "serious", "moderate", "minor"], dest="fz_severity",
+        )
+        _p.add_argument(
+            "--category", default="other",
+            choices=[
+                "fundamental_rights", "health_safety", "discrimination",
+                "infrastructure", "other",
+            ],
+            dest="fz_category",
+        )
+        _p.add_argument("--affected-persons", type=int, default=0, dest="fz_affected")
+        _p.add_argument("--incident-dir", default=None, dest="fz_incident_dir")
+        _p.add_argument("--state-dir", default=None, dest="fz_state_dir")
+        _p.add_argument("--priv-key", default=None, dest="fz_priv_key")
+        _p.add_argument("--no-incident", action="store_true", dest="fz_no_incident")
+        _p.add_argument("--webhook-timeout", type=float, default=10.0, dest="fz_webhook_timeout")
+        _p.add_argument("--out", default=None, dest="fz_out")
+        _p.add_argument(
+            "--format", default="text",
+            choices=["text", "json", "md"], dest="fz_format",
+        )
+        _p.add_argument("--quiet", action="store_true", dest="fz_quiet")
+
+    fz_ledger = fz_sub.add_parser("ledger", help="Show freeze ledger entries (newest last)")
+    fz_ledger.add_argument("--state-dir", default=None, dest="fz_state_dir")
+    fz_ledger.add_argument("--limit", type=int, default=20, dest="fz_limit")
+    fz_ledger.add_argument("--json", action="store_true", dest="output_json")
+
+    fz_verify = fz_sub.add_parser("verify", help="Verify a freeze receipt's Ed25519 signature")
+    fz_verify.add_argument("receipt_path")
+    fz_verify.add_argument("--json", action="store_true", dest="output_json")
+
+    # ── W223-W225 / C2 — AI Washing Detection ─────────────────────────────────
+    aw_cmd = sub.add_parser(
+        "detect-washing",
+        help="AI washing detection — scan marketing collateral for unsupported capability claims",
+        description=(
+            "Scan marketing docs, investor decks, model cards, and landing pages\n"
+            "for AI capability claims; cross-reference against squash attestation\n"
+            "evidence; flag every divergence. SEC Operation AI Comply top priority.\n\n"
+            "Examples:\n"
+            "  squash detect-washing scan ./investor-deck.md\n"
+            "  squash detect-washing scan ./docs/ --master-record ./out/master_record.json\n"
+            "  squash detect-washing scan ./landing.md --bias-audit ./bias.json\n"
+            "  squash detect-washing scan ./docs/ --fail-on high --format json --out r.json\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    aw_sub = aw_cmd.add_subparsers(dest="aw_command")
+
+    aw_scan = aw_sub.add_parser("scan", help="Scan documents for AI washing indicators")
+    aw_scan.add_argument("doc_paths", nargs="+", help="Document paths or directories to scan")
+    aw_scan.add_argument("--model-id", default="", dest="model_id")
+    aw_scan.add_argument("--master-record", default=None, dest="master_record", help="Path to master_record.json")
+    aw_scan.add_argument("--bias-audit", default=None, dest="bias_audit", help="Path to bias_audit.json")
+    aw_scan.add_argument("--data-lineage", default=None, dest="data_lineage", help="Path to data_lineage.json")
+    aw_scan.add_argument("--format", default="text", choices=["text", "json", "md"], dest="aw_format")
+    aw_scan.add_argument("--out", default=None)
+    aw_scan.add_argument(
+        "--fail-on", default="high", choices=["low", "medium", "high", "critical"], dest="fail_on",
+    )
+
+    aw_report = aw_sub.add_parser("report", help="Render a previously saved AI washing report")
+    aw_report.add_argument("report_path")
+    aw_report.add_argument("--format", default="text", choices=["text", "json", "md"], dest="aw_format")
+
+    # ── W196 / B10 — License Conflict Detection ───────────────────────────────
+    lc_cmd = sub.add_parser(
+        "license-check",
+        help="License conflict detection — SPDX compatibility matrix + AI model licences",
+        description=(
+            "Scan a project for licence conflicts across model weights, training\n"
+            "datasets, and code dependencies. Checks 12 conflict rules covering\n"
+            "copyleft, NC restrictions, AGPL SaaS triggers, ShareAlike contamination,\n"
+            "and AI model custom licences (LLaMA, Gemma, Mistral, BLOOM/RAIL).\n\n"
+            "Examples:\n"
+            "  squash license-check scan ./my-model-project\n"
+            "  squash license-check scan ./project --use-case commercial --format md\n"
+            "  squash license-check scan ./project --use-case saas_api --fail-on medium\n"
+            "  squash license-check explain Apache-2.0\n"
+            "  squash license-check report ./license-report.json\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    lc_sub = lc_cmd.add_subparsers(dest="lc_command")
+
+    lc_scan = lc_sub.add_parser("scan", help="Scan a project directory for licence conflicts")
+    lc_scan.add_argument("project_path", help="Path to project directory")
+    lc_scan.add_argument(
+        "--use-case", default="commercial",
+        choices=["research", "commercial", "open_source", "saas_api", "internal", "government"],
+        dest="use_case", help="Intended deployment scenario (default: commercial)",
+    )
+    lc_scan.add_argument("--format", default="text", choices=["text", "json", "md"], dest="lc_format")
+    lc_scan.add_argument("--out", default=None, help="Write report to PATH instead of stdout")
+    lc_scan.add_argument(
+        "--fail-on", default="high",
+        choices=["low", "medium", "high", "critical"],
+        dest="fail_on",
+        help="Exit non-zero if overall risk meets or exceeds this level (default: high)",
+    )
+
+    lc_explain = lc_sub.add_parser("explain", help="Explain a single SPDX licence identifier")
+    lc_explain.add_argument("spdx_id", help="SPDX licence identifier (e.g. Apache-2.0, CC-BY-NC-4.0)")
+
+    lc_report = lc_sub.add_parser("report", help="Render a previously saved licence conflict report")
+    lc_report.add_argument("report_path", help="Path to licence-conflict report JSON")
+    lc_report.add_argument("--format", default="text", choices=["text", "json", "md"], dest="lc_format")
+
+    # ── W195 / B9 — Data Poisoning Detection ──────────────────────────────────
+    dp_cmd = sub.add_parser(
+        "data-poison",
+        help="Training data poisoning detection — six-layer scanner",
+        description=(
+            "Scan training datasets for data poisoning indicators across six\n"
+            "detection layers: threat intelligence, label integrity, duplicate\n"
+            "injection, statistical outliers, backdoor trigger patterns, and\n"
+            "provenance chain integrity.\n\n"
+            "Examples:\n"
+            "  squash data-poison scan ./datasets/training\n"
+            "  squash data-poison scan ./datasets/training --format json --out report.json\n"
+            "  squash data-poison scan ./datasets/training --fail-on HIGH\n"
+            "  squash data-poison report ./report.json\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    dp_sub = dp_cmd.add_subparsers(dest="dp_command")
+
+    dp_scan = dp_sub.add_parser("scan", help="Scan a dataset directory or file for poisoning indicators")
+    dp_scan.add_argument("dataset_path", help="Path to dataset directory or file")
+    dp_scan.add_argument("--format", default="text", choices=["text", "json", "md"], dest="scan_format", help="Output format (default: text)")
+    dp_scan.add_argument("--out", default=None, help="Write report to PATH instead of stdout")
+    dp_scan.add_argument(
+        "--fail-on",
+        default="high",
+        choices=["low", "medium", "high", "critical"],
+        dest="fail_on",
+        help="Exit non-zero if risk level meets or exceeds this threshold (default: high)",
+    )
+    dp_scan.add_argument("--provenance", default=None, dest="provenance_path", help="Path to provenance JSON to cross-reference")
+
+    dp_report = dp_sub.add_parser("report", help="Render a previously saved data-poison report")
+    dp_report.add_argument("report_path", help="Path to data-poison report JSON")
+    dp_report.add_argument("--format", default="text", choices=["text", "json", "md"], dest="report_format")
+
+    # ── W194 / B7 — Drift SLA Certificate ────────────────────────────────────
+    dc_cmd = sub.add_parser(
+        "drift-cert",
+        help="Drift SLA Certificate — prove sustained compliance over a time window",
+        description=(
+            "Issue and verify Drift SLA Certificates: signed, time-windowed\n"
+            "assertions that a model maintained a compliance score above a\n"
+            "threshold for a defined SLA window.\n\n"
+            "Examples:\n"
+            "  squash drift-cert ingest ./out/master_record.json\n"
+            "  squash drift-cert issue --model phi-3 --framework eu-ai-act --min-score 80 --window 90\n"
+            "  squash drift-cert issue --model phi-3 --priv-key ./squash.priv.pem --out cert.json\n"
+            "  squash drift-cert verify cert.json\n"
+            "  squash drift-cert show cert.json\n"
+            "  squash drift-cert export cert.json --format html\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    dc_sub = dc_cmd.add_subparsers(dest="dc_command")
+
+    dc_ingest = dc_sub.add_parser("ingest", help="Add a master_record.json snapshot to the score ledger")
+    dc_ingest.add_argument("master_record_path", help="Path to master_record.json")
+    dc_ingest.add_argument("--ledger", default=None, dest="ledger_path", help="Score ledger path (default: ~/.squash/drift/score_ledger.jsonl)")
+
+    dc_issue = dc_sub.add_parser("issue", help="Evaluate SLA and issue a signed certificate")
+    dc_issue.add_argument("--model", required=True, dest="model_id", help="Model ID")
+    dc_issue.add_argument("--framework", default="eu-ai-act", help="Compliance framework (default: eu-ai-act)")
+    dc_issue.add_argument("--min-score", type=float, default=80.0, dest="min_score", help="Minimum passing score (default: 80)")
+    dc_issue.add_argument("--window", type=int, default=90, dest="window_days", help="Evaluation window in days (default: 90)")
+    dc_issue.add_argument("--max-violation-rate", type=float, default=0.05, dest="max_violation_rate", help="Max fraction of failing snapshots (default: 0.05)")
+    dc_issue.add_argument("--min-snapshots", type=int, default=3, dest="min_snapshots", help="Minimum snapshots required (default: 3)")
+    dc_issue.add_argument("--org", default="", help="Organisation name embedded in certificate")
+    dc_issue.add_argument("--priv-key", default=None, dest="priv_key", help="Ed25519 .priv.pem for signing")
+    dc_issue.add_argument("--ledger", default=None, dest="ledger_path", help="Score ledger path")
+    dc_issue.add_argument("--out", default=None, help="Write certificate JSON to PATH (default: stdout)")
+    dc_issue.add_argument("--format", default="json", choices=["json", "md", "html"], dest="issue_format", help="Output format (default: json)")
+    dc_issue.add_argument("--json", action="store_true", dest="output_json")
+
+    dc_verify = dc_sub.add_parser("verify", help="Verify a certificate's Ed25519 signature and self-consistency")
+    dc_verify.add_argument("cert_path", help="Path to certificate JSON file")
+    dc_verify.add_argument("--json", action="store_true", dest="output_json")
+
+    dc_show = dc_sub.add_parser("show", help="Render a certificate as human-readable Markdown")
+    dc_show.add_argument("cert_path")
+
+    dc_export = dc_sub.add_parser("export", help="Export a certificate to Markdown, HTML, or PDF")
+    dc_export.add_argument("cert_path")
+    dc_export.add_argument("--format", default="html", choices=["md", "html", "pdf"], dest="export_format")
+    dc_export.add_argument("--out", default=None, help="Output path (default: <cert_id>.<format>)")
+
+    # ── W193 / B6 — Audit-trail blockchain anchoring ──────────────────────────
+    anchor_cmd = sub.add_parser(
+        "anchor",
+        help="Audit-trail blockchain anchoring (Merkle batch + multi-backend)",
+        description=(
+            "Stage attestations into a batch, build a Merkle commitment, and\n"
+            "anchor the root using a local Ed25519 witness, OpenTimestamps\n"
+            "(Bitcoin), or an Ethereum-class chain.\n\n"
+            "Examples:\n"
+            "  squash anchor add ./out/master_record.json\n"
+            "  squash anchor commit --backend local --priv-key ./squash.priv.pem\n"
+            "  squash anchor commit --backend opentimestamps\n"
+            "  squash anchor verify att-abc123\n"
+            "  squash anchor proof  att-abc123 --out proof.json\n"
+            "  squash anchor list   --json\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    anchor_sub = anchor_cmd.add_subparsers(dest="anchor_command")
+
+    an_add = anchor_sub.add_parser("add", help="Stage a master attestation record into the pending batch")
+    an_add.add_argument("master_record_path", help="Path to master_record.json")
+    an_add.add_argument("--ledger-dir", default=None, help="Ledger root directory (default: ~/.squash/anchor)")
+
+    an_commit = anchor_sub.add_parser("commit", help="Build Merkle root and anchor the pending batch")
+    an_commit.add_argument("--backend", default="local", choices=["local", "opentimestamps", "ethereum"])
+    an_commit.add_argument("--priv-key", dest="priv_key", default=None, help="Ed25519 .priv.pem (local backend)")
+    an_commit.add_argument("--pub-key", dest="pub_key", default=None, help="Ed25519 .pub.pem (local backend; embedded in anchor)")
+    an_commit.add_argument("--rpc-url", dest="rpc_url", default=None, help="EVM RPC URL (ethereum backend)")
+    an_commit.add_argument("--eth-key", dest="eth_key", default=None, help="0x-prefixed hex private key (ethereum backend; or set $SQUASH_ETH_KEY)")
+    an_commit.add_argument("--ledger-dir", default=None, help="Ledger root directory (default: ~/.squash/anchor)")
+    an_commit.add_argument("--json", action="store_true", dest="output_json")
+
+    an_verify = anchor_sub.add_parser("verify", help="Verify Merkle inclusion + anchor witness for an attestation")
+    an_verify.add_argument("attestation_id")
+    an_verify.add_argument("--ledger-dir", default=None)
+    an_verify.add_argument("--json", action="store_true", dest="output_json")
+
+    an_proof = anchor_sub.add_parser("proof", help="Emit a portable inclusion-proof JSON document")
+    an_proof.add_argument("attestation_id")
+    an_proof.add_argument("--ledger-dir", default=None)
+    an_proof.add_argument("--out", default=None, help="Write to PATH instead of stdout")
+
+    an_list = anchor_sub.add_parser("list", help="List committed anchor entries")
+    an_list.add_argument("--ledger-dir", default=None)
+    an_list.add_argument("--json", action="store_true", dest="output_json")
+
+    an_status = anchor_sub.add_parser("status", help="Show staged batch + last anchor")
+    an_status.add_argument("--ledger-dir", default=None)
+    an_status.add_argument("--json", action="store_true", dest="output_json")
     # ── B3 (Sprint 15 W209/W210) — compliance digest ──────────────────────────
     digest_cmd = sub.add_parser(
         "digest",
@@ -2210,122 +2648,192 @@ def _build_parser() -> argparse.ArgumentParser:
             "JSON / YAML spec or as a Python module path that exposes a "
             "LangChain Runnable.\n\n"
             "Examples:\n"
-            "  squash chain-attest ./rag.json --policy eu-ai-act --output-dir ./out\n"
-            "  squash chain-attest myapp.chains:rag_pipeline --policy enterprise-strict\n"
-            "  squash chain-attest ./chain.yaml --fail-on-component-violation\n"
-            "  squash chain-attest --verify ./out/chain-attest.json\n"
+            "  squash chain-attest ./chain-spec.json --json\n"
+            "  squash chain-attest ./chain-spec.yaml --fail-on-component-violation\n"
+            "  squash chain-attest --verify ./chain-attest.json\n"
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     chain_cmd.add_argument(
-        "spec",
-        help="Chain spec — JSON / YAML file path or 'module.path:variable_name' "
-             "for a LangChain Runnable",
+        "spec", metavar="SPEC",
+        help="Path to JSON/YAML chain spec, or 'module.path:attr' for a LangChain Runnable",
     )
-    chain_cmd.add_argument(
-        "--policy", action="append", default=None,
-        dest="chain_policies",
-        help="Policy to evaluate (repeatable). Default: enterprise-strict",
-    )
-    chain_cmd.add_argument(
-        "--output-dir", default=None, dest="chain_output_dir",
-        help="Directory to write chain-attest.json + chain-attest.md",
-    )
-    chain_cmd.add_argument(
-        "--chain-id", default="", dest="chain_id_override",
-        help="Override chain_id (defaults to spec file stem or class name)",
-    )
-    chain_cmd.add_argument(
-        "--fail-on-component-violation",
-        action="store_true", dest="chain_fail_on_violation",
-        help="Exit non-zero on the first component policy violation",
-    )
-    chain_cmd.add_argument(
-        "--sign-components", action="store_true", dest="chain_sign_components",
-        help="Sigstore-sign each component BOM during attest",
-    )
-    chain_cmd.add_argument(
-        "--verify", action="store_true", dest="chain_verify_only",
-        help="Verify the HMAC signature of an existing chain-attest.json and exit",
-    )
-    chain_cmd.add_argument(
-        "--json", action="store_true", dest="chain_json",
-        help="Print the chain attestation JSON to stdout",
-    )
-    chain_cmd.add_argument(
-        "--quiet", action="store_true", help="Suppress non-error output",
-    )
+    chain_cmd.add_argument("--verify", action="store_true", dest="chain_verify_only",
+                           help="Verify an existing chain attestation file (SPEC is the file to verify)")
+    chain_cmd.add_argument("--chain-id", dest="chain_id_override", default=None,
+                           help="Override the chain_id in the spec")
+    chain_cmd.add_argument("--policy", action="append", dest="chain_policies", metavar="POLICY",
+                           help="Policy to evaluate (repeatable; default: enterprise-strict)")
+    chain_cmd.add_argument("--output-dir", dest="chain_output_dir", default=None,
+                           help="Directory to write chain-attest.json and chain-attest.md")
+    chain_cmd.add_argument("--fail-on-component-violation", action="store_true",
+                           dest="chain_fail_on_violation",
+                           help="Exit 1 if any component fails policy")
+    chain_cmd.add_argument("--sign-components", action="store_true",
+                           dest="chain_sign_components",
+                           help="HMAC-sign each component attestation")
+    chain_cmd.add_argument("--json", action="store_true", dest="chain_json",
+                           help="Print full attestation JSON to stdout")
+    chain_cmd.add_argument("--quiet", "-q", action="store_true",
+                           help="Suppress informational output")
 
-    # ── W201 (Sprint 12) — registry-gate: pre-registration policy gate ───────
+    # ── W201 (Sprint 12) — registry-gate: unified pre-registration policy gate ─
     rg_cmd = sub.add_parser(
         "registry-gate",
-        help="Pre-registration squash gate for model registries (mlflow / wandb / sagemaker / local)",
+        help="Pre-registration policy gate for MLflow / W&B / SageMaker / local",
         description=(
-            "Run squash attestation on a local model and produce a structured\n"
-            "gate decision suitable for blocking model-registry promotion in CI.\n\n"
-            "Exits 0 on policy pass, 1 on policy fail, 2 on configuration error.\n"
-            "Always writes a `registry-gate.json` file under --output-dir.\n\n"
+            "Attest a local model before promoting it to a model registry.\n"
+            "Writes a structured gate decision to registry-gate.json.\n\n"
             "Examples:\n"
-            "  # Gate before MLflow register_model\n"
-            "  squash registry-gate --backend mlflow \\\n"
-            "      --uri models:/MyModel/Production \\\n"
-            "      --model-path ./output/model --policy eu-ai-act\n"
-            "\n"
-            "  # Gate before W&B log_artifact\n"
-            "  squash registry-gate --backend wandb \\\n"
-            "      --uri wandb://acme/my-project/llama:v1 \\\n"
-            "      --model-path ./model --policy enterprise-strict\n"
-            "\n"
-            "  # Gate before SageMaker create_model_package\n"
-            "  squash registry-gate --backend sagemaker \\\n"
-            "      --uri arn:aws:sagemaker:us-east-1:123:model-package-group/MyMPG \\\n"
-            "      --model-path ./model --policy nist-ai-rmf\n"
-            "\n"
-            "  # Local-only gate (no registry URI)\n"
             "  squash registry-gate --backend local --model-path ./model\n"
+            "  squash registry-gate --backend mlflow --uri models:/MyModel/Staging --model-path ./model\n"
+            "  squash registry-gate --backend sagemaker --uri arn:aws:sagemaker:us-east-1:123:model/v1 --model-path ./model\n"
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    rg_cmd.add_argument(
-        "--backend", required=True,
-        choices=["mlflow", "wandb", "sagemaker", "local"],
-        help="Registry backend whose URI form is being gated",
+    rg_cmd.add_argument("--backend", default="local",
+                        choices=["local", "mlflow", "wandb", "sagemaker"],
+                        help="Registry backend (default: local)")
+    rg_cmd.add_argument("--model-path", required=True, dest="rg_model_path",
+                        help="Path to the local model directory")
+    rg_cmd.add_argument("--uri", dest="rg_uri", default=None,
+                        help="Registry URI (e.g. models:/Name/Stage for MLflow)")
+    rg_cmd.add_argument("--name", dest="rg_name", default=None,
+                        help="Human-readable model name to embed in the gate record")
+    rg_cmd.add_argument("--policy", action="append", dest="rg_policies", metavar="POLICY",
+                        help="Policy to evaluate (repeatable; default: enterprise-strict)")
+    rg_cmd.add_argument("--output-dir", dest="rg_output_dir", default=None,
+                        help="Directory for gate JSON (default: <model-path>/squash/)")
+    rg_cmd.add_argument("--allow-on-fail", action="store_true", dest="rg_allow_on_fail",
+                        help="Record the failure but exit 0 (non-blocking)")
+    rg_cmd.add_argument("--json", action="store_true", dest="rg_json",
+                        help="Print full gate JSON to stdout")
+    rg_cmd.add_argument("--sign", action="store_true", dest="rg_sign",
+                        help="Sigstore-sign the underlying attestation")
+    rg_cmd.add_argument("--quiet", "-q", action="store_true",
+                        help="Suppress informational output")
+
+
+
+    # ── C3 (Sprint 23) — Approval Workflow (W232–W234) ───────────────────────
+
+    # squash request-approval
+    req_appr_cmd = sub.add_parser(
+        "request-approval",
+        help="Create a signed human-oversight approval request for a model deployment",
+        description=(
+            "Create a multi-reviewer approval request for a model attestation.\n"
+            "Required by EU AI Act Article 9 and NIST AI RMF GOVERN pillar.\n\n"
+            "Examples:\n"
+            "  squash request-approval --attestation att://sha256:a3f1... --reviewers ciso@acme.com,vp-eng@acme.com\n"
+            "  squash request-approval --attestation att://sha256:a3f1... --threshold 2 --require-role COMPLIANCE,ENGINEERING\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    rg_cmd.add_argument(
-        "--model-path", required=True, dest="rg_model_path",
-        help="Local path to the model artefact (file or directory)",
+    req_appr_cmd.add_argument("--attestation", required=True, dest="appr_attestation_id",
+                              help="Attestation ID (att:// URI or bare entry_id)")
+    req_appr_cmd.add_argument("--model-id", dest="appr_model_id", default="",
+                              help="Human-readable model identifier")
+    req_appr_cmd.add_argument("--reviewers", dest="appr_reviewers", default="",
+                              help="Comma-separated reviewer email addresses")
+    req_appr_cmd.add_argument("--threshold", dest="appr_threshold", type=int, default=1,
+                              help="Minimum APPROVED responses needed (default: 1)")
+    req_appr_cmd.add_argument("--require-role", dest="appr_required_roles", default="",
+                              help="Comma-separated roles required (COMPLIANCE,ENGINEERING,SECURITY,LEGAL,EXECUTIVE)")
+    req_appr_cmd.add_argument("--requestor", dest="appr_requestor", default="",
+                              help="Email of the requestor")
+    req_appr_cmd.add_argument("--notes", dest="appr_notes", default="",
+                              help="Context notes for reviewers")
+    req_appr_cmd.add_argument("--attestation-hash", dest="appr_hash", default="",
+                              help="SHA-256 of the attestation payload (snapshot integrity)")
+    req_appr_cmd.add_argument("--ttl-days", dest="appr_ttl", type=int, default=30,
+                              help="Days before the request expires (default: 30)")
+    req_appr_cmd.add_argument("--json", action="store_true", dest="appr_json",
+                              help="Print full request JSON")
+    req_appr_cmd.add_argument("--quiet", "-q", action="store_true")
+
+    # squash approve
+    approve_cmd = sub.add_parser(
+        "approve",
+        help="Submit a reviewer decision on an approval request",
+        description=(
+            "Record your APPROVED / REJECTED / APPROVED_WITH_CONDITIONS decision.\n"
+            "Each record is HMAC-SHA256 signed and written to the approval store.\n\n"
+            "Examples:\n"
+            "  squash approve appr-abc123 --decision APPROVED --rationale \"Bias audit clean\"\n"
+            "  squash approve appr-abc123 --decision APPROVED_WITH_CONDITIONS --condition \"Retrain by 2026-08-01\"\n"
+            "  squash approve appr-abc123 --decision REJECTED --rationale \"Drift exceeds threshold\"\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    rg_cmd.add_argument(
-        "--uri", default="", dest="rg_uri",
-        help="Registry URI (informational; recorded in gate decision)",
+    approve_cmd.add_argument("request_id", help="Approval request ID (appr-...)")
+    approve_cmd.add_argument("--decision", required=True,
+                             choices=["APPROVED", "REJECTED", "APPROVED_WITH_CONDITIONS"],
+                             dest="appr_decision",
+                             help="Your decision on this request")
+    approve_cmd.add_argument("--rationale", required=True, dest="appr_rationale",
+                             help="Documented basis for your decision (required for Article 9)")
+    approve_cmd.add_argument("--reviewer-email", dest="appr_reviewer_email", default="",
+                             help="Your email address (defaults to SQUASH_REVIEWER_EMAIL env)")
+    approve_cmd.add_argument("--reviewer-name", dest="appr_reviewer_name", default="",
+                             help="Your display name")
+    approve_cmd.add_argument("--role", dest="appr_reviewer_role", default="ANY",
+                             choices=["COMPLIANCE", "ENGINEERING", "SECURITY", "LEGAL", "EXECUTIVE", "ANY"],
+                             help="Your reviewer role (default: ANY)")
+    approve_cmd.add_argument("--condition", action="append", dest="appr_conditions",
+                             metavar="CONDITION",
+                             help="Attach a condition to an APPROVED_WITH_CONDITIONS decision (repeatable)")
+    approve_cmd.add_argument("--json", action="store_true", dest="appr_json",
+                             help="Print full record JSON")
+    approve_cmd.add_argument("--quiet", "-q", action="store_true")
+
+    # squash approval-status
+    appr_status_cmd = sub.add_parser(
+        "approval-status",
+        help="Show the current status of an approval request",
+        description="Displays request details, collected records, and overall decision.\n\n"
+                    "Example:\n  squash approval-status appr-abc123",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    rg_cmd.add_argument(
-        "--policy", action="append", default=None, dest="rg_policies",
-        help="Policy to evaluate (repeatable). Default: enterprise-strict",
+    appr_status_cmd.add_argument("request_id", help="Approval request ID (appr-...)")
+    appr_status_cmd.add_argument("--json", action="store_true", dest="appr_json",
+                                 help="Print full JSON")
+    appr_status_cmd.add_argument("--quiet", "-q", action="store_true")
+
+    # squash approval-list
+    appr_list_cmd = sub.add_parser(
+        "approval-list",
+        help="List approval requests",
+        description="List pending or recent approval requests, optionally filtered by reviewer.\n\n"
+                    "Example:\n  squash approval-list --reviewer ciso@acme.com --pending-only",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    rg_cmd.add_argument(
-        "--output-dir", default=None, dest="rg_output_dir",
-        help="Directory to write attestation artefacts + registry-gate.json",
+    appr_list_cmd.add_argument("--reviewer", dest="appr_reviewer_filter", default="",
+                               help="Filter by reviewer email")
+    appr_list_cmd.add_argument("--pending-only", action="store_true", dest="appr_pending_only",
+                               help="Show only PENDING requests")
+    appr_list_cmd.add_argument("--limit", type=int, default=20, dest="appr_limit",
+                               help="Max results (default: 20)")
+    appr_list_cmd.add_argument("--json", action="store_true", dest="appr_json",
+                               help="Print full JSON list")
+    appr_list_cmd.add_argument("--quiet", "-q", action="store_true")
+
+    # squash approval-export
+    appr_export_cmd = sub.add_parser(
+        "approval-export",
+        help="Export a signed Article 9 evidence bundle for a completed approval",
+        description="Exports a regulator-ready evidence bundle: request JSON, per-record\n"
+                    "signature verification, regulatory mapping, and audit summary.\n\n"
+                    "Example:\n  squash approval-export appr-abc123 --output evidence.json",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    rg_cmd.add_argument(
-        "--name", default="", dest="rg_name",
-        help="Logical model name (e.g. MLflow registered-model name)",
-    )
-    rg_cmd.add_argument(
-        "--allow-on-fail", action="store_true", dest="rg_allow_on_fail",
-        help="Exit 0 even on policy fail (record-only mode for soft gating)",
-    )
-    rg_cmd.add_argument(
-        "--json", action="store_true", dest="rg_json",
-        help="Print the registry-gate JSON to stdout",
-    )
-    rg_cmd.add_argument(
-        "--sign", action="store_true", dest="rg_sign",
-        help="Sigstore-sign the CycloneDX BOM during attest",
-    )
-    rg_cmd.add_argument(
-        "--quiet", action="store_true", help="Suppress non-error output",
-    )
+    appr_export_cmd.add_argument("request_id", help="Approval request ID (appr-...)")
+    appr_export_cmd.add_argument("--output", dest="appr_output", default=None,
+                                 help="Write evidence to this file (default: stdout)")
+    appr_export_cmd.add_argument("--json", action="store_true", dest="appr_json",
+                                 help="Pretty-print JSON (default when no --output)")
+    appr_export_cmd.add_argument("--quiet", "-q", action="store_true")
+
 
     # ── Sprint 22 W229-W231 (Track C / C5) — simulate-audit ───────────────────
     sa_cmd = sub.add_parser(
@@ -2625,6 +3133,119 @@ def _build_parser() -> argparse.ArgumentParser:
     wr_cmd.add_argument(
         "--quiet", action="store_true", help="Suppress non-error output",
     )
+
+
+    # ── C8 (Sprint 35) — deprecation-watch: model sunset cross-reference ──────
+    dw_cmd = sub.add_parser(
+        "deprecation-watch",
+        help="Cross-reference registered models against provider deprecation schedules",
+        description=(
+            "Detect deployed models approaching end-of-life across OpenAI, Anthropic,\n"
+            "Google, Meta, and Mistral. Fires alerts with configurable lead time,\n"
+            "migration effort estimates, and re-attestation checklists.\n\n"
+            "Examples:\n"
+            "  squash deprecation-watch\n"
+            "  squash deprecation-watch --lead-time 60 --provider openai,anthropic\n"
+            "  squash deprecation-watch --check gpt-4-0613\n"
+            "  squash deprecation-watch --list --provider google\n"
+            "  squash deprecation-watch --json --all\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    dw_cmd.add_argument("--lead-time", type=int, default=30, dest="dw_lead_time",
+                        metavar="DAYS",
+                        help="Alert when sunset is within DAYS days (default: 30)")
+    dw_cmd.add_argument("--provider", dest="dw_providers", default="",
+                        help="Comma-separated provider filter: openai,anthropic,google,meta,mistral")
+    dw_cmd.add_argument("--check", dest="dw_check_model", default=None,
+                        metavar="MODEL_ID",
+                        help="Check a specific model ID (bypasses registry scan)")
+    dw_cmd.add_argument("--list", action="store_true", dest="dw_list_all",
+                        help="List all known deprecation entries (no registry scan)")
+    dw_cmd.add_argument("--all", action="store_true", dest="dw_include_all",
+                        help="Include entries beyond the lead-time window")
+    dw_cmd.add_argument("--include-informational", action="store_true",
+                        dest="dw_informational",
+                        help="Include INFORMATIONAL entries (no hard sunset)")
+    dw_cmd.add_argument("--include-sunsetted", action="store_true",
+                        dest="dw_sunsetted",
+                        help="Include already-sunsetted models")
+    dw_cmd.add_argument("--model-ids", dest="dw_model_ids", default="",
+                        help="Comma-separated model IDs to check (bypasses AssetRegistry)")
+    dw_cmd.add_argument("--registry-db", dest="dw_registry_db", default=None,
+                        help="Path to asset_registry.db (default: ~/.squash/asset_registry.db)")
+    dw_cmd.add_argument("--alert-channel", dest="dw_channel",
+                        default="stdout", choices=["stdout", "slack", "json"],
+                        help="Alert routing channel (default: stdout)")
+    dw_cmd.add_argument("--checklist", action="store_true", dest="dw_checklist",
+                        help="Print re-attestation checklist for each alert")
+    dw_cmd.add_argument("--json", action="store_true", dest="dw_json",
+                        help="Emit full JSON output")
+    dw_cmd.add_argument("--fail-on-alert", action="store_true", dest="dw_fail",
+                        help="Exit 1 if any deprecation alerts are found")
+    dw_cmd.add_argument("--quiet", "-q", action="store_true")
+
+
+
+    # ── C9 (Sprint 36) — attest-carbon: Carbon / Energy Attestation ──────────
+    ac_cmd = sub.add_parser(
+        "attest-carbon",
+        help="Compute and attest the carbon / energy footprint of a deployed model",
+        description=(
+            "Generate a CSRD-mappable, cryptographically signed carbon + energy\n"
+            "attestation certificate. Covers CSRD Scope 2/3, EU AI Act Annex IV §4,\n"
+            "CSDDD, UK PRA SS1/23, and OMB/DOE data-centre reporting.\n\n"
+            "Examples:\n"
+            "  squash attest-carbon --model-id bert-base --params 110M --region eu-west-1\n"
+            "  squash attest-carbon --model-id gpt-3 --params 175B --region us-east-1 --hardware h100\n"
+            "  squash attest-carbon --model-id mymodel --params 7B --bom ./mlbom.json --csrd\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    ac_cmd.add_argument("--model-id", dest="ac_model_id", required=True,
+                        help="Model identifier")
+    ac_cmd.add_argument("--params", dest="ac_params", required=True,
+                        help="Parameter count: integer or shorthand (110M, 7B, 1.5T)")
+    ac_cmd.add_argument("--region", dest="ac_region", default="us-east-1",
+                        help="Deployment region (AWS/GCP/Azure region or ISO country code; default: us-east-1)")
+    ac_cmd.add_argument("--architecture", dest="ac_arch", default="transformer",
+                        choices=["transformer", "cnn", "rnn", "moe", "diffusion", "embedding", "unknown"],
+                        help="Model architecture family (default: transformer)")
+    ac_cmd.add_argument("--hardware", dest="ac_hw", default="a100",
+                        choices=["a100", "h100", "h200", "tpu_v4", "tpu_v5", "rtx4090", "cpu", "unknown"],
+                        help="Inference hardware (default: a100)")
+    ac_cmd.add_argument("--inferences-per-day", type=int, default=10000,
+                        dest="ac_inf_per_day",
+                        help="Expected daily inference volume (default: 10 000)")
+    ac_cmd.add_argument("--tokens-per-inference", type=int, default=512,
+                        dest="ac_tokens",
+                        help="Average tokens per inference (default: 512)")
+    ac_cmd.add_argument("--seq-len", type=int, default=512, dest="ac_seq_len",
+                        help="Sequence length for FLOP calculation (default: 512)")
+    ac_cmd.add_argument("--utilization", type=float, default=0.45, dest="ac_util",
+                        help="GPU/TPU utilization fraction 0–1 (default: 0.45)")
+    ac_cmd.add_argument("--pue", type=float, default=None, dest="ac_pue",
+                        help="Power Usage Effectiveness override (default: 1.20)")
+    ac_cmd.add_argument("--renewable-fraction", type=float, default=0.0,
+                        dest="ac_renewable",
+                        help="Fraction of electricity from renewables/RECs 0–1 (default: 0)")
+    ac_cmd.add_argument("--live-intensity", action="store_true", dest="ac_live",
+                        help="Attempt live Electricity Maps API fetch (requires SQUASH_ELECTRICITY_MAPS_KEY)")
+    ac_cmd.add_argument("--sign", action="store_true", dest="ac_sign",
+                        help="HMAC-SHA256 sign the certificate")
+    ac_cmd.add_argument("--output", dest="ac_output",
+                        help="Write certificate JSON to this file (default: <model-id>-carbon-attest.json)")
+    ac_cmd.add_argument("--bom", dest="ac_bom",
+                        help="Path to CycloneDX ML-BOM JSON — enrich with energy fields")
+    ac_cmd.add_argument("--csrd", action="store_true", dest="ac_csrd",
+                        help="Also write a CSRD ESRS E1 mapping JSON alongside the certificate")
+    ac_cmd.add_argument("--framework", dest="ac_framework", default="csrd",
+                        choices=["csrd", "csddd", "uk_pra_ss1_23", "omb_doe", "eu_ai_act"],
+                        help="Regulatory framework for --csrd output (default: csrd)")
+    ac_cmd.add_argument("--json", action="store_true", dest="ac_json",
+                        help="Print full certificate JSON to stdout")
+    ac_cmd.add_argument("--quiet", "-q", action="store_true")
+
 
     # ── W135 / W136 — Annex IV generate + validate ────────────────────────────
     annex_iv_cmd = sub.add_parser(
@@ -4817,6 +5438,366 @@ def _model_card_validate(card_path: Path, json_out: bool, quiet: bool) -> int:
     return 0 if report.is_valid else 1
 
 
+def _cmd_attest_carbon(args: argparse.Namespace, quiet: bool) -> int:
+    """C9 — Carbon / Energy Attestation."""
+    from squash.carbon_attest import (
+        CarbonAttestation, CarbonIntensityCache, ModelArchitecture,
+        HardwareType, enrich_mlbom, format_summary,
+    )
+
+    # Parse parameter count shorthand (110M, 7B, 1.5T)
+    params_str = str(args.ac_params).strip().upper()
+    try:
+        multipliers = {"K": 1_000, "M": 1_000_000, "B": 1_000_000_000,
+                       "T": 1_000_000_000_000}
+        if params_str[-1] in multipliers:
+            param_count = int(float(params_str[:-1]) * multipliers[params_str[-1]])
+        else:
+            param_count = int(params_str)
+    except (ValueError, IndexError):
+        print(f"attest-carbon: cannot parse --params {args.ac_params!r}. "
+              "Use an integer or shorthand (110M, 7B, 1.5T).", file=sys.stderr)
+        return 2
+
+    arch = ModelArchitecture(args.ac_arch)
+    hw   = HardwareType(args.ac_hw)
+
+    cache = CarbonIntensityCache() if getattr(args, "ac_live", False) else None
+    try:
+        cert = CarbonAttestation.compute(
+            model_id=args.ac_model_id,
+            param_count=param_count,
+            deployment_region=args.ac_region,
+            architecture=arch,
+            hardware=hw,
+            inferences_per_day=args.ac_inf_per_day,
+            tokens_per_inference=args.ac_tokens,
+            seq_len=args.ac_seq_len,
+            utilization=args.ac_util,
+            pue_override=args.ac_pue,
+            renewable_fraction=args.ac_renewable,
+            live_intensity=getattr(args, "ac_live", False),
+            cache=cache,
+            sign=getattr(args, "ac_sign", False),
+        )
+    finally:
+        if cache:
+            cache.close()
+
+    # Write certificate
+    out_path = Path(args.ac_output) if args.ac_output else (
+        Path(f"{args.ac_model_id.replace('/', '_')}-carbon-attest.json")
+    )
+    out_path.write_text(json.dumps(cert.to_dict(), indent=2), encoding="utf-8")
+
+    # CSRD report
+    if getattr(args, "ac_csrd", False):
+        csrd_path = out_path.with_suffix("").with_name(
+            out_path.stem.replace("-carbon-attest", "") + "-csrd.json"
+        )
+        fw = getattr(args, "ac_framework", "csrd")
+        csrd_report = cert.to_regulatory(fw)
+        csrd_path.write_text(json.dumps(csrd_report, indent=2), encoding="utf-8")
+        if not quiet:
+            print(f"[squash attest-carbon] CSRD report: {csrd_path}")
+
+    # ML-BOM enrichment
+    if getattr(args, "ac_bom", None):
+        bom_path = Path(args.ac_bom)
+        if bom_path.exists():
+            enrich_mlbom(bom_path, cert)
+            if not quiet:
+                print(f"[squash attest-carbon] ML-BOM enriched: {bom_path}")
+        else:
+            print(f"attest-carbon: --bom path not found: {bom_path}", file=sys.stderr)
+
+    if getattr(args, "ac_json", False):
+        print(json.dumps(cert.to_dict(), indent=2))
+    elif not quiet:
+        print(format_summary(cert))
+        print(f"  Certificate: {out_path}")
+    return 0
+
+
+
+def _cmd_deprecation_watch(args: argparse.Namespace, quiet: bool) -> int:
+    """C8 — model deprecation cross-reference engine."""
+    from squash.deprecation_watch import (
+        DeprecationWatcher, route_alerts,
+    )
+
+    providers = [p.strip() for p in args.dw_providers.split(",") if p.strip()] or None
+    registry_db = Path(args.dw_registry_db) if args.dw_registry_db else None
+    model_ids = [m.strip() for m in args.dw_model_ids.split(",") if m.strip()] or None
+    lead_time = args.dw_lead_time
+
+    with DeprecationWatcher() as watcher:
+        watcher.load_feeds(
+            providers=providers,
+            include_informational=getattr(args, "dw_informational", False),
+        )
+
+        # ── --list: show all known entries (no registry scan) ────────────────
+        if getattr(args, "dw_list_all", False):
+            entries = watcher.list_entries(
+                providers=providers,
+                include_informational=True,   # --list shows everything
+                include_sunsetted=True,       # --list shows everything
+            )
+            if args.dw_json:
+                print(json.dumps([e.to_dict() for e in entries], indent=2))
+            elif not quiet:
+                print(f"[squash deprecation-watch] {len(entries)} known deprecations")
+                for e in entries:
+                    days = e.days_until_sunset
+                    days_str = f"{days}d" if days is not None else "unknown/already sunsetted"
+                    status = "⛔ SUNSETTED" if e.is_sunsetted else f"⚠ sunset in {days_str}"
+                    print(f"  [{e.provider}] {e.model_id} → {e.successor_model or '(no successor)'} — {status}")
+            return 0
+
+        # ── --check: single model lookup ──────────────────────────────────────
+        if args.dw_check_model:
+            alert = watcher.check_model(args.dw_check_model, providers=providers)
+            if alert is None:
+                if not quiet:
+                    print(f"[squash deprecation-watch] ✓ {args.dw_check_model} — not in deprecation feed")
+                return 0
+            if args.dw_json:
+                print(json.dumps(alert.to_dict(), indent=2))
+            else:
+                print(alert.summary(lead_time))
+                if getattr(args, "dw_checklist", False):
+                    print("\n  Re-attestation checklist:")
+                    for item in alert.re_attestation_checklist:
+                        print(f"  {item}")
+            return 1 if getattr(args, "dw_fail", False) else 0
+
+        # ── Scan registry / explicit model list ───────────────────────────────
+        effective_lead = 36500 if getattr(args, "dw_include_all", False) else lead_time
+        alerts = watcher.scan(
+            lead_time_days=effective_lead,
+            providers=providers,
+            registry_db=registry_db,
+            model_ids=model_ids,
+        )
+
+        if args.dw_json or args.dw_channel == "json":
+            print(json.dumps([a.to_dict() for a in alerts], indent=2))
+        elif not quiet:
+            print(f"[squash deprecation-watch] {len(alerts)} alert(s) "
+                  f"(lead-time: {lead_time}d, provider: {args.dw_providers or 'all'})")
+            for alert in alerts:
+                print(f"  {alert.summary(lead_time)}")
+                if getattr(args, "dw_checklist", False):
+                    print("  Re-attestation checklist:")
+                    for item in alert.re_attestation_checklist[:5]:
+                        print(f"    {item}")
+
+        if args.dw_channel == "slack":
+            route_alerts(alerts, channel="slack", lead_time_days=lead_time)
+
+        if getattr(args, "dw_fail", False) and alerts:
+            return 1
+        return 0
+
+
+
+def _cmd_request_approval(args: argparse.Namespace, quiet: bool) -> int:
+    """C3 — create a multi-reviewer approval request."""
+    from squash.approval_workflow import ApprovalWorkflow, ReviewerRole
+
+    reviewers = [e.strip() for e in args.appr_reviewers.split(",") if e.strip()]
+    required_roles_raw = [r.strip() for r in args.appr_required_roles.split(",") if r.strip()]
+    try:
+        required_roles = [ReviewerRole(r) for r in required_roles_raw]
+    except ValueError as exc:
+        print(f"request-approval: invalid role — {exc}", file=sys.stderr)
+        return 2
+
+    with ApprovalWorkflow() as wf:
+        req = wf.request(
+            attestation_id=args.appr_attestation_id,
+            model_id=args.appr_model_id or args.appr_attestation_id,
+            reviewers=reviewers,
+            threshold=args.appr_threshold,
+            required_roles=required_roles,
+            requestor_email=args.appr_requestor or os.environ.get("SQUASH_REQUESTOR_EMAIL", ""),
+            notes=args.appr_notes,
+            attestation_hash=args.appr_hash,
+            ttl_days=args.appr_ttl,
+        )
+
+    if getattr(args, "appr_json", False):
+        print(json.dumps(req.to_dict(), indent=2))
+    elif not quiet:
+        print(f"[squash request-approval] Created {req.request_id}")
+        print(f"  Model:      {req.model_id}")
+        print(f"  Attestation: {req.attestation_id}")
+        print(f"  Reviewers:  {', '.join(req.reviewers) or '(open)'}")
+        print(f"  Threshold:  {req.threshold}")
+        if req.required_roles:
+            print(f"  Roles:      {', '.join(r.value for r in req.required_roles)}")
+        print(f"  Expires:    {req.expires_at}")
+    return 0
+
+
+def _cmd_approve(args: argparse.Namespace, quiet: bool) -> int:
+    """C3 — record a reviewer's decision on an approval request."""
+    from squash.approval_workflow import (
+        ApprovalDecision, ApprovalWorkflow, ApproverIdentity, ReviewerRole,
+    )
+
+    email = (args.appr_reviewer_email
+             or os.environ.get("SQUASH_REVIEWER_EMAIL", "")
+             or os.environ.get("GIT_AUTHOR_EMAIL", ""))
+    if not email:
+        print("approve: --reviewer-email is required (or set SQUASH_REVIEWER_EMAIL)", file=sys.stderr)
+        return 2
+
+    try:
+        decision = ApprovalDecision(args.appr_decision)
+        role = ReviewerRole(args.appr_reviewer_role)
+    except ValueError as exc:
+        print(f"approve: invalid value — {exc}", file=sys.stderr)
+        return 2
+
+    reviewer = ApproverIdentity(
+        email=email,
+        name=args.appr_reviewer_name or os.environ.get("SQUASH_REVIEWER_NAME", email),
+        role=role,
+    )
+
+    try:
+        with ApprovalWorkflow() as wf:
+            record = wf.approve(
+                request_id=args.request_id,
+                reviewer=reviewer,
+                decision=decision,
+                rationale=args.appr_rationale,
+                conditions=getattr(args, "appr_conditions", None) or [],
+            )
+            req = wf.status(args.request_id)
+    except ValueError as exc:
+        print(f"approve: {exc}", file=sys.stderr)
+        return 1
+
+    if getattr(args, "appr_json", False):
+        print(json.dumps(record.to_dict(), indent=2))
+    elif not quiet:
+        icons = {
+            "APPROVED": "✅", "REJECTED": "❌",
+            "APPROVED_WITH_CONDITIONS": "✅⚠",
+        }
+        icon = icons.get(record.decision.value, "•")
+        print(f"[squash approve] {icon} {record.decision.value} — {args.request_id}")
+        print(f"  Reviewer:  {email} ({role.value})")
+        print(f"  Rationale: {record.rationale[:80]}")
+        if record.conditions:
+            for c in record.conditions:
+                print(f"  Condition: {c}")
+        print(f"  Sig:       {record.signature[:24]}...")
+        print(f"  Overall:   {req.overall_status.value}  "
+              f"({req.approved_count}/{req.threshold} approved)")
+    return 0
+
+
+def _cmd_approval_status(args: argparse.Namespace, quiet: bool) -> int:
+    """C3 — show status of an approval request."""
+    from squash.approval_workflow import ApprovalWorkflow, RequestStatus
+
+    try:
+        with ApprovalWorkflow() as wf:
+            req = wf.status(args.request_id)
+    except ValueError as exc:
+        print(f"approval-status: {exc}", file=sys.stderr)
+        return 1
+
+    if getattr(args, "appr_json", False):
+        print(json.dumps(req.to_dict(), indent=2))
+    elif not quiet:
+        status_icon = {
+            RequestStatus.APPROVED: "✅",
+            RequestStatus.REJECTED: "❌",
+            RequestStatus.PENDING:  "⏳",
+            RequestStatus.EXPIRED:  "⌛",
+        }.get(req.overall_status, "•")
+        print(f"[squash approval-status] {status_icon} {req.request_id}")
+        print(f"  Model:        {req.model_id}")
+        print(f"  Attestation:  {req.attestation_id}")
+        print(f"  Status:       {req.overall_status.value}")
+        print(f"  Threshold:    {req.approved_count}/{req.threshold} approved")
+        print(f"  Requested:    {req.requested_at}")
+        print(f"  Expires:      {req.expires_at}")
+        if req.pending_reviewers:
+            print(f"  Awaiting:     {', '.join(req.pending_reviewers)}")
+        if req.all_conditions:
+            print("  Conditions:")
+            for c in req.all_conditions:
+                print(f"    · {c}")
+        if req.records:
+            print("  Records:")
+            for r in req.records:
+                valid = "✓sig" if r.verify() else "✗sig"
+                print(f"    {r.reviewer.email} [{r.reviewer.role.value}] → "
+                      f"{r.decision.value} {valid}")
+    return 0 if req.overall_status.value != "REJECTED" else 1
+
+
+def _cmd_approval_list(args: argparse.Namespace, quiet: bool) -> int:
+    """C3 — list approval requests."""
+    from squash.approval_workflow import ApprovalWorkflow
+
+    reviewer_filter = getattr(args, "appr_reviewer_filter", "") or ""
+    pending_only = getattr(args, "appr_pending_only", False)
+    limit = getattr(args, "appr_limit", 20)
+
+    with ApprovalWorkflow() as wf:
+        if pending_only:
+            requests = wf.list_pending(reviewer_email=reviewer_filter or None)
+        else:
+            requests = wf.list_all(limit=limit)
+            if reviewer_filter:
+                requests = [r for r in requests if reviewer_filter in r.reviewers]
+
+    if getattr(args, "appr_json", False):
+        print(json.dumps([r.to_dict() for r in requests], indent=2))
+    elif not quiet:
+        if not requests:
+            print("[squash approval-list] No requests found")
+        else:
+            for req in requests:
+                status_icon = {"APPROVED": "✅", "REJECTED": "❌", "PENDING": "⏳"}.get(
+                    req.overall_status.value, "•")
+                print(f"  {status_icon} {req.request_id}  {req.model_id}  "
+                      f"{req.overall_status.value}  {req.requested_at[:10]}  "
+                      f"({req.approved_count}/{req.threshold})")
+    return 0
+
+
+def _cmd_approval_export(args: argparse.Namespace, quiet: bool) -> int:
+    """C3 — export Article 9 evidence bundle."""
+    from squash.approval_workflow import ApprovalWorkflow
+
+    try:
+        with ApprovalWorkflow() as wf:
+            evidence = wf.export_evidence(args.request_id)
+    except ValueError as exc:
+        print(f"approval-export: {exc}", file=sys.stderr)
+        return 1
+
+    blob = json.dumps(evidence, indent=2)
+    output = getattr(args, "appr_output", None)
+    if output:
+        Path(output).write_text(blob)
+        if not quiet:
+            print(f"[squash approval-export] Written to {output}")
+            print(f"  Signatures valid: {evidence['all_signatures_valid']}")
+    else:
+        print(blob)
+    return 0
+
+
+
 def _cmd_chain_attest(args: argparse.Namespace, quiet: bool) -> int:
     """W197 — `squash chain-attest`. Composite chain / pipeline attestation."""
     try:
@@ -5384,6 +6365,113 @@ def _cmd_watch_regulatory(args: argparse.Namespace, quiet: bool) -> int:
         time.sleep(interval_seconds)
 
     return 1 if had_error else 0
+
+
+def _cmd_freeze(args: argparse.Namespace, quiet: bool) -> int:
+    """Sprint 19 W221-W222 — `squash freeze` ★ (Track C / C1).
+
+    Emergency response orchestrator. Exit codes:
+      0  freeze succeeded — every step ok
+      1  freeze partial — registry revoke ok, but >=1 broadcast step failed
+      2  freeze aborted — registry revoke failed (no side-effects performed)
+      3  configuration / argument error
+    """
+    from squash import freeze as freeze_mod
+
+    sub = getattr(args, "fz_command", None)
+    quiet = quiet or bool(getattr(args, "fz_quiet", False))
+
+    if sub == "ledger":
+        entries = freeze_mod.read_ledger(
+            state_dir=getattr(args, "fz_state_dir", None),
+            limit=getattr(args, "fz_limit", None),
+        )
+        if getattr(args, "output_json", False):
+            print(json.dumps(entries, indent=2, sort_keys=True))
+            return 0
+        if not entries:
+            if not quiet:
+                print("(no freeze ledger entries)")
+            return 0
+        for e in entries:
+            print(
+                f"{e.get('logged_at', '?')}  "
+                f"{e.get('freeze_id', '?')}  "
+                f"actor={e.get('actor', '?')}  "
+                f"revoked={len(e.get('revoked_entries', []))}  "
+                f"reason={e.get('reason', '')!r}"
+            )
+        return 0
+
+    if sub == "verify":
+        receipt_path = Path(getattr(args, "receipt_path"))
+        if not receipt_path.exists():
+            print(f"squash freeze verify: {receipt_path} not found", file=sys.stderr)
+            return 3
+        try:
+            receipt_data = json.loads(receipt_path.read_text())
+        except Exception as exc:
+            print(f"squash freeze verify: failed to parse receipt: {exc}", file=sys.stderr)
+            return 3
+        ok, msg = freeze_mod.verify_receipt(receipt_data)
+        if getattr(args, "output_json", False):
+            print(json.dumps({"valid": ok, "message": msg}, indent=2))
+            return 0 if ok else 1
+        if ok:
+            print(f"✓ receipt {receipt_data.get('freeze_id', '?')} verified ({msg})")
+            return 0
+        print(f"✗ receipt verification failed: {msg}", file=sys.stderr)
+        return 1
+
+    # Default: run a freeze.
+    attestation_id = getattr(args, "fz_attestation_id", None)
+    model_path = getattr(args, "fz_model_path", None)
+    if not attestation_id and not model_path:
+        print(
+            "squash freeze: must provide --attestation-id or --model-path",
+            file=sys.stderr,
+        )
+        return 3
+
+    try:
+        receipt = freeze_mod.freeze(
+            attestation_id=attestation_id,
+            model_path=model_path,
+            model_id=getattr(args, "fz_model_id", "") or "",
+            reason=getattr(args, "fz_reason", "") or "",
+            actor=getattr(args, "fz_actor", "") or "",
+            severity=getattr(args, "fz_severity", "critical") or "critical",
+            category=getattr(args, "fz_category", "other") or "other",
+            affected_persons=int(getattr(args, "fz_affected", 0) or 0),
+            incident_dir=getattr(args, "fz_incident_dir", None),
+            state_dir=getattr(args, "fz_state_dir", None),
+            priv_key_pem=getattr(args, "fz_priv_key", None),
+            write_incident=not bool(getattr(args, "fz_no_incident", False)),
+            webhook_timeout_s=float(getattr(args, "fz_webhook_timeout", 10.0)),
+        )
+    except ValueError as exc:
+        print(f"squash freeze: {exc}", file=sys.stderr)
+        return 3
+
+    fmt = (getattr(args, "fz_format", "text") or "text").lower()
+    out_path = getattr(args, "fz_out", None)
+    if fmt == "json":
+        body = receipt.to_json()
+    elif fmt == "md":
+        body = "```\n" + receipt.summary() + "\n```\n"
+    else:
+        body = receipt.summary()
+
+    if out_path:
+        Path(out_path).write_text(body)
+        if not quiet:
+            print(f"freeze receipt written to {out_path}")
+    elif not quiet:
+        print(body)
+
+    if not receipt.revoke_ok:
+        return 2
+    return 0 if receipt.all_ok else 1
 
 
 def _cmd_registry_gate(args: argparse.Namespace, quiet: bool) -> int:
@@ -7706,6 +8794,844 @@ def _cmd_gitops(args: argparse.Namespace, quiet: bool) -> int:
         return 1
 
 
+def _cmd_attest_identity(args: argparse.Namespace, quiet: bool) -> int:
+    """W226-W228 / D2 — AI identity attestation."""
+    from squash.identity_governor import (
+        IdentityGovernor,
+        IdentityPrincipal,
+        LeastPrivilegePolicy,
+        PrincipalType,
+        Provider,
+        ViolationSeverity,
+        load_attestation,
+        scaffold_policy,
+        verify_attestation,
+    )
+
+    sub = getattr(args, "ai_command", None)
+
+    if sub == "attest":
+        # Load principal
+        principal: IdentityPrincipal | None = None
+        if args.principal_file:
+            d = json.loads(Path(args.principal_file).read_text())
+            principal = _principal_from_dict(d)
+        elif args.provider == "aws-iam" and args.principal_name:
+            from squash.integrations.aws_iam import AWSIAMAdapter
+            principal = AWSIAMAdapter(region=args.aws_region).get_role(args.principal_name)
+        elif args.provider == "azure-ad" and args.principal_name:
+            token = args.api_token or os.environ.get("AZURE_ACCESS_TOKEN", "")
+            from squash.integrations.azure_ad import AzureADAdapter
+            principal = AzureADAdapter(access_token=token, tenant_id=args.tenant_id).get_principal(args.principal_name)
+        elif args.provider == "okta" and args.principal_name:
+            token = args.api_token or os.environ.get("OKTA_API_TOKEN", "")
+            from squash.integrations.okta import OktaAdapter
+            principal = OktaAdapter(domain=args.domain, api_token=token).get_app(args.principal_name)
+        else:
+            print("error: specify --principal-file or --provider + --principal", file=sys.stderr)
+            return 1
+
+        policy = None
+        if args.policy_file:
+            policy = LeastPrivilegePolicy.from_dict(json.loads(Path(args.policy_file).read_text()))
+
+        priv_key = Path(args.priv_key) if args.priv_key else None
+        cert = IdentityGovernor(priv_key_path=priv_key).attest(principal, policy)
+
+        if args.ai_format == "md":
+            text = cert.to_markdown()
+        elif args.ai_format == "text":
+            text = cert.summary()
+        else:
+            text = cert.to_json()
+
+        if args.out:
+            Path(args.out).write_text(text, encoding="utf-8")
+            if not quiet:
+                print(f"✓ identity attestation written to {args.out}")
+                print(cert.summary())
+        else:
+            print(text)
+
+        if args.fail_on_violation and any(
+            v.severity == ViolationSeverity.CRITICAL for v in cert.violations
+        ):
+            return 2
+        return 0
+
+    if sub == "verify":
+        try:
+            cert = load_attestation(Path(args.cert_path))
+        except Exception as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 1
+        ok, msg = verify_attestation(cert)
+        if args.output_json:
+            print(json.dumps({"ok": ok, "message": msg, "cert_id": cert.cert_id}, indent=2))
+        else:
+            print(f"{'✓' if ok else '✗'} {cert.cert_id}: {msg}")
+        return 0 if ok else 2
+
+    if sub == "list-principals":
+        token = args.api_token
+        principals = []
+        if args.provider == "aws-iam":
+            from squash.integrations.aws_iam import AWSIAMAdapter
+            principals = AWSIAMAdapter(region=args.aws_region, tag_filter=args.filter_tag).list_principals()
+        elif args.provider == "azure-ad":
+            token = token or os.environ.get("AZURE_ACCESS_TOKEN", "")
+            from squash.integrations.azure_ad import AzureADAdapter
+            principals = AzureADAdapter(access_token=token, tenant_id=args.tenant_id).list_principals(args.filter_tag)
+        elif args.provider == "okta":
+            token = token or os.environ.get("OKTA_API_TOKEN", "")
+            from squash.integrations.okta import OktaAdapter
+            principals = OktaAdapter(domain=args.domain, api_token=token).list_principals(args.filter_tag)
+
+        if args.output_json:
+            print(json.dumps([p.to_dict() for p in principals], indent=2))
+        else:
+            print(f"{len(principals)} principal(s) [{args.provider}]")
+            for p in principals:
+                mfa = "MFA✓" if p.mfa_enabled else "MFA✗"
+                age = f"{p.last_rotation_days}d" if p.last_rotation_days is not None else "?d"
+                print(f"  {p.name}  scopes={len(p.scopes)}  {mfa}  rotation={age}")
+        return 0
+
+    if sub == "policy-init":
+        policy_dict = scaffold_policy(args.principal_name)
+        text = json.dumps(policy_dict, indent=2)
+        if args.out:
+            Path(args.out).write_text(text, encoding="utf-8")
+            if not quiet:
+                print(f"✓ policy scaffold written to {args.out}")
+        else:
+            print(text)
+        return 0
+
+    print("squash attest-identity: specify a subcommand — attest | verify | list-principals | policy-init")
+    return 1
+
+
+def _principal_from_dict(d: dict) -> "IdentityPrincipal":
+    """Deserialise a principal dict (from --principal-file)."""
+    from squash.identity_governor import IdentityPrincipal, PrincipalType, Provider
+    return IdentityPrincipal(
+        principal_id=d.get("principal_id", ""),
+        name=d.get("name", ""),
+        principal_type=PrincipalType(d.get("principal_type", "unknown")),
+        provider=Provider(d.get("provider", "generic")),
+        scopes=d.get("scopes", []),
+        mfa_enabled=bool(d.get("mfa_enabled", False)),
+        token_type=d.get("token_type", "unknown"),
+        last_rotation_days=d.get("last_rotation_days"),
+        created_at=d.get("created_at"),
+        last_used_at=d.get("last_used_at"),
+        tags=d.get("tags", {}),
+        raw_metadata=d.get("raw_metadata", {}),
+    )
+
+
+def _cmd_hallucination_monitor(args: argparse.Namespace, quiet: bool) -> int:
+    """W267-W269 / C10 — Runtime hallucination monitor."""
+    from squash.hallucination_monitor import (
+        BreachEngine,
+        InferenceRequest,
+        RequestSampler,
+        RollingWindow,
+        build_monitor_report,
+        notify_breach,
+        run_monitor,
+        score_batch,
+        score_live_response,
+    )
+
+    sub = getattr(args, "hm_command", None)
+
+    if sub == "run":
+        state_dir = Path(args.state_dir) if args.state_dir else None
+        breaches: list = []
+
+        def _on_breach(ev):
+            breaches.append(ev)
+            notify_breach(ev)
+            if not quiet:
+                print(f"\n🚨 {ev.summary()}", flush=True)
+
+        run_monitor(
+            endpoint=args.endpoint,
+            model_id=args.model_id,
+            sample_rate=args.sample_rate,
+            threshold=args.threshold,
+            window_minutes=args.window_minutes,
+            poll_interval=args.poll_interval,
+            state_dir=state_dir,
+            on_breach=_on_breach,
+            once=args.once,
+        )
+
+        window = RollingWindow(state_dir=state_dir)
+        report = build_monitor_report(
+            window, threshold=args.threshold,
+            window_minutes=args.window_minutes, model_id=args.model_id,
+        )
+        if args.hm_format == "json" or args.once:
+            print(json.dumps(report, indent=2))
+        elif not quiet:
+            rate = report["hallucination_rate"]
+            n    = report["sample_count"]
+            status = report["status"]
+            print(f"{'✓' if status == 'OK' else '✗'} [{status}] "
+                  f"rate={rate:.1%} n={n} threshold={args.threshold:.1%}")
+        return 2 if breaches else 0
+
+    if sub == "score":
+        score, hallucinated, breakdown = score_live_response(
+            response=args.response,
+            context=args.context,
+            ground_truth=args.ground_truth,
+        )
+        if args.output_json:
+            print(json.dumps({
+                "score": round(score, 4),
+                "hallucinated": hallucinated,
+                "breakdown": breakdown,
+            }, indent=2))
+        else:
+            icon = "❌ HALLUCINATED" if hallucinated else "✅ faithful"
+            print(f"{icon} (score={score:.3f})")
+        return 2 if hallucinated else 0
+
+    if sub == "status":
+        state_dir = Path(args.state_dir) if args.state_dir else None
+        window = RollingWindow(state_dir=state_dir)
+        report = build_monitor_report(
+            window, threshold=args.threshold,
+            window_minutes=args.window_minutes,
+        )
+        if args.output_json:
+            print(json.dumps(report, indent=2))
+        else:
+            rate   = report["hallucination_rate"]
+            n      = report["sample_count"]
+            status = report["status"]
+            ci_lo  = report["ci_low"]
+            ci_hi  = report["ci_high"]
+            icon   = "✓" if status == "OK" else ("⚠" if status == "WARN" else "✗")
+            print(f"{icon} [{status}] rate={rate:.1%} CI=[{ci_lo:.1%},{ci_hi:.1%}] "
+                  f"n={n} threshold={args.threshold:.1%}")
+        return 2 if report["status"] == "BREACH" else 0
+
+    if sub == "batch":
+        data = json.loads(Path(args.requests_file).read_text())
+        reqs = [
+            InferenceRequest(
+                prompt=d.get("prompt", ""),
+                response=d.get("response", ""),
+                context=d.get("context", ""),
+                ground_truth=d.get("ground_truth", ""),
+                model_id=d.get("model_id", args.model_id),
+            )
+            for d in data
+        ]
+        result = score_batch(reqs, threshold=args.threshold, model_id=args.model_id)
+        if args.output_json:
+            print(json.dumps(result, indent=2))
+        else:
+            rate   = result["hallucination_rate"]
+            passes = result["passes_threshold"]
+            icon   = "✓" if passes else "✗"
+            print(f"{icon} batch: rate={rate:.1%} n={result['sample_count']} "
+                  f"threshold={args.threshold:.1%} {'PASS' if passes else 'FAIL'}")
+            if result["breach"]:
+                print(f"  BREACH: {result['breach']['summary'] if 'summary' in result['breach'] else ''}")
+        if args.fail_on_breach and not result["passes_threshold"]:
+            return 2
+        return 0
+
+    print("squash hallucination-monitor: specify a subcommand — run | score | status | batch")
+    return 1
+
+
+def _cmd_hallucination_attest(args: argparse.Namespace, quiet: bool) -> int:
+    """W251-W252 / C7 — Hallucination rate attestation."""
+    from squash.hallucination_attest import (
+        HallucinationAttester,
+        get_probes,
+        load_attestation,
+        load_custom_probes,
+        verify_certificate,
+    )
+
+    sub = getattr(args, "ha_command", None)
+
+    if sub == "attest":
+        probes = None
+        if args.probes_file:
+            probes = load_custom_probes(Path(args.probes_file))
+        elif args.probe_limit:
+            probes = get_probes(args.domain, limit=args.probe_limit)
+
+        try:
+            cert = HallucinationAttester().attest(
+                model_endpoint=args.model_endpoint,
+                domain=args.domain,
+                model_id=args.model_id,
+                max_rate=args.max_rate,
+                probes=probes,
+                priv_key_path=Path(args.priv_key) if args.priv_key else None,
+            )
+        except ValueError as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 1
+
+        if args.ha_format == "md":
+            text = cert.to_markdown()
+        elif args.ha_format == "text":
+            text = cert.summary()
+        else:
+            text = cert.to_json()
+
+        if args.out:
+            Path(args.out).write_text(text, encoding="utf-8")
+            if not quiet:
+                print(f"✓ hallucination certificate written to {args.out}")
+                print(cert.summary())
+        else:
+            print(text)
+
+        if args.fail_on_exceed and not cert.passes_threshold:
+            if not quiet and args.ha_format != "text":
+                print(
+                    f"error: hallucination rate {cert.hallucination_rate:.2%} exceeds "
+                    f"threshold {cert.threshold:.2%}",
+                    file=sys.stderr,
+                )
+            return 2
+        return 0
+
+    if sub == "verify":
+        try:
+            cert = load_attestation(Path(args.cert_path))
+        except Exception as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 1
+        ok, msg = verify_certificate(cert)
+        if args.output_json:
+            print(json.dumps({"ok": ok, "message": msg, "cert_id": cert.cert_id}, indent=2))
+        else:
+            print(f"{'✓' if ok else '✗'} {cert.cert_id}: {msg}")
+        return 0 if ok else 2
+
+    if sub == "show":
+        try:
+            cert = load_attestation(Path(args.cert_path))
+        except Exception as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 1
+        print(cert.to_markdown())
+        return 0
+
+    if sub == "list-probes":
+        probes = get_probes(args.domain)
+        if args.output_json:
+            print(json.dumps([{
+                "probe_id": p.probe_id, "domain": p.domain,
+                "question": p.question, "difficulty": p.difficulty,
+            } for p in probes], indent=2))
+        else:
+            print(f"Domain: {args.domain} — {len(probes)} probes")
+            for p in probes[:5]:
+                print(f"  [{p.difficulty:6s}] {p.probe_id}: {p.question[:70]}")
+            if len(probes) > 5:
+                print(f"  ... and {len(probes) - 5} more")
+        return 0
+
+    print("squash hallucination-attest: specify a subcommand — attest | verify | show | list-probes")
+    return 1
+
+
+def _cmd_detect_washing(args: argparse.Namespace, quiet: bool) -> int:
+    """W223-W225 / C2 — AI washing detection."""
+    from squash.washing_detector import (
+        AttestationEvidence,
+        OverallVerdict,
+        WashingDetector,
+        load_evidence,
+        load_report,
+    )
+
+    sub = getattr(args, "aw_command", None)
+
+    if sub == "scan":
+        # Resolve document paths (expand directories)
+        doc_paths: list[Path] = []
+        for raw in args.doc_paths:
+            p = Path(raw)
+            if p.is_dir():
+                for ext in ("*.md", "*.txt", "*.html", "*.pdf"):
+                    doc_paths.extend(sorted(p.rglob(ext)))
+            elif p.exists():
+                doc_paths.append(p)
+            else:
+                print(f"warning: {p} not found — skipped", file=sys.stderr)
+
+        if not doc_paths:
+            print("error: no readable documents found", file=sys.stderr)
+            return 1
+
+        evidence = load_evidence(
+            master_record_path=Path(args.master_record) if args.master_record else None,
+            bias_audit_path=Path(args.bias_audit) if args.bias_audit else None,
+            data_lineage_path=Path(args.data_lineage) if args.data_lineage else None,
+            model_id=args.model_id,
+        )
+
+        report = WashingDetector().scan(doc_paths, evidence=evidence, model_id=args.model_id)
+        _output_washing_report(report, args.aw_format, args.out, quiet)
+
+        fail_threshold = OverallVerdict(args.fail_on)
+        if report.verdict >= fail_threshold:
+            if not quiet and args.aw_format == "text":
+                print(
+                    f"error: verdict {report.verdict.value.upper()} "
+                    f">= --fail-on {fail_threshold.value.upper()}",
+                    file=sys.stderr,
+                )
+            return 2
+        return 0
+
+    if sub == "report":
+        try:
+            report = load_report(Path(args.report_path))
+        except Exception as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 1
+        _output_washing_report(report, args.aw_format, None, quiet)
+        return 0
+
+    print("squash detect-washing: specify a subcommand — scan | report")
+    return 1
+
+
+def _output_washing_report(report: Any, fmt: str, out_path: str | None, quiet: bool) -> None:
+    if fmt == "json":
+        text = report.to_json()
+    elif fmt == "md":
+        text = report.to_markdown()
+    else:
+        lines = [report.summary(), ""]
+        for f in report.findings:
+            lines.append(f"  [{f.severity.value.upper()}] {f.rule_id}: {f.title}")
+            lines.append(f"      claim: \"{f.claim.raw_text[:80]}\"")
+            lines.append(f"      {f.legal_risk[:120]}")
+        text = "\n".join(lines)
+    if out_path:
+        Path(out_path).write_text(text, encoding="utf-8")
+        if not quiet:
+            print(f"✓ AI washing report written to {out_path}")
+    else:
+        print(text)
+
+
+def _cmd_license_check(args: argparse.Namespace, quiet: bool) -> int:
+    """W196 / B10 — Licence conflict detection."""
+    from squash.license_conflict import (
+        LicenseConflictScanner,
+        OverallRisk,
+        UseCase,
+        load_report,
+        resolve_spdx,
+    )
+
+    sub = getattr(args, "lc_command", None)
+
+    if sub == "scan":
+        p = Path(args.project_path)
+        if not p.exists():
+            print(f"error: {p} not found", file=sys.stderr)
+            return 1
+        use_case = UseCase(args.use_case)
+        report = LicenseConflictScanner().scan(p, use_case=use_case)
+        _output_lc_report(report, args.lc_format, args.out, quiet)
+        fail_level = OverallRisk(args.fail_on)
+        if report.overall_risk >= fail_level:
+            if not quiet and args.lc_format == "text":
+                print(
+                    f"error: overall risk {report.overall_risk.value.upper()} "
+                    f">= --fail-on {fail_level.value.upper()}",
+                    file=sys.stderr,
+                )
+            return 2
+        return 0
+
+    if sub == "explain":
+        info = resolve_spdx(args.spdx_id)
+        print(f"SPDX ID:       {info.spdx_id}")
+        print(f"Name:          {info.name}")
+        print(f"Kind:          {info.kind.value}")
+        print(f"OSI approved:  {info.osi_approved}")
+        print(f"Patent grant:  {info.patent_grant}")
+        print(f"Commercial OK: {info.commercial_ok}")
+        print(f"Copyleft/SA:   {info.source_required or info.share_alike}")
+        print(f"SaaS trigger:  {info.saas_triggers}")
+        if info.legal_basis:
+            print(f"Legal basis:   {info.legal_basis}")
+        return 0
+
+    if sub == "report":
+        try:
+            report = load_report(Path(args.report_path))
+        except Exception as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 1
+        _output_lc_report(report, args.lc_format, None, quiet)
+        return 0
+
+    print("squash license-check: specify a subcommand — scan | explain | report")
+    return 1
+
+
+def _output_lc_report(report: Any, fmt: str, out_path: str | None, quiet: bool) -> None:
+    if fmt == "json":
+        text = report.to_json()
+    elif fmt == "md":
+        text = report.to_markdown()
+    else:
+        lines = [report.summary(), ""]
+        for f in report.findings:
+            lines.append(f"  [{f.severity.value.upper()}] {f.rule_id}: {f.title}")
+            lines.append(f"      {f.component_a.name} ({f.component_a.spdx_id})")
+            lines.append(f"      → {f.remediation[:100]}")
+        if report.obligations:
+            lines += ["", "Obligations:"]
+            for o in report.obligations[:5]:
+                lines.append(f"  • {o[:120]}")
+        text = "\n".join(lines)
+    if out_path:
+        Path(out_path).write_text(text, encoding="utf-8")
+        if not quiet:
+            print(f"✓ licence conflict report written to {out_path}")
+    else:
+        print(text)
+
+
+def _cmd_data_poison(args: argparse.Namespace, quiet: bool) -> int:
+    """W195 / B9 — Training data poisoning detection."""
+    from squash.data_poison import (
+        DataPoisonScanner,
+        RiskLevel,
+        load_report,
+    )
+
+    sub = getattr(args, "dp_command", None)
+
+    if sub == "scan":
+        dataset_path = Path(args.dataset_path)
+        if not dataset_path.exists():
+            print(f"error: {dataset_path} not found", file=sys.stderr)
+            return 1
+
+        provenance_data = None
+        if args.provenance_path:
+            try:
+                provenance_data = json.loads(Path(args.provenance_path).read_text())
+            except Exception as exc:
+                print(f"warning: could not read provenance file: {exc}", file=sys.stderr)
+
+        report = DataPoisonScanner().scan(dataset_path, provenance_data=provenance_data)
+        _output_poison_report(report, args.scan_format, args.out, quiet)
+
+        fail_threshold = RiskLevel(args.fail_on)
+        if report.risk_level >= fail_threshold:
+            if not quiet and args.scan_format == "text":
+                print(
+                    f"error: risk level {report.risk_level.value.upper()} "
+                    f">= --fail-on {fail_threshold.value.upper()}",
+                    file=sys.stderr,
+                )
+            return 2
+        return 0
+
+    if sub == "report":
+        try:
+            report = load_report(Path(args.report_path))
+        except Exception as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 1
+        _output_poison_report(report, args.report_format, None, quiet)
+        return 0
+
+    print("squash data-poison: specify a subcommand — scan | report")
+    return 1
+
+
+def _output_poison_report(report: Any, fmt: str, out_path: str | None, quiet: bool) -> None:
+    from squash.data_poison import DataPoisonReport
+    if fmt == "json":
+        text = report.to_json()
+    elif fmt == "md":
+        text = report.to_markdown()
+    else:
+        # Human-readable text summary
+        lines = [report.summary(), ""]
+        for c in report.checks:
+            icon = "✓" if c.passed else "✗"
+            lines.append(f"  {icon} {c.name} [{c.severity.value}] score={c.score:.3f}")
+            for e in c.evidence[:2]:
+                lines.append(f"      {e}")
+        if report.remediations:
+            lines += ["", "Remediations:"]
+            for r in report.remediations[:3]:
+                lines.append(f"  • {r[:120]}")
+        text = "\n".join(lines)
+
+    if out_path:
+        Path(out_path).write_text(text, encoding="utf-8")
+        if not quiet:
+            print(f"✓ report written to {out_path}")
+    else:
+        print(text)
+
+
+def _cmd_drift_cert(args: argparse.Namespace, quiet: bool) -> int:
+    """W194 / B7 — Drift SLA Certificate issuer and verifier."""
+    from squash.drift_certificate import (
+        DriftCertificateIssuer,
+        DriftSLASpec,
+        ScoreLedger,
+        default_ledger_path,
+        load_certificate,
+    )
+
+    sub = getattr(args, "dc_command", None)
+
+    if sub == "ingest":
+        path = Path(args.master_record_path)
+        if not path.exists():
+            print(f"error: {path} not found", file=sys.stderr)
+            return 1
+        ledger_path = Path(args.ledger_path) if args.ledger_path else default_ledger_path()
+        ledger = ScoreLedger(ledger_path=ledger_path)
+        snap = ledger.ingest(path)
+        if not quiet:
+            print(f"✓ ingested {snap.attestation_id or snap.model_id} @ {snap.timestamp[:10]} (score={snap.score})")
+        return 0
+
+    if sub == "issue":
+        ledger_path = Path(args.ledger_path) if args.ledger_path else default_ledger_path()
+        ledger = ScoreLedger(ledger_path=ledger_path)
+        spec = DriftSLASpec(
+            model_id=args.model_id,
+            framework=args.framework,
+            min_score=args.min_score,
+            window_days=args.window_days,
+            max_violation_rate=args.max_violation_rate,
+            min_snapshots=args.min_snapshots,
+            org=args.org,
+        )
+        priv_key = Path(args.priv_key) if args.priv_key else None
+        issuer = DriftCertificateIssuer(priv_key_path=priv_key)
+        cert = issuer.issue(spec, ledger)
+
+        fmt = args.issue_format
+        if fmt == "md":
+            text = cert.to_markdown()
+        elif fmt == "html":
+            text = cert.to_html()
+        else:
+            text = cert.to_json()
+
+        if args.out:
+            Path(args.out).write_text(text, encoding="utf-8")
+            if not quiet:
+                icon = "✅" if cert.result.passes_sla else "❌"
+                print(f"{icon} certificate {cert.cert_id} written to {args.out} (rate={cert.result.compliance_rate:.1%})")
+        else:
+            print(text)
+        return 0 if cert.result.passes_sla else 2
+
+    if sub == "verify":
+        path = Path(args.cert_path)
+        if not path.exists():
+            print(f"error: {path} not found", file=sys.stderr)
+            return 1
+        cert = load_certificate(path)
+        ok, msg = DriftCertificateIssuer.verify(cert)
+        if args.output_json:
+            print(json.dumps({"ok": ok, "message": msg, "cert_id": cert.cert_id}, indent=2))
+        else:
+            icon = "✓" if ok else "✗"
+            print(f"{icon} {cert.cert_id}: {msg}")
+        return 0 if ok else 2
+
+    if sub == "show":
+        path = Path(args.cert_path)
+        if not path.exists():
+            print(f"error: {path} not found", file=sys.stderr)
+            return 1
+        cert = load_certificate(path)
+        print(cert.to_markdown())
+        return 0
+
+    if sub == "export":
+        path = Path(args.cert_path)
+        if not path.exists():
+            print(f"error: {path} not found", file=sys.stderr)
+            return 1
+        cert = load_certificate(path)
+        fmt = args.export_format
+        if fmt == "md":
+            text = cert.to_markdown()
+        elif fmt == "html":
+            text = cert.to_html()
+        elif fmt == "pdf":
+            try:
+                from weasyprint import HTML as WeasyprintHTML  # type: ignore
+            except ImportError:
+                print("error: weasyprint required for PDF export: pip install weasyprint", file=sys.stderr)
+                return 2
+            out_path = Path(args.out) if args.out else Path(f"{cert.cert_id}.pdf")
+            WeasyprintHTML(string=cert.to_html()).write_pdf(str(out_path))
+            if not quiet:
+                print(f"✓ PDF written to {out_path}")
+            return 0
+        else:
+            text = cert.to_json()
+
+        out_path = Path(args.out) if args.out else Path(f"{cert.cert_id}.{fmt}")
+        out_path.write_text(text, encoding="utf-8")
+        if not quiet:
+            print(f"✓ {fmt.upper()} written to {out_path}")
+        return 0
+
+    print("squash drift-cert: specify a subcommand — ingest | issue | verify | show | export")
+    return 1
+
+
+def _cmd_anchor(args: argparse.Namespace, quiet: bool) -> int:
+    """W193 / B6 — audit-trail blockchain anchoring."""
+    from squash.anchor import (
+        AnchorLedger,
+        EthereumAnchor,
+        LocalAnchor,
+        OpenTimestampsAnchor,
+    )
+
+    ledger_dir = Path(args.ledger_dir) if getattr(args, "ledger_dir", None) else None
+    ledger = AnchorLedger(root_dir=ledger_dir)
+    sub = getattr(args, "anchor_command", None)
+
+    if sub == "add":
+        path = Path(args.master_record_path)
+        if not path.exists():
+            print(f"error: master record not found: {path}", file=sys.stderr)
+            return 1
+        staged = ledger.stage(path)
+        if not quiet:
+            print(f"✓ staged {staged.attestation_id} ({staged.record_hash[:12]}…) — {len(ledger.staged())} pending")
+        return 0
+
+    if sub == "commit":
+        backend_name = args.backend
+        if backend_name == "local":
+            if not args.priv_key:
+                print("error: --priv-key required for local backend", file=sys.stderr)
+                return 1
+            backend = LocalAnchor(priv_key_path=Path(args.priv_key), pub_key_path=Path(args.pub_key) if args.pub_key else None)
+        elif backend_name == "opentimestamps":
+            backend = OpenTimestampsAnchor()
+        elif backend_name == "ethereum":
+            rpc_url = args.rpc_url or os.environ.get("SQUASH_ETH_RPC_URL")
+            eth_key = args.eth_key or os.environ.get("SQUASH_ETH_KEY")
+            if not rpc_url or not eth_key:
+                print("error: ethereum backend requires --rpc-url and --eth-key (or $SQUASH_ETH_RPC_URL, $SQUASH_ETH_KEY)", file=sys.stderr)
+                return 1
+            backend = EthereumAnchor(rpc_url=rpc_url, private_key=eth_key)
+        else:
+            print(f"error: unknown backend {backend_name!r}", file=sys.stderr)
+            return 1
+
+        try:
+            entry = ledger.commit(backend)
+        except RuntimeError as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 1
+        except FileNotFoundError as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 2
+
+        if args.output_json:
+            print(json.dumps(entry.to_dict(), indent=2, sort_keys=True))
+            return 0
+        if not quiet:
+            a = entry.anchor
+            print(f"✓ anchored {a.leaf_count} attestation(s) — backend={a.backend} root={a.root[:16]}… anchor_id={a.anchor_id}")
+            print(f"  ledger: {ledger.ledger_path}")
+            for s in entry.attestations:
+                print(f"   • {s.attestation_id}  ({s.record_hash[:12]}…)")
+        return 0
+
+    if sub == "verify":
+        ok, msg = ledger.verify(args.attestation_id)
+        if args.output_json:
+            print(json.dumps({"ok": ok, "message": msg, "attestation_id": args.attestation_id}, indent=2))
+            return 0 if ok else 2
+        icon = "✓" if ok else "✗"
+        print(f"{icon} {args.attestation_id}: {msg}")
+        return 0 if ok else 2
+
+    if sub == "proof":
+        try:
+            doc = ledger.export_proof(args.attestation_id)
+        except KeyError as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 1
+        text = json.dumps(doc, indent=2, sort_keys=True)
+        if args.out:
+            Path(args.out).write_text(text)
+            if not quiet:
+                print(f"✓ proof written to {args.out}")
+        return 0
+
+    if sub == "list":
+        entries = ledger.entries()
+        if args.output_json:
+            print(json.dumps([e.to_dict() for e in entries], indent=2, sort_keys=True))
+            return 0
+        if not entries:
+            print("(no anchors committed)")
+            return 0
+        for e in entries:
+            a = e.anchor
+            print(f"{a.iso_timestamp}  {a.anchor_id}  backend={a.backend:14s}  leaves={a.leaf_count:>4}  root={a.root[:16]}…")
+        return 0
+
+    if sub == "status":
+        staged = ledger.staged()
+        entries = ledger.entries()
+        last = entries[-1] if entries else None
+        if args.output_json:
+            print(json.dumps({
+                "staged": [s.to_dict() for s in staged],
+                "last_anchor": last.anchor.to_dict() if last else None,
+                "ledger_dir": str(ledger.root_dir),
+            }, indent=2, sort_keys=True))
+            return 0
+        print(f"ledger: {ledger.root_dir}")
+        print(f"staged: {len(staged)} attestation(s) pending")
+        for s in staged:
+            print(f"   • {s.attestation_id}  ({s.record_hash[:12]}…)")
+        if last:
+            a = last.anchor
+            print(f"last anchor: {a.iso_timestamp}  {a.anchor_id}  backend={a.backend}  leaves={a.leaf_count}")
+        else:
+            print("last anchor: (none)")
+        return 0
+
+    print("squash anchor: specify a subcommand — add | commit | verify | proof | list | status")
+    return 1
+
+
 def _cmd_gateway_config(args, quiet):
     """B5 — Emit Kong / AWS API Gateway runtime gate config or source."""
     from squash.integrations.gateway import (
@@ -8000,6 +9926,22 @@ def main() -> None:
         sys.exit(_cmd_telemetry(args, quiet))
     elif args.command == "gitops":
         sys.exit(_cmd_gitops(args, quiet))
+    elif args.command == "attest-identity":
+        sys.exit(_cmd_attest_identity(args, quiet))
+    elif args.command == "hallucination-monitor":
+        sys.exit(_cmd_hallucination_monitor(args, quiet))
+    elif args.command == "hallucination-attest":
+        sys.exit(_cmd_hallucination_attest(args, quiet))
+    elif args.command == "detect-washing":
+        sys.exit(_cmd_detect_washing(args, quiet))
+    elif args.command == "license-check":
+        sys.exit(_cmd_license_check(args, quiet))
+    elif args.command == "data-poison":
+        sys.exit(_cmd_data_poison(args, quiet))
+    elif args.command == "drift-cert":
+        sys.exit(_cmd_drift_cert(args, quiet))
+    elif args.command == "anchor":
+        sys.exit(_cmd_anchor(args, quiet))
     elif args.command == "gateway-config":
         sys.exit(_cmd_gateway_config(args, quiet))
     elif args.command == "scan-adapter":
@@ -8008,6 +9950,20 @@ def main() -> None:
         sys.exit(_cmd_chain_attest(args, quiet))
     elif args.command == "registry-gate":
         sys.exit(_cmd_registry_gate(args, quiet))
+    elif args.command == "attest-carbon":
+        sys.exit(_cmd_attest_carbon(args, quiet))
+    elif args.command == "deprecation-watch":
+        sys.exit(_cmd_deprecation_watch(args, quiet))
+    elif args.command == "request-approval":
+        sys.exit(_cmd_request_approval(args, quiet))
+    elif args.command == "approve":
+        sys.exit(_cmd_approve(args, quiet))
+    elif args.command == "approval-status":
+        sys.exit(_cmd_approval_status(args, quiet))
+    elif args.command == "approval-list":
+        sys.exit(_cmd_approval_list(args, quiet))
+    elif args.command == "approval-export":
+        sys.exit(_cmd_approval_export(args, quiet))
     elif args.command == "digest":
         sys.exit(_cmd_digest(args, quiet))
     elif args.command == "genealogy":
@@ -8020,6 +9976,8 @@ def main() -> None:
         sys.exit(_cmd_simulate_audit(args, quiet))
     elif args.command == "watch-regulatory":
         sys.exit(_cmd_watch_regulatory(args, quiet))
+    elif args.command == "freeze":
+        sys.exit(_cmd_freeze(args, quiet))
     else:
         parser.print_help()
         sys.exit(1)

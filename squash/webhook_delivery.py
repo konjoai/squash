@@ -60,6 +60,7 @@ log = logging.getLogger(__name__)
 
 class WebhookEvent(str, Enum):
     ATTESTATION_COMPLETE = "attestation.complete"
+    ATTESTATION_FROZEN   = "attestation.frozen"
     VIOLATION_DETECTED   = "violation.detected"
     DRIFT_DETECTED       = "drift.detected"
     VEX_ALERT            = "vex.alert"

@@ -1,0 +1,12 @@
+# Build artefacts
+terraform-provider-squash
+*.test
+coverage.out
+
+# Terraform local state from example runs
+**/.terraform/
+**/.terraform.lock.hcl
+**/terraform.tfstate
+**/terraform.tfstate.backup
+**/*.tfvars
+!**/*.tfvars.example
