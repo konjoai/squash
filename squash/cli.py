@@ -2060,6 +2060,68 @@ def _build_parser() -> argparse.ArgumentParser:
     go_annotate.add_argument("--policy", default="eu-ai-act", help="Policy name (default: eu-ai-act)")
     go_annotate.add_argument("--passed", action="store_true", default=True)
 
+    # ── W226-W228 / D2 — AI Identity Attestation ──────────────────────────────
+    ai_cmd = sub.add_parser(
+        "attest-identity",
+        help="AI identity attestation — least-privilege analysis for AI agents (92% lack visibility)",
+        description=(
+            "Attest the identity configuration of an AI agent or service account.\n"
+            "Verifies scopes, rotation age, MFA, and least-privilege policy compliance.\n"
+            "Providers: AWS IAM · Azure AD · Okta\n\n"
+            "Examples:\n"
+            "  squash attest-identity attest --provider aws-iam --principal ai-agent-prod\n"
+            "  squash attest-identity attest --provider okta --domain acme.okta.com --principal ai-bot\n"
+            "  squash attest-identity attest --principal-file principal.json --policy policy.json\n"
+            "  squash attest-identity list-principals --provider aws-iam\n"
+            "  squash attest-identity policy-init --principal ai-agent-prod\n"
+            "  squash attest-identity verify cert.json\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    ai_sub = ai_cmd.add_subparsers(dest="ai_command")
+
+    ai_attest = ai_sub.add_parser("attest", help="Attest an AI principal's identity configuration")
+    ai_attest.add_argument("--provider", choices=["aws-iam", "azure-ad", "okta", "file"],
+                            default="file", help="Identity provider (default: file)")
+    ai_attest.add_argument("--principal", default="", dest="principal_name",
+                            help="Principal name / role ARN / app label to attest")
+    ai_attest.add_argument("--principal-file", default=None, dest="principal_file",
+                            help="JSON file containing a pre-built IdentityPrincipal")
+    ai_attest.add_argument("--policy", default=None, dest="policy_file",
+                            help="Least-privilege policy JSON file")
+    ai_attest.add_argument("--priv-key", default=None, dest="priv_key",
+                            help="Ed25519 .priv.pem for signing")
+    ai_attest.add_argument("--out", default=None, help="Write certificate to PATH")
+    ai_attest.add_argument("--format", default="json", choices=["json", "md", "text"],
+                            dest="ai_format")
+    ai_attest.add_argument("--fail-on-violation", action="store_true", dest="fail_on_violation",
+                            help="Exit 2 if any CRITICAL violation found")
+    # Provider-specific
+    ai_attest.add_argument("--domain", default="", help="Okta domain (e.g. acme.okta.com)")
+    ai_attest.add_argument("--token", default="", dest="api_token",
+                            help="API token (or set OKTA_API_TOKEN / AZURE_ACCESS_TOKEN)")
+    ai_attest.add_argument("--tenant-id", default="", dest="tenant_id",
+                            help="Azure AD tenant ID")
+    ai_attest.add_argument("--region", default="us-east-1", dest="aws_region")
+
+    ai_verify = ai_sub.add_parser("verify", help="Verify an attestation certificate's signature")
+    ai_verify.add_argument("cert_path")
+    ai_verify.add_argument("--json", action="store_true", dest="output_json")
+
+    ai_list = ai_sub.add_parser("list-principals", help="List AI principals from a provider")
+    ai_list.add_argument("--provider", required=True, choices=["aws-iam", "azure-ad", "okta"])
+    ai_list.add_argument("--filter", default="", dest="filter_tag",
+                          help="Filter by tag value / label substring")
+    ai_list.add_argument("--domain", default="", help="Okta domain")
+    ai_list.add_argument("--token", default="", dest="api_token")
+    ai_list.add_argument("--tenant-id", default="", dest="tenant_id")
+    ai_list.add_argument("--region", default="us-east-1", dest="aws_region")
+    ai_list.add_argument("--json", action="store_true", dest="output_json")
+
+    ai_policy = ai_sub.add_parser("policy-init", help="Scaffold a least-privilege policy JSON file")
+    ai_policy.add_argument("--principal", default="ai-agent-prod", dest="principal_name")
+    ai_policy.add_argument("--out", default=None)
+
     # ── W267-W269 / C10 — Runtime Hallucination Monitor ──────────────────────
     # Extends the existing `squash monitor` command with --mode hallucination.
     # We also register a standalone `squash hallucination-monitor` alias for
@@ -8557,6 +8619,143 @@ def _cmd_gitops(args: argparse.Namespace, quiet: bool) -> int:
         return 1
 
 
+def _cmd_attest_identity(args: argparse.Namespace, quiet: bool) -> int:
+    """W226-W228 / D2 — AI identity attestation."""
+    from squash.identity_governor import (
+        IdentityGovernor,
+        IdentityPrincipal,
+        LeastPrivilegePolicy,
+        PrincipalType,
+        Provider,
+        ViolationSeverity,
+        load_attestation,
+        scaffold_policy,
+        verify_attestation,
+    )
+
+    sub = getattr(args, "ai_command", None)
+
+    if sub == "attest":
+        # Load principal
+        principal: IdentityPrincipal | None = None
+        if args.principal_file:
+            d = json.loads(Path(args.principal_file).read_text())
+            principal = _principal_from_dict(d)
+        elif args.provider == "aws-iam" and args.principal_name:
+            from squash.integrations.aws_iam import AWSIAMAdapter
+            principal = AWSIAMAdapter(region=args.aws_region).get_role(args.principal_name)
+        elif args.provider == "azure-ad" and args.principal_name:
+            token = args.api_token or os.environ.get("AZURE_ACCESS_TOKEN", "")
+            from squash.integrations.azure_ad import AzureADAdapter
+            principal = AzureADAdapter(access_token=token, tenant_id=args.tenant_id).get_principal(args.principal_name)
+        elif args.provider == "okta" and args.principal_name:
+            token = args.api_token or os.environ.get("OKTA_API_TOKEN", "")
+            from squash.integrations.okta import OktaAdapter
+            principal = OktaAdapter(domain=args.domain, api_token=token).get_app(args.principal_name)
+        else:
+            print("error: specify --principal-file or --provider + --principal", file=sys.stderr)
+            return 1
+
+        policy = None
+        if args.policy_file:
+            policy = LeastPrivilegePolicy.from_dict(json.loads(Path(args.policy_file).read_text()))
+
+        priv_key = Path(args.priv_key) if args.priv_key else None
+        cert = IdentityGovernor(priv_key_path=priv_key).attest(principal, policy)
+
+        if args.ai_format == "md":
+            text = cert.to_markdown()
+        elif args.ai_format == "text":
+            text = cert.summary()
+        else:
+            text = cert.to_json()
+
+        if args.out:
+            Path(args.out).write_text(text, encoding="utf-8")
+            if not quiet:
+                print(f"✓ identity attestation written to {args.out}")
+                print(cert.summary())
+        else:
+            print(text)
+
+        if args.fail_on_violation and any(
+            v.severity == ViolationSeverity.CRITICAL for v in cert.violations
+        ):
+            return 2
+        return 0
+
+    if sub == "verify":
+        try:
+            cert = load_attestation(Path(args.cert_path))
+        except Exception as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 1
+        ok, msg = verify_attestation(cert)
+        if args.output_json:
+            print(json.dumps({"ok": ok, "message": msg, "cert_id": cert.cert_id}, indent=2))
+        else:
+            print(f"{'✓' if ok else '✗'} {cert.cert_id}: {msg}")
+        return 0 if ok else 2
+
+    if sub == "list-principals":
+        token = args.api_token
+        principals = []
+        if args.provider == "aws-iam":
+            from squash.integrations.aws_iam import AWSIAMAdapter
+            principals = AWSIAMAdapter(region=args.aws_region, tag_filter=args.filter_tag).list_principals()
+        elif args.provider == "azure-ad":
+            token = token or os.environ.get("AZURE_ACCESS_TOKEN", "")
+            from squash.integrations.azure_ad import AzureADAdapter
+            principals = AzureADAdapter(access_token=token, tenant_id=args.tenant_id).list_principals(args.filter_tag)
+        elif args.provider == "okta":
+            token = token or os.environ.get("OKTA_API_TOKEN", "")
+            from squash.integrations.okta import OktaAdapter
+            principals = OktaAdapter(domain=args.domain, api_token=token).list_principals(args.filter_tag)
+
+        if args.output_json:
+            print(json.dumps([p.to_dict() for p in principals], indent=2))
+        else:
+            print(f"{len(principals)} principal(s) [{args.provider}]")
+            for p in principals:
+                mfa = "MFA✓" if p.mfa_enabled else "MFA✗"
+                age = f"{p.last_rotation_days}d" if p.last_rotation_days is not None else "?d"
+                print(f"  {p.name}  scopes={len(p.scopes)}  {mfa}  rotation={age}")
+        return 0
+
+    if sub == "policy-init":
+        policy_dict = scaffold_policy(args.principal_name)
+        text = json.dumps(policy_dict, indent=2)
+        if args.out:
+            Path(args.out).write_text(text, encoding="utf-8")
+            if not quiet:
+                print(f"✓ policy scaffold written to {args.out}")
+        else:
+            print(text)
+        return 0
+
+    print("squash attest-identity: specify a subcommand — attest | verify | list-principals | policy-init")
+    return 1
+
+
+def _principal_from_dict(d: dict) -> "IdentityPrincipal":
+    """Deserialise a principal dict (from --principal-file)."""
+    from squash.identity_governor import IdentityPrincipal, PrincipalType, Provider
+    return IdentityPrincipal(
+        principal_id=d.get("principal_id", ""),
+        name=d.get("name", ""),
+        principal_type=PrincipalType(d.get("principal_type", "unknown")),
+        provider=Provider(d.get("provider", "generic")),
+        scopes=d.get("scopes", []),
+        mfa_enabled=bool(d.get("mfa_enabled", False)),
+        token_type=d.get("token_type", "unknown"),
+        last_rotation_days=d.get("last_rotation_days"),
+        created_at=d.get("created_at"),
+        last_used_at=d.get("last_used_at"),
+        tags=d.get("tags", {}),
+        raw_metadata=d.get("raw_metadata", {}),
+    )
+
+
 def _cmd_hallucination_monitor(args: argparse.Namespace, quiet: bool) -> int:
     """W267-W269 / C10 — Runtime hallucination monitor."""
     from squash.hallucination_monitor import (
@@ -9552,6 +9751,8 @@ def main() -> None:
         sys.exit(_cmd_telemetry(args, quiet))
     elif args.command == "gitops":
         sys.exit(_cmd_gitops(args, quiet))
+    elif args.command == "attest-identity":
+        sys.exit(_cmd_attest_identity(args, quiet))
     elif args.command == "hallucination-monitor":
         sys.exit(_cmd_hallucination_monitor(args, quiet))
     elif args.command == "hallucination-attest":

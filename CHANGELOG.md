@@ -5,6 +5,51 @@ Format: [Conventional Commits](https://www.conventionalcommits.org/) · [Keep a 
 
 ---
 
+## [2.3.0] — 2026-04-30 — D2: AI Identity Attestation (W226-W228)
+
+> 92% of organisations lack full visibility into their AI identities.
+> 73% of CISOs would invest immediately — if the product existed. Now it does.
+
+### Added (W226-W228 / Track D / D2)
+
+- **`squash/identity_governor.py`** — AI identity attestation engine:
+  - `IdentityPrincipal` — normalised identity model for all three providers
+    (AWS IAM, Azure AD, Okta); adapters never leak provider-specific types
+  - `LeastPrivilegePolicy` — declared minimum-necessary permissions; loads from JSON;
+    `scaffold_policy()` generates a starter file
+  - `LeastPrivilegeAnalyser` — 5 deterministic rule engine:
+    - Admin/wildcard scope (CRITICAL, regardless of policy)
+    - MFA required but not enabled (CRITICAL)
+    - Credential rotation overdue (HIGH)
+    - Excess permissions vs. policy (HIGH/MEDIUM by scope type)
+    - No scopes declared (MEDIUM — possible misconfiguration)
+    - Score 100 = exactly least-privilege; deducted by severity weight
+  - `IdentityAttestation` — schema `squash.identity.attestation/v1`;
+    Ed25519 signed (same keypair as anchor/drift/hallucination certs);
+    `to_json()`, `to_markdown()`, `summary()`, `load_attestation()`
+  - `IdentityGovernor` — orchestrator: principal → analyse → sign → cert
+- **`squash/integrations/aws_iam.py`** — AWS IAM adapter; reads roles via boto3
+  (lazy-imported); normalises attached + inline policies as scopes; tag filter
+- **`squash/integrations/azure_ad.py`** — Azure AD adapter; reads service principals
+  via Microsoft Graph REST (stdlib urllib — no azure-identity SDK required);
+  credential age from passwordCredentials/keyCredentials
+- **`squash/integrations/okta.py`** — Okta adapter; reads service apps + OAuth grants
+  via Okta REST API (stdlib urllib); label filter
+- **CLI: `squash attest-identity`** — 4 subcommands:
+  - `attest --provider aws-iam|azure-ad|okta|file --principal NAME [--policy FILE]
+    [--priv-key KEY] [--fail-on-violation] [--out PATH] [--format json|md|text]`
+  - `verify <cert.json>` — Ed25519 signature check
+  - `list-principals --provider ... [--filter LABEL]`
+  - `policy-init --principal NAME [--out FILE]`
+- **43 tests** — all SDK calls mocked at import boundary; 0 live cloud calls
+
+### Regulatory basis
+
+NIST AI RMF GOVERN 1.1 · EU AI Act Art. 9 · SOC 2 CC6.1 ·
+FedRAMP AC-2 · CIS Controls v8 Control 5 · OWASP Agentic AI AA3
+
+---
+
 ## [2.2.0] — 2026-04-30 — C10: Runtime Hallucination Monitor (W267-W269)
 
 > EU AI Act Article 9(1)(f) requires post-market monitoring throughout the AI system lifecycle.
