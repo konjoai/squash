@@ -5,6 +5,26 @@ Format: [Conventional Commits](https://www.conventionalcommits.org/) · [Keep a 
 
 ---
 
+## [2.1.0] — 2026-04-30 — C7 ★: Hallucination Rate Attestation (W251-W252)
+
+> **$67.4B in 2024 AI hallucination losses · 47% of executives made decisions on hallucinated content.**
+> `squash hallucination-attest` converts this into a signed domain-calibrated certificate.
+
+### Added (W251-W252 / Track C / C7 ★)
+
+- **`squash/hallucination_attest.py`** — Signed hallucination rate certificate:
+  - 200 built-in domain probes (40 × 5 domains): legal (2% threshold), medical (2%), financial (3%), code (5%), general (10%)
+  - Faithfulness scorer: token F1 + 3-gram cosine + negation conflict + unsupported entity check — pure stdlib, deterministic
+  - Wilson score 95% CI; minimum 10 probes enforced for statistical validity
+  - Ed25519 signing (same keypair as anchor + drift cert); `verify_certificate()` for tamper detection
+  - OpenAI-compatible + simple POST model client; `mock://` for offline testing
+- **CLI: `squash hallucination-attest attest|verify|show|list-probes`**
+  - `--fail-on-exceed` flag for CI gating
+- **51 new tests**: probe set coverage, faithfulness scorer edge cases, all 5 domains, sign/verify, CLI smoke
+- EU AI Act Art. 13 transparency requirement — first signed, CI-bounded hallucination rate certificate
+
+---
+
 ## [2.0.0] — 2026-04-30 — C2: AI Washing Detection (W223-W225)
 ## [1.15.0] — 2026-04-30 — Sprint 24 W235–W237 / Track C-6: AI Insurance Risk Package
 

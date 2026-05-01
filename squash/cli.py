@@ -2060,6 +2060,47 @@ def _build_parser() -> argparse.ArgumentParser:
     go_annotate.add_argument("--policy", default="eu-ai-act", help="Policy name (default: eu-ai-act)")
     go_annotate.add_argument("--passed", action="store_true", default=True)
 
+    # ── W251-W252 / C7 — Hallucination Rate Attestation ──────────────────────
+    ha_cmd = sub.add_parser(
+        "hallucination-attest",
+        help="Hallucination rate attestation — signed domain-calibrated certificate ($67.4B stat)",
+        description=(
+            "Produce a signed certificate of your model's hallucination rate on a\n"
+            "domain-specific probe set. Five domains with calibrated thresholds:\n"
+            "  legal/medical 2% · financial 3% · code 5% · general 10%\n\n"
+            "Examples:\n"
+            "  squash hallucination-attest attest --model http://localhost:8080 --domain legal\n"
+            "  squash hallucination-attest attest --model mock://test --domain general\n"
+            "  squash hallucination-attest verify ./cert.json\n"
+            "  squash hallucination-attest list-probes --domain medical\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    ha_sub = ha_cmd.add_subparsers(dest="ha_command")
+
+    ha_attest = ha_sub.add_parser("attest", help="Run hallucination probe set and issue certificate")
+    ha_attest.add_argument("--model", required=True, dest="model_endpoint")
+    ha_attest.add_argument("--domain", required=True, choices=["legal", "medical", "financial", "code", "general"])
+    ha_attest.add_argument("--model-id", default="", dest="model_id")
+    ha_attest.add_argument("--max-rate", type=float, default=None, dest="max_rate")
+    ha_attest.add_argument("--probes-file", default=None, dest="probes_file")
+    ha_attest.add_argument("--probe-limit", type=int, default=None, dest="probe_limit")
+    ha_attest.add_argument("--priv-key", default=None, dest="priv_key")
+    ha_attest.add_argument("--out", default=None)
+    ha_attest.add_argument("--format", default="json", choices=["json", "md", "text"], dest="ha_format")
+    ha_attest.add_argument("--fail-on-exceed", action="store_true", dest="fail_on_exceed")
+
+    ha_verify = ha_sub.add_parser("verify", help="Verify a certificate's Ed25519 signature")
+    ha_verify.add_argument("cert_path")
+    ha_verify.add_argument("--json", action="store_true", dest="output_json")
+
+    ha_show = ha_sub.add_parser("show", help="Render a certificate as Markdown")
+    ha_show.add_argument("cert_path")
+
+    ha_probes = ha_sub.add_parser("list-probes", help="List built-in probes for a domain")
+    ha_probes.add_argument("--domain", default="general", choices=["legal", "medical", "financial", "code", "general"])
+    ha_probes.add_argument("--json", action="store_true", dest="output_json")
+
     # ── W223-W225 / C2 — AI Washing Detection ─────────────────────────────────
     aw_cmd = sub.add_parser(
         "detect-washing",
@@ -2810,6 +2851,58 @@ def _build_parser() -> argparse.ArgumentParser:
     wr_cmd.add_argument(
         "--quiet", action="store_true", help="Suppress non-error output",
     )
+
+
+    # ── C8 (Sprint 35) — deprecation-watch: model sunset cross-reference ──────
+    dw_cmd = sub.add_parser(
+        "deprecation-watch",
+        help="Cross-reference registered models against provider deprecation schedules",
+        description=(
+            "Detect deployed models approaching end-of-life across OpenAI, Anthropic,\n"
+            "Google, Meta, and Mistral. Fires alerts with configurable lead time,\n"
+            "migration effort estimates, and re-attestation checklists.\n\n"
+            "Examples:\n"
+            "  squash deprecation-watch\n"
+            "  squash deprecation-watch --lead-time 60 --provider openai,anthropic\n"
+            "  squash deprecation-watch --check gpt-4-0613\n"
+            "  squash deprecation-watch --list --provider google\n"
+            "  squash deprecation-watch --json --all\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    dw_cmd.add_argument("--lead-time", type=int, default=30, dest="dw_lead_time",
+                        metavar="DAYS",
+                        help="Alert when sunset is within DAYS days (default: 30)")
+    dw_cmd.add_argument("--provider", dest="dw_providers", default="",
+                        help="Comma-separated provider filter: openai,anthropic,google,meta,mistral")
+    dw_cmd.add_argument("--check", dest="dw_check_model", default=None,
+                        metavar="MODEL_ID",
+                        help="Check a specific model ID (bypasses registry scan)")
+    dw_cmd.add_argument("--list", action="store_true", dest="dw_list_all",
+                        help="List all known deprecation entries (no registry scan)")
+    dw_cmd.add_argument("--all", action="store_true", dest="dw_include_all",
+                        help="Include entries beyond the lead-time window")
+    dw_cmd.add_argument("--include-informational", action="store_true",
+                        dest="dw_informational",
+                        help="Include INFORMATIONAL entries (no hard sunset)")
+    dw_cmd.add_argument("--include-sunsetted", action="store_true",
+                        dest="dw_sunsetted",
+                        help="Include already-sunsetted models")
+    dw_cmd.add_argument("--model-ids", dest="dw_model_ids", default="",
+                        help="Comma-separated model IDs to check (bypasses AssetRegistry)")
+    dw_cmd.add_argument("--registry-db", dest="dw_registry_db", default=None,
+                        help="Path to asset_registry.db (default: ~/.squash/asset_registry.db)")
+    dw_cmd.add_argument("--alert-channel", dest="dw_channel",
+                        default="stdout", choices=["stdout", "slack", "json"],
+                        help="Alert routing channel (default: stdout)")
+    dw_cmd.add_argument("--checklist", action="store_true", dest="dw_checklist",
+                        help="Print re-attestation checklist for each alert")
+    dw_cmd.add_argument("--json", action="store_true", dest="dw_json",
+                        help="Emit full JSON output")
+    dw_cmd.add_argument("--fail-on-alert", action="store_true", dest="dw_fail",
+                        help="Exit 1 if any deprecation alerts are found")
+    dw_cmd.add_argument("--quiet", "-q", action="store_true")
+
 
     # ── W135 / W136 — Annex IV generate + validate ────────────────────────────
     annex_iv_cmd = sub.add_parser(
@@ -5000,6 +5093,88 @@ def _model_card_validate(card_path: Path, json_out: bool, quiet: bool) -> int:
             print(f"  {f.render()}")
 
     return 0 if report.is_valid else 1
+
+
+def _cmd_deprecation_watch(args: argparse.Namespace, quiet: bool) -> int:
+    """C8 — model deprecation cross-reference engine."""
+    from squash.deprecation_watch import (
+        DeprecationWatcher, route_alerts,
+    )
+
+    providers = [p.strip() for p in args.dw_providers.split(",") if p.strip()] or None
+    registry_db = Path(args.dw_registry_db) if args.dw_registry_db else None
+    model_ids = [m.strip() for m in args.dw_model_ids.split(",") if m.strip()] or None
+    lead_time = args.dw_lead_time
+
+    with DeprecationWatcher() as watcher:
+        watcher.load_feeds(
+            providers=providers,
+            include_informational=getattr(args, "dw_informational", False),
+        )
+
+        # ── --list: show all known entries (no registry scan) ────────────────
+        if getattr(args, "dw_list_all", False):
+            entries = watcher.list_entries(
+                providers=providers,
+                include_informational=True,   # --list shows everything
+                include_sunsetted=True,       # --list shows everything
+            )
+            if args.dw_json:
+                print(json.dumps([e.to_dict() for e in entries], indent=2))
+            elif not quiet:
+                print(f"[squash deprecation-watch] {len(entries)} known deprecations")
+                for e in entries:
+                    days = e.days_until_sunset
+                    days_str = f"{days}d" if days is not None else "unknown/already sunsetted"
+                    status = "⛔ SUNSETTED" if e.is_sunsetted else f"⚠ sunset in {days_str}"
+                    print(f"  [{e.provider}] {e.model_id} → {e.successor_model or '(no successor)'} — {status}")
+            return 0
+
+        # ── --check: single model lookup ──────────────────────────────────────
+        if args.dw_check_model:
+            alert = watcher.check_model(args.dw_check_model, providers=providers)
+            if alert is None:
+                if not quiet:
+                    print(f"[squash deprecation-watch] ✓ {args.dw_check_model} — not in deprecation feed")
+                return 0
+            if args.dw_json:
+                print(json.dumps(alert.to_dict(), indent=2))
+            else:
+                print(alert.summary(lead_time))
+                if getattr(args, "dw_checklist", False):
+                    print("\n  Re-attestation checklist:")
+                    for item in alert.re_attestation_checklist:
+                        print(f"  {item}")
+            return 1 if getattr(args, "dw_fail", False) else 0
+
+        # ── Scan registry / explicit model list ───────────────────────────────
+        effective_lead = 36500 if getattr(args, "dw_include_all", False) else lead_time
+        alerts = watcher.scan(
+            lead_time_days=effective_lead,
+            providers=providers,
+            registry_db=registry_db,
+            model_ids=model_ids,
+        )
+
+        if args.dw_json or args.dw_channel == "json":
+            print(json.dumps([a.to_dict() for a in alerts], indent=2))
+        elif not quiet:
+            print(f"[squash deprecation-watch] {len(alerts)} alert(s) "
+                  f"(lead-time: {lead_time}d, provider: {args.dw_providers or 'all'})")
+            for alert in alerts:
+                print(f"  {alert.summary(lead_time)}")
+                if getattr(args, "dw_checklist", False):
+                    print("  Re-attestation checklist:")
+                    for item in alert.re_attestation_checklist[:5]:
+                        print(f"    {item}")
+
+        if args.dw_channel == "slack":
+            route_alerts(alerts, channel="slack", lead_time_days=lead_time)
+
+        if getattr(args, "dw_fail", False) and alerts:
+            return 1
+        return 0
+
 
 
 def _cmd_request_approval(args: argparse.Namespace, quiet: bool) -> int:
@@ -7971,6 +8146,104 @@ def _cmd_gitops(args: argparse.Namespace, quiet: bool) -> int:
         return 1
 
 
+def _cmd_hallucination_attest(args: argparse.Namespace, quiet: bool) -> int:
+    """W251-W252 / C7 — Hallucination rate attestation."""
+    from squash.hallucination_attest import (
+        HallucinationAttester,
+        get_probes,
+        load_attestation,
+        load_custom_probes,
+        verify_certificate,
+    )
+
+    sub = getattr(args, "ha_command", None)
+
+    if sub == "attest":
+        probes = None
+        if args.probes_file:
+            probes = load_custom_probes(Path(args.probes_file))
+        elif args.probe_limit:
+            probes = get_probes(args.domain, limit=args.probe_limit)
+
+        try:
+            cert = HallucinationAttester().attest(
+                model_endpoint=args.model_endpoint,
+                domain=args.domain,
+                model_id=args.model_id,
+                max_rate=args.max_rate,
+                probes=probes,
+                priv_key_path=Path(args.priv_key) if args.priv_key else None,
+            )
+        except ValueError as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 1
+
+        if args.ha_format == "md":
+            text = cert.to_markdown()
+        elif args.ha_format == "text":
+            text = cert.summary()
+        else:
+            text = cert.to_json()
+
+        if args.out:
+            Path(args.out).write_text(text, encoding="utf-8")
+            if not quiet:
+                print(f"✓ hallucination certificate written to {args.out}")
+                print(cert.summary())
+        else:
+            print(text)
+
+        if args.fail_on_exceed and not cert.passes_threshold:
+            if not quiet and args.ha_format != "text":
+                print(
+                    f"error: hallucination rate {cert.hallucination_rate:.2%} exceeds "
+                    f"threshold {cert.threshold:.2%}",
+                    file=sys.stderr,
+                )
+            return 2
+        return 0
+
+    if sub == "verify":
+        try:
+            cert = load_attestation(Path(args.cert_path))
+        except Exception as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 1
+        ok, msg = verify_certificate(cert)
+        if args.output_json:
+            print(json.dumps({"ok": ok, "message": msg, "cert_id": cert.cert_id}, indent=2))
+        else:
+            print(f"{'✓' if ok else '✗'} {cert.cert_id}: {msg}")
+        return 0 if ok else 2
+
+    if sub == "show":
+        try:
+            cert = load_attestation(Path(args.cert_path))
+        except Exception as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 1
+        print(cert.to_markdown())
+        return 0
+
+    if sub == "list-probes":
+        probes = get_probes(args.domain)
+        if args.output_json:
+            print(json.dumps([{
+                "probe_id": p.probe_id, "domain": p.domain,
+                "question": p.question, "difficulty": p.difficulty,
+            } for p in probes], indent=2))
+        else:
+            print(f"Domain: {args.domain} — {len(probes)} probes")
+            for p in probes[:5]:
+                print(f"  [{p.difficulty:6s}] {p.probe_id}: {p.question[:70]}")
+            if len(probes) > 5:
+                print(f"  ... and {len(probes) - 5} more")
+        return 0
+
+    print("squash hallucination-attest: specify a subcommand — attest | verify | show | list-probes")
+    return 1
+
+
 def _cmd_detect_washing(args: argparse.Namespace, quiet: bool) -> int:
     """W223-W225 / C2 — AI washing detection."""
     from squash.washing_detector import (
@@ -8430,45 +8703,6 @@ def _cmd_gateway_config(args, quiet):
             print(text)
         return 0
 
-    if sub == "list":
-        entries = ledger.entries()
-        if args.output_json:
-            print(json.dumps([e.to_dict() for e in entries], indent=2, sort_keys=True))
-            return 0
-        if not entries:
-            print("(no anchors committed)")
-            return 0
-        for e in entries:
-            a = e.anchor
-            print(f"{a.iso_timestamp}  {a.anchor_id}  backend={a.backend:14s}  leaves={a.leaf_count:>4}  root={a.root[:16]}…")
-        return 0
-
-    if sub == "status":
-        staged = ledger.staged()
-        entries = ledger.entries()
-        last = entries[-1] if entries else None
-        if args.output_json:
-            print(json.dumps({
-                "staged": [s.to_dict() for s in staged],
-                "last_anchor": last.anchor.to_dict() if last else None,
-                "ledger_dir": str(ledger.root_dir),
-            }, indent=2, sort_keys=True))
-            return 0
-        print(f"ledger: {ledger.root_dir}")
-        print(f"staged: {len(staged)} attestation(s) pending")
-        for s in staged:
-            print(f"   • {s.attestation_id}  ({s.record_hash[:12]}…)")
-        if last:
-            a = last.anchor
-            print(f"last anchor: {a.iso_timestamp}  {a.anchor_id}  backend={a.backend}  leaves={a.leaf_count}")
-        else:
-            print("last anchor: (none)")
-        return 0
-
-    print("squash anchor: specify a subcommand — add | commit | verify | proof | list | status")
-    return 1
-
-
     def _write_dir(files):
         if not output:
             print("squash gateway-config: --output DIR is required when emitting a source tree", file=sys.stderr)
@@ -8745,6 +8979,8 @@ def main() -> None:
         sys.exit(_cmd_telemetry(args, quiet))
     elif args.command == "gitops":
         sys.exit(_cmd_gitops(args, quiet))
+    elif args.command == "hallucination-attest":
+        sys.exit(_cmd_hallucination_attest(args, quiet))
     elif args.command == "detect-washing":
         sys.exit(_cmd_detect_washing(args, quiet))
     elif args.command == "license-check":
@@ -8763,6 +8999,8 @@ def main() -> None:
         sys.exit(_cmd_chain_attest(args, quiet))
     elif args.command == "registry-gate":
         sys.exit(_cmd_registry_gate(args, quiet))
+    elif args.command == "deprecation-watch":
+        sys.exit(_cmd_deprecation_watch(args, quiet))
     elif args.command == "request-approval":
         sys.exit(_cmd_request_approval(args, quiet))
     elif args.command == "approve":
