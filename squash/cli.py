@@ -2217,6 +2217,45 @@ def _build_parser() -> argparse.ArgumentParser:
     ha_probes.add_argument("--domain", default="general", choices=["legal", "medical", "financial", "code", "general"])
     ha_probes.add_argument("--json", action="store_true", dest="output_json")
 
+    # ── D4 — Multi-Jurisdiction Compliance Matrix ─────────────────────────────
+    cm_cmd = sub.add_parser(
+        "compliance-matrix",
+        help="Multi-jurisdiction compliance matrix — cross-reference frameworks",
+        description=(
+            "Build a 2-D matrix of (requirement × jurisdiction) → status across\n"
+            "11 frameworks and 11 jurisdictions. Replaces a 1-week legal-mapping\n"
+            "consult per multinational deployment.\n\n"
+            "Examples:\n"
+            "  squash compliance-matrix --regions eu,us,uk\n"
+            "  squash compliance-matrix --regions eu,us,uk,sg,ca \\\n"
+            "      --models ./model --output matrix.html --format html\n"
+            "  squash compliance-matrix --regions eu --models ./model \\\n"
+            "      --format json --remediation\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    cm_cmd.add_argument("--regions", required=True, dest="cm_regions",
+                         help="Comma-separated jurisdictions (eu,us,uk,sg,ca,au,...)")
+    cm_cmd.add_argument("--models", default=None, dest="cm_models",
+                         help="Path to model directory (squash artifacts read from here)")
+    cm_cmd.add_argument("--attestation", default=None, dest="cm_attestation",
+                         help="Path to a JSON attestation document")
+    cm_cmd.add_argument("--model-id", default="", dest="cm_model_id")
+    cm_cmd.add_argument("--output", "-o", default=None, dest="cm_output",
+                         help="Write to file (default: stdout)")
+    cm_cmd.add_argument("--format", default="text",
+                         choices=["text", "json", "md", "html"], dest="cm_format")
+    cm_cmd.add_argument("--remediation", action="store_true", dest="cm_remediation",
+                         help="Append a sequenced remediation plan to output")
+    cm_cmd.add_argument("--fail-on-gap", action="store_true", dest="cm_fail_on_gap",
+                         help="Exit 1 if any cell is FAIL or PARTIAL")
+    cm_cmd.add_argument("--list-requirements", action="store_true",
+                         dest="cm_list_reqs",
+                         help="Print the built-in requirement catalogue and exit")
+    cm_cmd.add_argument("--list-jurisdictions", action="store_true",
+                         dest="cm_list_jurs",
+                         help="Print supported jurisdictions and exit")
+
     # ── D1 — squash GitHub App ────────────────────────────────────────────────
     gha_cmd = sub.add_parser(
         "github-app",
@@ -6532,6 +6571,114 @@ def _cmd_freeze(args: argparse.Namespace, quiet: bool) -> int:
     return 0 if receipt.all_ok else 1
 
 
+def _cmd_compliance_matrix(args: argparse.Namespace, quiet: bool) -> int:
+    """D4 — `squash compliance-matrix`. Multi-jurisdiction matrix.
+
+    Exit codes:
+      0  matrix produced (no failing cells, or --fail-on-gap not set)
+      1  --fail-on-gap and at least one FAIL/PARTIAL cell exists
+      2  configuration / argument error
+    """
+    try:
+        from squash import compliance_matrix as cm
+    except Exception as exc:  # noqa: BLE001
+        print(f"squash compliance-matrix unavailable: {exc}", file=sys.stderr)
+        return 2
+
+    if getattr(args, "cm_list_jurs", False):
+        for j in cm.Jurisdiction:
+            print(f"  {j.value:<10} {j.display}")
+        return 0
+
+    if getattr(args, "cm_list_reqs", False):
+        out = []
+        for r in cm.builtin_requirements():
+            out.append({
+                "requirement_id": r.requirement_id,
+                "title": r.title,
+                "jurisdictions": [j.value for j in r.jurisdictions],
+                "regulations": list(r.regulations),
+                "squash_control": r.squash_control,
+                "severity": r.severity,
+            })
+        print(json.dumps(out, indent=2))
+        return 0
+
+    regions_raw = getattr(args, "cm_regions", "") or ""
+    if not regions_raw:
+        print("squash compliance-matrix: --regions is required", file=sys.stderr)
+        return 2
+    try:
+        regions = cm.parse_regions(regions_raw)
+    except ValueError as exc:
+        print(f"squash compliance-matrix: {exc}", file=sys.stderr)
+        return 2
+
+    attestation: dict = {}
+    att_path = getattr(args, "cm_attestation", None)
+    if att_path:
+        try:
+            attestation = json.loads(Path(att_path).read_text())
+        except Exception as exc:  # noqa: BLE001
+            print(f"failed to read attestation: {exc}", file=sys.stderr)
+            return 2
+
+    models_path = getattr(args, "cm_models", None)
+    if models_path:
+        loaded = cm.load_attestation_dir(models_path)
+        for k, v in loaded.items():
+            attestation.setdefault(k, v)
+
+    matrix = cm.ComplianceMatrix.build(
+        regions=regions,
+        attestation=attestation,
+        model_dir=models_path,
+        model_id=getattr(args, "cm_model_id", "") or
+                 (Path(models_path).name if models_path else ""),
+    )
+
+    fmt = (getattr(args, "cm_format", "text") or "text").lower()
+    if fmt == "json":
+        body = matrix.to_json()
+        if getattr(args, "cm_remediation", False):
+            doc = json.loads(body)
+            doc["remediation_plan"] = [
+                s.to_dict() for s in cm.GapAnalyser(matrix).plan()
+            ]
+            body = json.dumps(doc, indent=2, sort_keys=True)
+    elif fmt == "md":
+        body = matrix.to_markdown()
+        if getattr(args, "cm_remediation", False):
+            plan = cm.GapAnalyser(matrix).plan()
+            if plan:
+                body += "\n## Remediation plan\n\n"
+                for i, s in enumerate(plan, 1):
+                    body += f"{i}. `{s.squash_control}` — {s.detail}\n"
+    elif fmt == "html":
+        body = matrix.to_html()
+    else:
+        body = matrix.to_text()
+        if getattr(args, "cm_remediation", False):
+            plan = cm.GapAnalyser(matrix).plan()
+            if plan:
+                body += "\nRemediation plan:\n"
+                for i, s in enumerate(plan, 1):
+                    body += f"  {i}. {s.squash_control} — {s.detail}\n"
+
+    out_path = getattr(args, "cm_output", None)
+    if out_path:
+        Path(out_path).write_text(body)
+        if not quiet:
+            print(f"matrix written to {out_path}")
+    elif not quiet:
+        print(body, end="" if body.endswith("\n") else "\n")
+
+    if getattr(args, "cm_fail_on_gap", False):
+        if matrix.summary.fail_count or matrix.summary.partial_count:
+            return 1
+    return 0
+
+
 def _cmd_github_app(args: argparse.Namespace, quiet: bool) -> int:
     """D1 — `squash github-app`. Auto-attest PRs/commits as GitHub Check Runs.
 
@@ -10246,6 +10393,8 @@ def main() -> None:
         sys.exit(_cmd_freeze(args, quiet))
     elif args.command == "github-app":
         sys.exit(_cmd_github_app(args, quiet))
+    elif args.command == "compliance-matrix":
+        sys.exit(_cmd_compliance_matrix(args, quiet))
     else:
         parser.print_help()
         sys.exit(1)

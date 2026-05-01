@@ -5,6 +5,70 @@ Format: [Conventional Commits](https://www.conventionalcommits.org/) · [Keep a 
 
 ---
 
+## [2.6.0] — 2026-05-01 — D4: Multi-Jurisdiction Compliance Matrix (W240-W242)
+
+> A multinational LLM deployment touches 6+ jurisdictions on average.
+> Today the legal compliance mapping is a one-week consulting engagement
+> per deployment. This compresses it into a single command.
+
+### Added (Track D / D4)
+
+- **`squash/compliance_matrix.py`** — full implementation:
+  - `Jurisdiction` enum — 11 codes (Global, EU, US, US-Fed, US-CO, US-NYC,
+    UK, SG, CA, AU, CN) with friendly aliases (`usa` → US, `singapore` → SG,
+    `colorado` → US-CO, etc.).
+  - `Requirement` — dataclass with jurisdictions, regulations, evidence
+    paths/files, severity, and four built-in rules: `must_exist`,
+    `must_be_truthy`, `must_be_at_least` (with threshold), `custom`.
+  - 15-requirement built-in catalogue covering 9+ regulatory frameworks
+    (EU AI Act, NIST AI RMF, ISO 42001, GDPR, Colorado AI Act, NYC LL144,
+    SEC AI Disclosure, FedRAMP AI, FDA AI/ML) across 8+ regional
+    jurisdictions plus the GLOBAL umbrella.
+  - `ComplianceMatrix.build()` — produces `(requirement × jurisdiction) →
+    status` matrix. Status is `pass` / `fail` / `partial` / `n/a` /
+    `unknown`. Reads evidence from a passed-in attestation dict and/or
+    a model directory's `*.json` artifacts.
+  - `MatrixSummary` — pass/fail/partial/n/a/unknown counts +
+    `coverage_pct` over applicable cells.
+  - `coverage_by_jurisdiction()` — per-jurisdiction pass percentage.
+  - `GapAnalyser.plan()` — greedy *coverage-per-fix* sequencing: each
+    step is the squash control that addresses the largest number of
+    currently-failing cells; iterates until empty.
+  - Renderers: `to_text()`, `to_markdown()`, `to_json()`, `to_html()` —
+    HTML is pure Python with zero JavaScript dependencies, semantic
+    `cell pass/fail/partial/na/unknown` classes, severity-coloured
+    row borders, embedded remediation plan.
+  - `load_attestation_dir()` — best-effort: load every `*.json` under a
+    model directory into a flat namespace keyed by file stem.
+- **CLI: `squash compliance-matrix`** — single-command:
+  - `--regions eu,us,uk,sg,ca` (CSV; canonical codes or aliases)
+  - `--models PATH` (read squash artifacts from this directory)
+  - `--attestation PATH.json` (merge with --models)
+  - `--format text|json|md|html` · `--output PATH` · `--model-id ID`
+  - `--remediation` (append sequenced remediation plan)
+  - `--fail-on-gap` (exit 1 on any FAIL/PARTIAL — CI gate)
+  - `--list-jurisdictions` · `--list-requirements`
+- **43 new tests** — module surface, region parsing (5), catalogue
+  coverage (5: ≥15 requirements, ≥9 frameworks, ≥5 jurisdictions, every
+  requirement has a control + evidence), matrix construction (9: shape,
+  empty attestation, evidence path/file, N/A logic, GLOBAL applies
+  everywhere, must_be_at_least partial, summary consistency, coverage
+  per jurisdiction), gap analyser (3: ordering, addresses-all-failures,
+  empty-when-no-failures), renderers (6: text/md/html/json,
+  *no JavaScript* assertion), `load_attestation_dir` (3), CLI handler
+  (9: missing/unknown regions, text/json/html/remediation outputs,
+  fail-on-gap exit code, list helpers, attestation file merge), parser
+  registration (1).
+
+### Regulatory basis
+
+EU AI Act Art. 9 + Art. 13 · NIST AI RMF · ISO 42001 §6 · GDPR Art. 30 ·
+Colorado AI Act · NYC LL144 §1894 · SEC AI Operation Comply ·
+FedRAMP AC-2 · FDA AI/ML Action Plan · UK ICO AI guidance ·
+Singapore Model AI Governance Framework v2
+
+---
+
 ## [2.5.0] — 2026-04-30 — D1: GitHub App — Auto-Attest Check Runs
 
 > 1 user → 50-user network effect. The GitHub App is the wedge that turns
