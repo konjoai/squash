@@ -189,7 +189,7 @@ Higher-effort items that build the long-term moat. Most depend on Track A's live
 |---|---|---|---|---|---|---|
 | **D1** | **GitHub App** — Marketplace listing + PR auto-comment | 15 days | Jun 1–20 | C5, B5, D2 | 1 user → 50-user network effect | new (not yet sprinted; promote to Sprint 30 if needed) |
 | **D2** ✅ | **AI Identity Attestation** — `squash attest-identity` | shipped 2026-04-30 | D1, C5, C6 | 92% lack AI identity visibility · 73% CISO want-to-buy. identity_governor.py + aws_iam/azure_ad/okta adapters + 43 tests. | Sprint 21 (W226–W228) ✅ |
-| **D3** | **Procurement Scoring API** — `GET /v1/score/{vendor}` | 10 days | Jul 1–15 | D4, D5 | Two-sided marketplace, SSL-CA-of-AI play | Sprint 28 (W246–W248) |
+| **D3** ✅ | **Procurement Scoring API** — `GET /v1/score/{vendor}` | 10 days | Jul 1–15 | D4, D5 | Two-sided marketplace, SSL-CA-of-AI play | Sprint 28 (W246–W248) |
 | **D4** | **Multi-Jurisdiction Matrix** — `squash compliance-matrix --regions ...` | 8 days | Jul 10–20 | D3, D5 | Multinational legal-mapping is 1-week consult per deploy | Sprint 26 (W240–W242) |
 | **D5** | **Industry Benchmarking** — `squash industry-benchmark --sector ...` | 7 days | Jul 20–28 | D3, D4 | QBR conversation starter; data-density unlock | Sprint 29 (W249–W250) |
 | **D6** | **SOC 2 Type II** — readiness phase + auditor selection | 6 mo | Aug 2026+ | (external) | Procurement unblocker for $50K+ ACV | Sprint 18 (W218–W220) |
@@ -1263,7 +1263,7 @@ No competitor has all of these. Most have none.
 
 ---
 
-### Sprint 28 — AI Procurement Scoring API · **Track D / D3**
+### Sprint 28 — AI Procurement Scoring API · **Track D / D3** ✅ COMPLETE
 
 **Goal:** Public REST endpoint `GET api.getsquash.dev/v1/score/{vendor_name}` returning a compliance score for any vendor with published trust packages. **The credit-score API for AI compliance.** Freemium: basic score free, breakdown requires Pro, real-time monitoring is Enterprise. Network effect: more vendors → more buyers → more vendors. **The SSL-CA-of-AI play.**
 

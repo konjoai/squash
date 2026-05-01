@@ -40,6 +40,25 @@ import tempfile
 from pathlib import Path
 
 
+def _ib_profile_args(p: argparse.ArgumentParser) -> None:
+    """Shared profile-source arguments for industry-benchmark subcommands."""
+    grp = p.add_mutually_exclusive_group()
+    grp.add_argument(
+        "--scores", default=None,
+        help="Comma-separated compliance scores (e.g. 71,74,68,72)",
+    )
+    grp.add_argument(
+        "--registry", default=None, dest="registry_path",
+        help="Path to squash attestation_registry.db for automatic profile build",
+    )
+    p.add_argument("--frameworks", default="", dest="frameworks",
+                   help="Comma-separated framework names (e.g. eu-ai-act,gdpr)")
+    p.add_argument("--period", type=int, default=90, dest="period_days",
+                   help="History window in days (default: 90)")
+    p.add_argument("--model-filter", default="", dest="model_filter",
+                   help="Filter attestations by model ID substring (registry mode)")
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="squash",
@@ -2061,6 +2080,40 @@ def _build_parser() -> argparse.ArgumentParser:
     go_annotate.add_argument("--policy", default="eu-ai-act", help="Policy name (default: eu-ai-act)")
     go_annotate.add_argument("--passed", action="store_true", default=True)
 
+    # ── W249-W250 / D5 — Industry Compliance Benchmarking ─────────────────────
+    ib_cmd = sub.add_parser(
+        "industry-benchmark",
+        help="Industry compliance benchmarking — see how you compare to sector peers",
+        description=(
+            "Compare your attestation posture against published sector baselines.\n"
+            "8 sectors: financial-services, healthcare, legal, technology,\n"
+            "           manufacturing, retail, government, education\n\n"
+            "Examples:\n"
+            "  squash industry-benchmark report --sector financial-services --scores 71,74,68\n"
+            "  squash industry-benchmark report --sector technology --registry ~/.squash/attestation_registry.db\n"
+            "  squash industry-benchmark compare --sectors technology,financial-services --scores 71,74\n"
+            "  squash industry-benchmark list-sectors\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    ib_sub = ib_cmd.add_subparsers(dest="ib_command")
+
+    ib_report = ib_sub.add_parser("report", help="Generate a QBR-ready sector benchmark report")
+    ib_report.add_argument("--sector", required=True, dest="sector_id",
+                            help="Industry sector (e.g. financial-services, technology)")
+    _ib_profile_args(ib_report)
+    ib_report.add_argument("--format", default="text", choices=["text", "json", "md"], dest="ib_format")
+    ib_report.add_argument("--out", default=None, help="Write report to PATH")
+
+    ib_compare = ib_sub.add_parser("compare", help="Compare your score across multiple sectors")
+    ib_compare.add_argument("--sectors", required=True,
+                             help="Comma-separated sector IDs (e.g. technology,financial-services)")
+    _ib_profile_args(ib_compare)
+    ib_compare.add_argument("--format", default="text", choices=["text", "json", "md"], dest="ib_format")
+
+    ib_list = ib_sub.add_parser("list-sectors", help="List all available benchmark sectors")
+    ib_list.add_argument("--json", action="store_true", dest="output_json")
+
     # ── W226-W228 / D2 — AI Identity Attestation ──────────────────────────────
     ai_cmd = sub.add_parser(
         "attest-identity",
@@ -3342,6 +3395,38 @@ def _build_parser() -> argparse.ArgumentParser:
     ac_cmd.add_argument("--json", action="store_true", dest="ac_json",
                         help="Print full certificate JSON to stdout")
     ac_cmd.add_argument("--quiet", "-q", action="store_true")
+
+
+
+    # ── D3 (Sprint 28) — score: AI Procurement Scoring API ───────────────────
+    score_cmd = sub.add_parser(
+        "score",
+        help="Query the AI compliance score for a vendor (Procurement Scoring API)",
+        description=(
+            "The credit-score API for AI compliance. Returns a vendor's\n"
+            "compliance score, tier, and attestation metadata.\n\n"
+            "Examples:\n"
+            "  squash score acme-corp\n"
+            "  squash score acme-corp --breakdown\n"
+            "  squash score acme-corp --history --json\n"
+            "  squash score acme-corp --api-url https://squash.works\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    score_cmd.add_argument("vendor", help="Vendor name or identifier to look up")
+    score_cmd.add_argument("--breakdown", action="store_true", dest="score_breakdown",
+                           help="Show per-component score breakdown (requires Pro plan)")
+    score_cmd.add_argument("--history", action="store_true", dest="score_history",
+                           help="Show 12-month score history (requires Enterprise plan)")
+    score_cmd.add_argument("--months", type=int, default=12, dest="score_months",
+                           help="History window in months (default: 12)")
+    score_cmd.add_argument("--api-url", dest="score_api_url", default=None,
+                           help="Override the squash API base URL")
+    score_cmd.add_argument("--local", action="store_true", dest="score_local",
+                           help="Query local registry databases instead of the live API")
+    score_cmd.add_argument("--json", action="store_true", dest="score_json",
+                           help="Emit full JSON response")
+    score_cmd.add_argument("--quiet", "-q", action="store_true")
 
 
     # ── W135 / W136 — Annex IV generate + validate ────────────────────────────
@@ -5533,6 +5618,115 @@ def _model_card_validate(card_path: Path, json_out: bool, quiet: bool) -> int:
             print(f"  {f.render()}")
 
     return 0 if report.is_valid else 1
+
+
+def _cmd_score(args: argparse.Namespace, quiet: bool) -> int:
+    """D3 — Procurement Scoring API CLI."""
+    vendor = args.vendor
+    use_local = getattr(args, "score_local", False)
+    api_url   = getattr(args, "score_api_url", None) or os.environ.get(
+        "SQUASH_API_URL", "https://squash.works")
+    as_json   = getattr(args, "score_json", False)
+    breakdown = getattr(args, "score_breakdown", False)
+    show_hist = getattr(args, "score_history", False)
+    months    = getattr(args, "score_months", 12)
+
+    # ── Local mode: query registry directly ──────────────────────────────────
+    if use_local:
+        from squash.procurement_scoring import ProcurementScorer
+        scorer = ProcurementScorer(base_url=api_url)
+        vs = scorer.score_vendor(vendor)
+        if show_hist:
+            vs.history = scorer.score_history(vendor, months=months)
+
+        if as_json:
+            print(json.dumps(vs.to_dict(
+                include_breakdown=breakdown,
+                include_history=show_hist,
+            ), indent=2))
+        elif not quiet:
+            tier_icon = {
+                "CERTIFIED": "🏆", "VERIFIED": "✅",
+                "BASIC": "🔵", "UNVERIFIED": "⚪",
+            }.get(vs.tier, "•")
+            print(f"[squash score] {tier_icon} {vendor}")
+            print(f"  Score:       {vs.score:.1f} / 100  ({vs.tier})")
+            print(f"  Attestations: {vs.attestation_count}")
+            if vs.last_attested:
+                print(f"  Last attested: {vs.last_attested[:10]}")
+            if vs.frameworks:
+                print(f"  Frameworks:  {', '.join(vs.frameworks)}")
+            print(f"  Trust pkg:   {'yes' if vs.has_trust_package else 'no'}")
+            if breakdown and vs.breakdown:
+                print("  Breakdown:")
+                for k, v in vs.breakdown.to_dict().items():
+                    print(f"    {k:27s} {v:5.1f}")
+            if show_hist and vs.history:
+                print("  History (monthly):")
+                for m in vs.history[-6:]:
+                    bar = "█" * int(m["score"] / 10)
+                    print(f"    {m['month']}  {m['score']:5.1f}  {bar}")
+        return 0
+
+    # ── Live API mode ─────────────────────────────────────────────────────────
+    import urllib.request
+    import urllib.error
+
+    url = f"{api_url.rstrip('/')}/v1/score/{vendor}"
+    if show_hist:
+        url += "/history"
+
+    headers = {}
+    api_key = os.environ.get("SQUASH_API_KEY", "")
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+
+    try:
+        req = urllib.request.Request(url, headers=headers)
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            data = json.loads(resp.read())
+    except urllib.error.HTTPError as exc:
+        if exc.code == 402:
+            print(f"score: plan upgrade required — {exc.read().decode()[:120]}",
+                  file=sys.stderr)
+            return 2
+        print(f"score: HTTP {exc.code} from {url}", file=sys.stderr)
+        return 1
+    except (urllib.error.URLError, OSError) as exc:
+        if not quiet:
+            print(f"score: API unreachable ({exc}). Use --local for offline scoring.",
+                  file=sys.stderr)
+        return 1
+
+    if as_json:
+        print(json.dumps(data, indent=2))
+        return 0
+
+    if show_hist:
+        if not quiet:
+            print(f"[squash score] {vendor} — {months}-month history")
+            for m in data.get("history", [])[-6:]:
+                bar = "█" * int(m.get("score", 0) / 10)
+                print(f"  {m['month']}  {m.get('score', 0):5.1f}  {bar}")
+        return 0
+
+    tier_icon = {
+        "CERTIFIED": "🏆", "VERIFIED": "✅",
+        "BASIC": "🔵", "UNVERIFIED": "⚪",
+    }.get(data.get("tier", ""), "•")
+    if not quiet:
+        print(f"[squash score] {tier_icon} {vendor}")
+        print(f"  Score:       {data.get('score', 0):.1f} / 100  ({data.get('tier', '?')})")
+        if data.get("last_attested"):
+            print(f"  Last attested: {data['last_attested'][:10]}")
+        if data.get("frameworks"):
+            print(f"  Frameworks:  {', '.join(data['frameworks'])}")
+        if data.get("breakdown"):
+            print("  Breakdown:")
+            for k, v in data["breakdown"].items():
+                print(f"    {k:27s} {v:5.1f}")
+    return 0
+
 
 
 def _cmd_attest_carbon(args: argparse.Namespace, quiet: bool) -> int:
@@ -9207,6 +9401,116 @@ def _cmd_gitops(args: argparse.Namespace, quiet: bool) -> int:
         return 1
 
 
+def _cmd_industry_benchmark(args: argparse.Namespace, quiet: bool) -> int:
+    """W249-W250 / D5 — Industry compliance benchmarking."""
+    from squash.benchmark import (
+        BenchmarkEngine,
+        SECTORS,
+        benchmark,
+        build_profile_from_registry,
+        build_profile_from_scores,
+        get_baseline,
+        load_result,
+    )
+
+    sub = getattr(args, "ib_command", None)
+
+    def _make_profile(args):
+        frameworks = [f.strip() for f in args.frameworks.split(",") if f.strip()] if args.frameworks else []
+        if getattr(args, "registry_path", None):
+            return build_profile_from_registry(
+                Path(args.registry_path),
+                model_id_filter=getattr(args, "model_filter", ""),
+                period_days=args.period_days,
+            )
+        elif getattr(args, "scores", None):
+            scores = [float(s.strip()) for s in args.scores.split(",") if s.strip()]
+            return build_profile_from_scores(scores, frameworks, args.period_days)
+        else:
+            # No data — build a zero-score placeholder so CLI still runs
+            return build_profile_from_scores([], frameworks, args.period_days)
+
+    if sub == "report":
+        profile = _make_profile(args)
+        result = BenchmarkEngine().run(profile, args.sector_id)
+        fmt = args.ib_format
+        if fmt == "json":
+            text = result.to_json()
+        elif fmt == "md":
+            text = result.to_markdown()
+        else:
+            text = _ib_text_summary(result)
+
+        if args.out:
+            Path(args.out).write_text(text, encoding="utf-8")
+            if not quiet:
+                print(f"✓ benchmark report written to {args.out}")
+                print(result.summary())
+        else:
+            print(text)
+        return 0
+
+    if sub == "compare":
+        sector_ids = [s.strip() for s in args.sectors.split(",") if s.strip()]
+        profile = _make_profile(args)
+        fmt = args.ib_format
+        results = []
+        for sid in sector_ids:
+            try:
+                r = BenchmarkEngine().run(profile, sid)
+                results.append(r)
+            except ValueError as exc:
+                print(f"warning: {exc}", file=sys.stderr)
+
+        if fmt == "json":
+            print(json.dumps([r.to_dict() for r in results], indent=2))
+        elif fmt == "md":
+            for r in results:
+                print(r.to_markdown())
+                print()
+        else:
+            print(f"Score: {profile.score_mean:.1f}/100 | {profile.attestation_count} attestations")
+            print()
+            for r in results:
+                pct = f"p{r.score_percentile:.0f}" if r.score_percentile is not None else "n/a"
+                print(f"  {r.sector_name[:42]:42s} {r.tier:14s} {pct}")
+        return 0
+
+    if sub == "list-sectors":
+        if args.output_json:
+            print(json.dumps([
+                {"sector_id": sid, "name": name,
+                 "sample_size": get_baseline(sid).sample_size}
+                for sid, name in SECTORS.items()
+            ], indent=2))
+        else:
+            print("Available benchmark sectors:")
+            for sid, name in SECTORS.items():
+                b = get_baseline(sid)
+                print(f"  {sid:24s}  n={b.sample_size:4d}  p50={b.score_p50:.0f}  {name}")
+        return 0
+
+    print("squash industry-benchmark: specify a subcommand — report | compare | list-sectors")
+    return 1
+
+
+def _ib_text_summary(result) -> str:
+    pct = f"{result.score_percentile:.0f}th percentile" if result.score_percentile is not None else "percentile unavailable (< 5 attestations)"
+    lines = [
+        result.summary(),
+        "",
+        f"  Sector p50: {result.baseline.score_p50:.1f}  p75: {result.baseline.score_p75:.1f}  p90: {result.baseline.score_p90:.1f}",
+        f"  Your score: {result.profile.score_mean:.1f}  → {pct}",
+        f"  Drift rate: {result.profile.drift_rate_pct:.1f}% (sector avg: {result.baseline.drift_rate_pct:.1f}%)",
+    ]
+    if result.score_to_p75 > 0:
+        lines.append(f"  To reach p75: +{result.score_to_p75:.1f} pts | To reach p90: +{result.score_to_p90:.1f} pts")
+    gaps = [g for g in result.framework_gaps if not g.user_has_it]
+    if gaps:
+        lines.append(f"  Framework gaps: {', '.join(g.framework for g in gaps)}")
+    return "\n".join(lines)
+
+
 def _cmd_attest_identity(args: argparse.Namespace, quiet: bool) -> int:
     """W226-W228 / D2 — AI identity attestation."""
     from squash.identity_governor import (
@@ -10339,6 +10643,8 @@ def main() -> None:
         sys.exit(_cmd_telemetry(args, quiet))
     elif args.command == "gitops":
         sys.exit(_cmd_gitops(args, quiet))
+    elif args.command == "industry-benchmark":
+        sys.exit(_cmd_industry_benchmark(args, quiet))
     elif args.command == "attest-identity":
         sys.exit(_cmd_attest_identity(args, quiet))
     elif args.command == "hallucination-monitor":
@@ -10363,6 +10669,8 @@ def main() -> None:
         sys.exit(_cmd_chain_attest(args, quiet))
     elif args.command == "registry-gate":
         sys.exit(_cmd_registry_gate(args, quiet))
+    elif args.command == "score":
+        sys.exit(_cmd_score(args, quiet))
     elif args.command == "attest-carbon":
         sys.exit(_cmd_attest_carbon(args, quiet))
     elif args.command == "deprecation-watch":

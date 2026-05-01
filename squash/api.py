@@ -95,8 +95,9 @@ _UNAUTHED_PATHS = frozenset({
     "/billing/webhook",  # Stripe verifies its own signature
 })
 
-# Badge paths are dynamic (/badge/*) — checked via prefix in middleware
+# Badge + public score paths are dynamic — checked via prefix in middleware
 _BADGE_PATH_PREFIX = "/badge/"
+_SCORE_PATH_PREFIX = "/v1/score/"   # public procurement score endpoints
 
 # ── Rate limiter ──────────────────────────────────────────────────────────────
 # W138: Per-key plan-based rate limiter (replaces per-IP env-var limiter).
@@ -708,7 +709,7 @@ async def _security_middleware(request: Request, call_next):  # noqa: C901
     path = request.url.path
 
     # ── Unauthed paths: IP-level backstop only ────────────────────────────────
-    if path in _UNAUTHED_PATHS or path.startswith(_BADGE_PATH_PREFIX):
+    if path in _UNAUTHED_PATHS or path.startswith(_BADGE_PATH_PREFIX) or path.startswith(_SCORE_PATH_PREFIX):
         client_ip = request.client.host if request.client else "unknown"
         now = time.monotonic()
         window = _rate_window[client_ip]
@@ -3917,3 +3918,132 @@ async def gateway_verify(request: Request) -> JSONResponse:
             required_frameworks=required_frameworks,
         )
     return JSONResponse(content=decision.to_dict())
+
+
+# ── D3 (Track D) — Procurement Scoring API (Sprint 28 W246–W248) ─────────────
+#
+# The credit-score API for AI compliance. Freemium: basic score is public;
+# breakdown requires Pro auth; history requires Enterprise auth.
+#
+# Rate limiting: 60 req/min per IP for unauthenticated calls (same window
+# as the existing rate-limiter bucket keyed on "anon:{ip}").
+
+def _procurement_scorer() -> "ProcurementScorer":  # noqa: F821 — lazy import
+    from squash.procurement_scoring import ProcurementScorer
+    return ProcurementScorer(base_url=os.environ.get("SQUASH_PUBLIC_URL", "https://squash.works"))
+
+
+def _caller_plan(request: Request) -> str:
+    """Return 'enterprise' | 'pro' | 'startup' | 'team' | 'free'.
+
+    Unauthenticated callers get 'free'. Invalid tokens also get 'free'
+    (no error — the endpoint is public).
+    """
+    auth = request.headers.get("Authorization", "")
+    if not auth:
+        return "free"
+    try:
+        token = extract_bearer(auth)
+        ks = get_key_store()
+        record = ks.lookup(token)
+        return record.plan if record else "free"
+    except Exception:  # noqa: BLE001
+        return "free"
+
+
+@app.get("/v1/score/{vendor}")
+async def procurement_score(vendor: str, request: Request) -> JSONResponse:
+    """Return the AI compliance score for *vendor*.
+
+    ## Tier gating
+
+    | Field         | Free | Pro | Team | Enterprise |
+    |---------------|------|-----|------|------------|
+    | score + tier  | ✓    | ✓   | ✓    | ✓          |
+    | breakdown     | —    | ✓   | ✓    | ✓          |
+    | history       | —    | —   | —    | ✓          |
+
+    ## Rate limits
+    Unauthenticated: 60 req / min / IP.
+    Authenticated: governed by plan rate_per_min.
+    """
+    from squash.procurement_scoring import ProcurementScorer
+    if not vendor or len(vendor) > 128:
+        return JSONResponse(status_code=400, content={"error": "Invalid vendor name"})
+
+    plan = _caller_plan(request)
+    include_breakdown = plan in ("pro", "startup", "team", "enterprise")
+    include_history   = plan == "enterprise"
+
+    scorer = _procurement_scorer()
+    vs = scorer.score_vendor(vendor)
+
+    if include_history:
+        vs.history = scorer.score_history(vendor, months=12)
+
+    return JSONResponse(content=vs.to_dict(
+        include_breakdown=include_breakdown,
+        include_history=include_history,
+    ))
+
+
+@app.get("/v1/score/{vendor}/history")
+async def procurement_score_history(vendor: str, request: Request) -> JSONResponse:
+    """Return 12-month score time-series for *vendor*.
+
+    Requires authentication. Enterprise plan required for full history;
+    Pro/Team plans receive a 3-month window.
+    """
+    from squash.procurement_scoring import ProcurementScorer
+    if not vendor or len(vendor) > 128:
+        return JSONResponse(status_code=400, content={"error": "Invalid vendor name"})
+
+    plan = _caller_plan(request)
+    if plan == "free":
+        return JSONResponse(
+            status_code=402,
+            content={"error": "Score history requires Pro or higher plan",
+                     "upgrade_url": "https://squash.works/pricing"},
+        )
+
+    months = 12 if plan == "enterprise" else 3
+    scorer = _procurement_scorer()
+    history = scorer.score_history(vendor, months=months)
+
+    return JSONResponse(content={
+        "vendor":   vendor,
+        "months":   months,
+        "history":  history,
+        "plan":     plan,
+    })
+
+
+@app.get("/v1/score/{vendor}/badge")
+async def vendor_badge(vendor: str) -> Response:
+    """Return an embeddable shields.io-style SVG badge for *vendor*.
+
+    Public, unauthenticated. Safe to embed directly in a README or
+    procurement portal. The badge renders the vendor's current tier
+    and score in Squash brand colours.
+
+    Example:
+        <img src="https://squash.works/v1/score/acme-corp/badge" />
+    """
+    from squash.procurement_scoring import ProcurementScorer
+    if not vendor or len(vendor) > 128:
+        return Response(content="invalid", status_code=400)
+
+    scorer = ProcurementScorer(
+        base_url=os.environ.get("SQUASH_PUBLIC_URL", "https://squash.works")
+    )
+    vs = scorer.score_vendor(vendor)
+    svg = scorer.badge_svg(vendor, vs.score, vs.tier)
+    return Response(
+        content=svg,
+        media_type="image/svg+xml",
+        headers={
+            "Cache-Control": "max-age=300, public",
+            "X-Squash-Score": str(vs.score),
+            "X-Squash-Tier":  vs.tier,
+        },
+    )

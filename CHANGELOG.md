@@ -296,6 +296,69 @@ squash copyright-check --model ./model --json --fail-on-incompatible
 
 ---
 
+## [1.16.0] — 2026-05-01 — Sprint 28 W246–W248 / Track D-3: Procurement Scoring API
+
+### Added (W246–W248 — Track D / D3 — AI Procurement Scoring API — The Credit-Score Play)
+
+Every Fortune 500 procurement team is writing AI vendor questionnaires. They take 4 weeks each. Sprint 28 turns the Trust Package into a queryable API — the credit-score equivalent for AI compliance. Whoever's score the buyer asks for becomes the de facto standard.
+
+```
+# Query the score for any vendor (public, no auth required)
+curl https://squash.works/v1/score/acme-corp
+# → {"score": 87.4, "tier": "VERIFIED", "frameworks": ["eu-ai-act","iso-42001"], ...}
+
+# Get score breakdown (Pro plan)
+curl -H "Authorization: Bearer sq_live_..." https://squash.works/v1/score/acme-corp
+# → {..., "breakdown": {"compliance_score": 92.0, "freshness": 85.0, ...}}
+
+# Score history time-series (Enterprise)
+curl -H "Authorization: Bearer sq_live_..." https://squash.works/v1/score/acme-corp/history
+
+# Embeddable badge SVG for vendor README
+<img src="https://squash.works/v1/score/acme-corp/badge" />
+
+# CLI — local registry scoring
+squash score acme-corp --local --breakdown
+squash score acme-corp --local --history --json
+```
+
+- **`squash/procurement_scoring.py`** (NEW) — complete scoring engine:
+  - `ProcurementScorer.score_vendor(vendor)` → `VendorScore` with five-component score:
+    - **Compliance score** (weight 0.40): avg attestation score from `AttestationRegistry`
+    - **Freshness** (weight 0.20): exponential decay — 100 at day 0, ~50 at day 30, ~0 at day 90
+    - **Framework coverage** (weight 0.20): unique frameworks / 8 cap
+    - **Attestation frequency** (weight 0.10): attestations in last 30d / FREQ_TARGET × 100
+    - **Trust package** (weight 0.10): 100 if verified Trust Package in `VendorRegistry`
+  - Tier thresholds: CERTIFIED ≥ 90 | VERIFIED ≥ 75 | BASIC ≥ 50 | UNVERIFIED < 50
+  - Zero-attestation vendors always UNVERIFIED regardless of score
+  - `score_history(vendor, months=12)` → monthly time-series snapshots
+  - `badge_svg(vendor, score, tier)` → embeddable shields.io-style SVG
+
+- **`squash/api.py`** — 3 new endpoints (W246–W247):
+  - `GET /v1/score/{vendor}` — public, unauthenticated; returns basic score + tier; Pro unlocks `breakdown` field; Enterprise unlocks `history`
+  - `GET /v1/score/{vendor}/history` — authenticated; Pro = 3 months; Enterprise = 12 months
+  - `GET /v1/score/{vendor}/badge` — public SVG badge (avoids path conflict with existing `/badge/{framework}/{status}`)
+  - All `/v1/score/*` endpoints added to public path prefix (IP rate-limit only, no API key required)
+
+- **`squash/cli.py`** — `squash score <vendor>` (W248):
+  - `--breakdown` — per-component scores
+  - `--history` / `--months N` — time-series
+  - `--local` — query local registry (offline, no API call)
+  - `--api-url` — override squash API base URL
+  - `--json` — structured output
+
+**Freemium model:**
+
+| Field        | Unauthenticated | Pro     | Team    | Enterprise |
+|--------------|-----------------|---------|---------|------------|
+| score + tier | ✓               | ✓       | ✓       | ✓          |
+| breakdown    | —               | ✓       | ✓       | ✓          |
+| history      | — (402)         | 3 months| 3 months| 12 months  |
+
+**Module count:** 96 → 99 (procurement_scoring.py + concurrent sprints).
+
+---
+
 ## [1.15.0] — 2026-04-30 — Sprint 24 W235–W237 / Track C-6: AI Insurance Risk Package
 
 ### Added (W235–W237 — Track C / C6 — AI Insurance Risk Package)
