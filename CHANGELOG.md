@@ -142,6 +142,49 @@ squash simulate-audit --regulator FDA --fail-below 60
 
 ---
 
+## [1.14.0] — 2026-05-01 — Sprint 35 W265–W266 / Track C-8: Model Deprecation Watch
+
+### Added (W265–W266 — Track C / C8 — Model Deprecation Watch)
+
+OpenAI / Anthropic / Google / Meta / Mistral sunset models quarterly. Every sunset breaks a version-tied Annex IV record. Most teams discover deprecations the day inference returns a 404. Squash deprecation-watch fires alerts before that day arrives.
+
+```
+# Scan asset registry against all 5 provider feeds
+squash deprecation-watch --lead-time 30
+
+# Check a specific model
+squash deprecation-watch --check gpt-4-0613
+
+# List all known deprecations as JSON
+squash deprecation-watch --list --json
+
+# Alert on Slack, fail CI if any alerts
+squash deprecation-watch --alert-channel slack --fail-on-alert
+```
+
+- **`squash/deprecation_watch.py`** (NEW) — complete deprecation watch engine (W265):
+  - `DeprecationEntry` — provider, model_id, aliases, sunset_date, impact (BREAKING/SOFT/INFORMATIONAL), successor_model, days_until_sunset, is_sunsetted, `matches()` with segment-aware prefix matching
+  - `DeprecationAlert` — asset × entry match with days_remaining, migration_effort, re_attestation_checklist, `is_urgent()`, `summary()`
+  - `DeprecationStore` — SQLite cache (`~/.squash/deprecation_cache.db`) for entries + scan history
+  - `DeprecationWatcher` — main engine: `load_feeds()`, `scan()`, `check_model()`, `list_entries()`
+  - 5-provider built-in feed: **OpenAI** (7 entries: gpt-4-0613, gpt-3.5-turbo-0613, text-davinci-003, gpt-4-32k, gpt-4-vision-preview, dall-e-2, whisper-1), **Anthropic** (4: claude-1, claude-instant-1, claude-2, claude-3-opus), **Google** (3: chat-bison/PaLM 2, gemini-1.0-pro, embedding-gecko), **Meta** (2: llama-1, llama-2), **Mistral** (3: mistral-tiny, mistral-small-2312, open-mistral-7b)
+  - Real announced deprecation dates from provider release notes
+
+- **Migration effort estimator (W266):** heuristic based on impact × environment × risk tier — CRITICAL (BREAKING + prod + high-risk) → HIGH → MEDIUM → LOW
+
+- **Re-attestation checklist (W266):** per-model checklist with squash-specific commands (`squash attest`, `squash publish`, `squash annex-iv generate`, `squash iso42001`, etc.)
+
+- **Alert routing (W266):** `route_alerts()` → stdout | slack | json; delegates Slack to `squash/notifications.py`
+
+- **`squash/cli.py`** — `squash deprecation-watch` subcommand:
+  - `--lead-time DAYS` (default 30), `--provider`, `--check MODEL_ID`, `--list`
+  - `--model-ids` (comma-sep, bypass registry), `--alert-channel`, `--checklist`
+  - `--json`, `--fail-on-alert`, `--include-informational`, `--include-sunsetted`
+
+**Module count:** 85 → 86 (deprecation_watch.py). All count guards updated.
+
+---
+
 ## [1.13.0] — 2026-04-30 — Sprint 27 W243–W245 / Track C-4: Continuous Regulatory Watch Daemon
 
 ### Added (W243–W245 — Track C / C4 — Continuous Regulatory Watch Daemon)

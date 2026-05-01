@@ -8685,6 +8685,47 @@ def _cmd_anchor(args: argparse.Namespace, quiet: bool) -> int:
             Path(args.out).write_text(text)
             if not quiet:
                 print(f"✓ proof written to {args.out}")
+        return 0
+
+    if sub == "list":
+        entries = ledger.entries()
+        if args.output_json:
+            print(json.dumps([e.to_dict() for e in entries], indent=2, sort_keys=True))
+            return 0
+        if not entries:
+            print("(no anchors committed)")
+            return 0
+        for e in entries:
+            a = e.anchor
+            print(f"{a.iso_timestamp}  {a.anchor_id}  backend={a.backend:14s}  leaves={a.leaf_count:>4}  root={a.root[:16]}…")
+        return 0
+
+    if sub == "status":
+        staged = ledger.staged()
+        entries = ledger.entries()
+        last = entries[-1] if entries else None
+        if args.output_json:
+            print(json.dumps({
+                "staged": [s.to_dict() for s in staged],
+                "last_anchor": last.anchor.to_dict() if last else None,
+                "ledger_dir": str(ledger.root_dir),
+            }, indent=2, sort_keys=True))
+            return 0
+        print(f"ledger: {ledger.root_dir}")
+        print(f"staged: {len(staged)} attestation(s) pending")
+        for s in staged:
+            print(f"   • {s.attestation_id}  ({s.record_hash[:12]}…)")
+        if last:
+            a = last.anchor
+            print(f"last anchor: {a.iso_timestamp}  {a.anchor_id}  backend={a.backend}  leaves={a.leaf_count}")
+        else:
+            print("last anchor: (none)")
+        return 0
+
+    print("squash anchor: specify a subcommand — add | commit | verify | proof | list | status")
+    return 1
+
+
 def _cmd_gateway_config(args, quiet):
     """B5 — Emit Kong / AWS API Gateway runtime gate config or source."""
     from squash.integrations.gateway import (

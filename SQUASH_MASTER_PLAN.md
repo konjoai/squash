@@ -176,7 +176,7 @@ High-ROI items derived from market research. Each operationalises a specific anc
 | **C5** ✅ | **Audit Simulation** — `squash simulate-audit --regulator EU-AI-Act` | 10 days → **shipped** | ✅ 2026-04-30 | D1, D2, B5 | `audit_sim.py` (NEW) — 4 regulator profiles, 110 questions, critical-gate scoring, 90-day roadmap | Sprint 22 ✅ v1.14.0 |
 | **C6** | **Insurance Risk Package** — Munich Re / Coalition format | 7 days | Jun 16–24 | D2, D3 | AI cyber-insurance market crystallising late 2026 | Sprint 24 (W235–W237) |
 | **C7 ★** ✅ | **Hallucination Rate Attestation** — `squash hallucination-attest` | shipped 2026-04-30 | C2, B2 | $67.4B · 47% · 200 domain probes · signed CI-bounded cert · 51 tests. | Sprint 30 (W251–W252) ✅ |
-| **C8** | **Model Deprecation Watch** — `squash deprecation-watch` cross-references registry vs provider sunsets | 4 days | Jun 25–30 | C6, D2 | OpenAI / Anthropic / Google sunsets break attested deployments quarterly | Sprint 35 (W265–W266) |
+| **C8** ✅ | **Model Deprecation Watch** — `squash deprecation-watch` cross-references registry vs provider sunsets | 4 days | Jun 25–30 | C6, D2 | OpenAI / Anthropic / Google sunsets break attested deployments quarterly | Sprint 35 (W265–W266) |
 | **C9** | **Carbon / Energy Attestation** — `squash attest-carbon --deployment-region us-east-1` | 6 days | Jul 1–9 | D3 | CSRD reporting (all large EU orgs from 2025) · OMB DOE AI data-centre rule | Sprint 36 (W259–W261) |
 | **C10** | **Runtime Hallucination Monitor** — `squash monitor --mode hallucination --endpoint http://...` | 6 days | Jul 7–15 | D3 | EU AI Act Art. 9 post-market monitoring · 18% production hallucination rate | Sprint 37 (W267–W269) |
 | **C11** | **Genealogy + Copyright Contamination Cert** — `squash genealogy --memorisation-probe ./probes/` | 7 days | Jul 21–30 | D5 | NYT v. OpenAI legal theory · GC buyer · Books3 / copyleft-code exposure | Sprint 39 (W272–W274) |
@@ -1412,7 +1412,7 @@ deliverable is one more proof artefact.
 
 ---
 
-### Sprint 35 — Model Deprecation Watch (`squash deprecation-watch`) · **Track C / C8**
+### Sprint 35 — Model Deprecation Watch (`squash deprecation-watch`) · **Track C / C8** ✅ COMPLETE
 
 **Goal:** Background monitor of every major AI provider's deprecation calendar (OpenAI, Anthropic, Google, Meta, Mistral). Cross-references squash Asset Registry. Fires alerts with configurable lead time when a registered model approaches sunset. Each alert carries the re-attestation requirements + estimated migration effort.
 
