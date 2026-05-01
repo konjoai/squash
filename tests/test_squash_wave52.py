@@ -599,7 +599,7 @@ class TestModuleCount(unittest.TestCase):
         py_files = list(squish_root.rglob("*.py"))
         count = len(py_files)
         self.assertEqual(
-            count, 95,
-            msg=f"Module count is {count}, expected 95 after D2/W226-228. "
+            count, 96,
+            msg=f"Module count is {count}, expected 96 after D2/W226-228. "
                 f"New modules require written justification.",
         )

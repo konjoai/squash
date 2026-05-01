@@ -5,6 +5,64 @@ Format: [Conventional Commits](https://www.conventionalcommits.org/) · [Keep a 
 
 ---
 
+## [2.5.0] — 2026-04-30 — D1: GitHub App — Auto-Attest Check Runs
+
+> 1 user → 50-user network effect. The GitHub App is the wedge that turns
+> squash from a tool into infrastructure.
+
+### Added (Track D / D1)
+
+- **`squash/github_app.py`** — full GitHub App implementation:
+  - `GitHubAppConfig` — YAML/JSON config (App ID, private key, webhook
+    secret, model patterns, policies, listen host/port); `load_config()`
+    + `dump_config_template()` round-trip; `validate()` returns a list
+    of human-readable errors.
+  - `make_jwt()` — RS256 GitHub App JWT (stdlib + cryptography), no PyJWT
+    dependency; ≤9-minute lifetime per GitHub's reference value.
+  - `GitHubAppAuth` — per-installation access-token cache with 60s leeway
+    + thread-safe lock; `invalidate()` for forced rotation.
+  - `GitHubAppClient` — `urllib`-based REST wrapper:
+    `create_check_run`, `update_check_run`, `list_pull_request_files`
+    (auto-paginated), `get_commit`. Raises `GitHubApiError(status, msg)`.
+  - `WebhookVerifier` — constant-time HMAC-SHA256 verification of the
+    `X-Hub-Signature-256` header.
+  - `ModelFileMatcher` — pattern-based decision (default 21 patterns:
+    `*.safetensors`, `*.gguf`, `*.bin`, `*.pt`, `*.onnx`, `tokenizer*`,
+    `model_card.md`, `squash-attest.json`, …).
+  - `AttestationRunner` — wraps `squash.attest.AttestPipeline`,
+    renders results as a Check Run output payload (markdown table of
+    policy verdicts, scan status, artefact list).
+  - `AttestationOutcome` — passed/failed → `success`/`failure` Check Run
+    conclusion.
+  - `WebhookHandler` — dispatches `pull_request` (opened, synchronize,
+    reopened, ready_for_review), `push` (with branch-deleted skip), and
+    `ping`; clones repo at `head_sha`, runs runner, posts pending →
+    completed Check Runs.
+  - `clone_repo_at_sha()` — shallow `git fetch` + detached `git checkout`.
+  - `serve()` — stdlib threading HTTP server with `/healthz` +
+    `/webhook` endpoints; HMAC-verified, JSON-bodied.
+- **CLI: `squash github-app`** — four subcommands:
+  - `serve --config app.yaml [--host …] [--port …]`
+  - `attest --config app.yaml --installation-id N --repo OWNER/NAME --sha SHA
+       [--paths …] [--workdir …] [--no-clone] [--dry-run] [--json]`
+  - `config --init PATH | --check PATH | --show-defaults`
+  - `verify-webhook --secret S --signature 'sha256=…' --body … | --body-file …`
+  - Exit codes: 0 ok · 1 attestation failed (CI gate) · 2 config error ·
+    3 GitHub API / runtime failure
+- **49 new tests** — module surface, HMAC verification (4), JWT round-trip
+  (3), token cache (3), REST client + pagination (3), pattern matcher (4),
+  AttestationRunner (4), pull_request handler (5), push handler (3),
+  event dispatch (2), config round-trip (3), outcome rendering (2),
+  in-process HTTP server with HMAC-verified delivery (5), CLI subcommands
+  (5), parser registration (1).
+
+### Regulatory basis
+
+EU AI Act Art. 9 (post-market monitoring) · NIST AI RMF MEASURE 2 ·
+ISO 42001 §9.1 (CI gating as preventive control)
+
+---
+
 ## [2.4.0] — 2026-04-30 — C1 ★: `squash freeze` — Emergency Response (W221-W222)
 
 > ★ The Red Button. Highest drama-per-hour ratio in the entire roadmap.

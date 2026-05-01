@@ -36,6 +36,7 @@ import json
 import logging
 import os
 import sys
+import tempfile
 from pathlib import Path
 
 
@@ -2215,6 +2216,63 @@ def _build_parser() -> argparse.ArgumentParser:
     ha_probes = ha_sub.add_parser("list-probes", help="List built-in probes for a domain")
     ha_probes.add_argument("--domain", default="general", choices=["legal", "medical", "financial", "code", "general"])
     ha_probes.add_argument("--json", action="store_true", dest="output_json")
+
+    # ── D1 — squash GitHub App ────────────────────────────────────────────────
+    gha_cmd = sub.add_parser(
+        "github-app",
+        help="GitHub App — auto-attest PRs/commits as Check Runs",
+        description=(
+            "Run the squash GitHub App: webhook-driven Check Runs on PRs and\n"
+            "pushes that touch model artefacts.\n\n"
+            "Examples:\n"
+            "  squash github-app config --init ./squash-github-app.yaml\n"
+            "  squash github-app config --check ./squash-github-app.yaml\n"
+            "  squash github-app serve --config ./squash-github-app.yaml\n"
+            "  squash github-app attest --config app.yaml --installation-id 1 \\\n"
+            "      --repo octo/repo --sha abc123 --paths model.safetensors\n"
+            "  squash github-app verify-webhook --secret S3CRET --body-file body.json \\\n"
+            "      --signature 'sha256=...'\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    gha_sub = gha_cmd.add_subparsers(dest="gha_command")
+
+    gha_serve = gha_sub.add_parser("serve", help="Start the webhook receiver")
+    gha_serve.add_argument("--config", required=True, dest="gha_config")
+    gha_serve.add_argument("--host", default=None, dest="gha_host")
+    gha_serve.add_argument("--port", type=int, default=None, dest="gha_port")
+
+    gha_attest = gha_sub.add_parser("attest", help="Run an attestation manually")
+    gha_attest.add_argument("--config", required=True, dest="gha_config")
+    gha_attest.add_argument("--installation-id", type=int, required=True, dest="gha_install")
+    gha_attest.add_argument("--repo", required=True, dest="gha_repo",
+                             help="owner/name (e.g. octo/repo)")
+    gha_attest.add_argument("--sha", required=True, dest="gha_sha")
+    gha_attest.add_argument("--clone-url", default="", dest="gha_clone_url")
+    gha_attest.add_argument("--paths", nargs="*", default=[], dest="gha_paths",
+                             help="Changed paths (defaults to scanning the clone)")
+    gha_attest.add_argument("--no-clone", action="store_true", dest="gha_no_clone",
+                             help="Treat --workdir as the already-checked-out tree")
+    gha_attest.add_argument("--workdir", default=None, dest="gha_workdir")
+    gha_attest.add_argument("--dry-run", action="store_true", dest="gha_dry_run",
+                             help="Skip posting Check Runs to GitHub")
+    gha_attest.add_argument("--json", action="store_true", dest="output_json")
+
+    gha_cfg = gha_sub.add_parser("config", help="Render or validate config")
+    gha_cfg_grp = gha_cfg.add_mutually_exclusive_group(required=True)
+    gha_cfg_grp.add_argument("--init", metavar="PATH", default=None, dest="gha_cfg_init")
+    gha_cfg_grp.add_argument("--check", metavar="PATH", default=None, dest="gha_cfg_check")
+    gha_cfg_grp.add_argument("--show-defaults", action="store_true", dest="gha_cfg_show")
+
+    gha_verify = gha_sub.add_parser(
+        "verify-webhook", help="Verify an X-Hub-Signature-256 header"
+    )
+    gha_verify.add_argument("--secret", required=True, dest="gha_v_secret")
+    gha_verify.add_argument("--signature", required=True, dest="gha_v_sig",
+                             help="Header value, e.g. 'sha256=...'")
+    gha_verify_body = gha_verify.add_mutually_exclusive_group(required=True)
+    gha_verify_body.add_argument("--body", default=None, dest="gha_v_body")
+    gha_verify_body.add_argument("--body-file", default=None, dest="gha_v_body_file")
 
     # ── W221-W222 / C1 ★ — squash freeze (Emergency Response Orchestrator) ────
     fz_cmd = sub.add_parser(
@@ -6474,6 +6532,214 @@ def _cmd_freeze(args: argparse.Namespace, quiet: bool) -> int:
     return 0 if receipt.all_ok else 1
 
 
+def _cmd_github_app(args: argparse.Namespace, quiet: bool) -> int:
+    """D1 — `squash github-app`. Auto-attest PRs/commits as GitHub Check Runs.
+
+    Subcommands:
+      serve           — start the webhook receiver
+      attest          — manually run an attestation against a repo @ sha
+      config          — render or validate a YAML config file
+      verify-webhook  — verify an X-Hub-Signature-256 header
+
+    Exit codes:
+      0  success
+      1  attestation failed (CI gate)
+      2  configuration / validation error
+      3  GitHub API or runtime failure
+    """
+    sub = getattr(args, "gha_command", None)
+
+    try:
+        from squash import github_app as gh
+    except Exception as exc:  # noqa: BLE001
+        print(f"squash github-app unavailable: {exc}", file=sys.stderr)
+        return 2
+
+    if sub is None:
+        print(
+            "squash github-app: specify a subcommand — "
+            "serve | attest | config | verify-webhook",
+            file=sys.stderr,
+        )
+        return 2
+
+    # ── config ─────────────────────────────────────────────────────────────
+    if sub == "config":
+        if getattr(args, "gha_cfg_show", False):
+            print(gh._CONFIG_TEMPLATE)  # noqa: SLF001
+            return 0
+        init_path = getattr(args, "gha_cfg_init", None)
+        check_path = getattr(args, "gha_cfg_check", None)
+        if init_path:
+            p = gh.dump_config_template(init_path)
+            if not quiet:
+                print(f"wrote {p}")
+            return 0
+        if check_path:
+            try:
+                cfg = gh.load_config(check_path)
+            except Exception as exc:  # noqa: BLE001
+                print(f"config load failed: {exc}", file=sys.stderr)
+                return 2
+            errors = cfg.validate()
+            if errors:
+                for e in errors:
+                    print(f"✗ {e}", file=sys.stderr)
+                return 2
+            if not quiet:
+                print(
+                    f"✓ {check_path} — app_id={cfg.app_id} "
+                    f"patterns={len(cfg.model_patterns)}"
+                )
+            return 0
+        return 2
+
+    # ── verify-webhook ─────────────────────────────────────────────────────
+    if sub == "verify-webhook":
+        secret = getattr(args, "gha_v_secret", "")
+        sig = getattr(args, "gha_v_sig", "")
+        body_text = getattr(args, "gha_v_body", None)
+        body_file = getattr(args, "gha_v_body_file", None)
+        if body_file:
+            try:
+                body_bytes = Path(body_file).read_bytes()
+            except Exception as exc:  # noqa: BLE001
+                print(f"body-file read failed: {exc}", file=sys.stderr)
+                return 2
+        else:
+            body_bytes = (body_text or "").encode()
+        verifier = gh.WebhookVerifier(secret)
+        ok = verifier.verify(body_bytes, sig)
+        if not quiet:
+            print("✓ signature valid" if ok else "✗ signature INVALID")
+        return 0 if ok else 1
+
+    # ── serve / attest both need a config ──────────────────────────────────
+    cfg_path = getattr(args, "gha_config", None)
+    if not cfg_path:
+        print("squash github-app: --config is required", file=sys.stderr)
+        return 2
+    try:
+        cfg = gh.load_config(cfg_path)
+    except Exception as exc:  # noqa: BLE001
+        print(f"config load failed: {exc}", file=sys.stderr)
+        return 2
+
+    errors = cfg.validate()
+    if errors:
+        for e in errors:
+            print(f"✗ {e}", file=sys.stderr)
+        return 2
+
+    # ── serve ──────────────────────────────────────────────────────────────
+    if sub == "serve":
+        try:
+            server = gh.serve(
+                cfg,
+                host=getattr(args, "gha_host", None),
+                port=getattr(args, "gha_port", None),
+            )
+        except Exception as exc:  # noqa: BLE001
+            print(f"serve failed: {exc}", file=sys.stderr)
+            return 3
+        if not quiet:
+            host, port = server.server_address[:2]
+            print(f"squash-github-app listening on {host}:{port}")
+        try:
+            server.serve_forever()
+        except KeyboardInterrupt:
+            if not quiet:
+                print("\nshutting down")
+        finally:
+            server.server_close()
+        return 0
+
+    # ── attest ─────────────────────────────────────────────────────────────
+    if sub == "attest":
+        repo = str(getattr(args, "gha_repo", ""))
+        if "/" not in repo:
+            print("--repo must be 'owner/name'", file=sys.stderr)
+            return 2
+        owner, name = repo.split("/", 1)
+        sha = str(getattr(args, "gha_sha", ""))
+        installation_id = int(getattr(args, "gha_install", 0) or 0)
+        paths = list(getattr(args, "gha_paths", []) or [])
+        clone_url = str(getattr(args, "gha_clone_url", "") or "")
+        no_clone = bool(getattr(args, "gha_no_clone", False))
+        workdir = getattr(args, "gha_workdir", None)
+        dry_run = bool(getattr(args, "gha_dry_run", False))
+
+        runner = gh.AttestationRunner(cfg)
+        if no_clone:
+            if not workdir:
+                print("--no-clone requires --workdir", file=sys.stderr)
+                return 2
+            outcome = runner.run(
+                workdir=workdir, changed_model_files=paths or [], model_id=repo,
+            )
+        else:
+            if not clone_url:
+                clone_url = f"https://github.com/{owner}/{name}.git"
+            with tempfile.TemporaryDirectory(prefix=f"squash-app-{sha[:7]}-") as tmp:
+                wd = Path(tmp) / "repo"
+                try:
+                    gh.clone_repo_at_sha(
+                        clone_url=clone_url, sha=sha,
+                        destination=wd, depth=cfg.clone_depth,
+                    )
+                except Exception as exc:  # noqa: BLE001
+                    print(f"clone failed: {exc}", file=sys.stderr)
+                    return 3
+                outcome = runner.run(
+                    workdir=wd, changed_model_files=paths or [], model_id=repo,
+                )
+
+        body = dict(
+            passed=outcome.passed,
+            conclusion=outcome.conclusion,
+            model_id=outcome.model_id,
+            summary=outcome.summary,
+            violations=outcome.violations,
+            artifacts=outcome.artifacts,
+        )
+        if getattr(args, "output_json", False):
+            print(json.dumps(body, indent=2))
+        elif not quiet:
+            print(f"[{outcome.conclusion.upper()}] {outcome.summary}")
+            if outcome.violations:
+                for v in outcome.violations:
+                    print(f"  - {v}")
+
+        if not dry_run and installation_id:
+            try:
+                auth = gh.GitHubAppAuth(cfg)
+                client = gh.GitHubAppClient(auth)
+                check = client.create_check_run(
+                    installation_id=installation_id,
+                    owner=owner, repo=name, head_sha=sha,
+                    status="completed", output=outcome.to_check_run_output(),
+                )
+                if check.get("id"):
+                    client.update_check_run(
+                        installation_id=installation_id,
+                        owner=owner, repo=name,
+                        check_run_id=int(check["id"]),
+                        status="completed", conclusion=outcome.conclusion,
+                        completed_at=gh._now_iso(),  # noqa: SLF001
+                    )
+            except gh.GitHubApiError as exc:
+                print(f"GitHub API error: {exc}", file=sys.stderr)
+                return 3
+            except Exception as exc:  # noqa: BLE001
+                print(f"check-run post failed: {exc}", file=sys.stderr)
+                return 3
+
+        return 0 if outcome.passed else 1
+
+    print(f"unknown github-app subcommand: {sub}", file=sys.stderr)
+    return 2
+
+
 def _cmd_registry_gate(args: argparse.Namespace, quiet: bool) -> int:
     """W201 — `squash registry-gate`. Pre-registration policy gate.
 
@@ -9978,6 +10244,8 @@ def main() -> None:
         sys.exit(_cmd_watch_regulatory(args, quiet))
     elif args.command == "freeze":
         sys.exit(_cmd_freeze(args, quiet))
+    elif args.command == "github-app":
+        sys.exit(_cmd_github_app(args, quiet))
     else:
         parser.print_help()
         sys.exit(1)
