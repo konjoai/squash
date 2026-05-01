@@ -668,8 +668,8 @@ class TestModuleCount:
         """squish/ must still have exactly 125 Python files (W51 adds drift.py — new security domain)."""
         squish_dir = Path(__file__).parent.parent / "squash"
         count = len(list(squish_dir.rglob("*.py")))
-        assert count == 77, (
-            f"Module count changed: expected 77, got {count}. "
+        assert count == 78, (
+            f"Module count changed: expected 78, got {count}. "
             "Sprint 14 W205 (B1) added: hf_scanner.py. "
             "New modules require written justification."
         )

@@ -2671,6 +2671,71 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Suppress non-essential output.",
     )
 
+    # ── Sprint 24 W235-W237 (Track C / C6) — insurance-package ────────────────
+    ip_cmd = sub.add_parser(
+        "insurance-package",
+        help="Generate AI cyber insurance risk package (Munich Re / Coalition format)",
+        description=(
+            "Produce a standardised AI cyber insurance underwriting package:\n"
+            "  · Per-model risk profile (tier, compliance score, CVE exposure,\n"
+            "    drift events, incidents, bias audit status)\n"
+            "  · Aggregate organisation risk score (0–100)\n"
+            "  · Munich Re AI cyber format (5 control domains, maturity level 1–4)\n"
+            "  · Coalition AI risk format (5 categories, weighted score)\n"
+            "  · Generic JSON adapter for any other underwriter\n"
+            "  · Signed ZIP bundle with integrity.sha256 manifest\n\n"
+            "New buyer motion: Chief Risk Officer + insurance procurement.\n\n"
+            "Examples:\n"
+            "  squash insurance-package --models-dir ./models --org 'Acme Corp'\n"
+            "  squash insurance-package --models-dir ./models --zip ./bundle.zip\n"
+            "  squash insurance-package --models-dir ./models --json\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    ip_cmd.add_argument(
+        "--models-dir", "--model-path",
+        default=".",
+        dest="ip_models_dir",
+        help="Model directory (or parent of model subdirectories). Default: cwd.",
+    )
+    ip_cmd.add_argument(
+        "--org",
+        default="",
+        dest="ip_org",
+        help="Organisation name shown in the package header.",
+    )
+    ip_cmd.add_argument(
+        "--output-dir",
+        default=None,
+        dest="ip_output_dir",
+        help="Directory to write insurance-package.{json,md}. Default: --models-dir.",
+    )
+    ip_cmd.add_argument(
+        "--zip",
+        default=None,
+        dest="ip_zip",
+        metavar="PATH",
+        help="Also write a signed ZIP bundle to PATH (e.g. ./insurance-bundle.zip).",
+    )
+    ip_cmd.add_argument(
+        "--json",
+        action="store_true",
+        dest="ip_json",
+        help="Print structured JSON report to stdout.",
+    )
+    ip_cmd.add_argument(
+        "--underwriter",
+        default=None,
+        choices=["munich-re", "coalition", "generic"],
+        dest="ip_underwriter",
+        help="Print only the specified underwriter format to stdout (with --json).",
+    )
+    ip_cmd.add_argument(
+        "--quiet",
+        action="store_true",
+        help="Suppress non-essential output.",
+    )
+
     # ── Sprint 27 W243-W245 (Track C / C4) — watch-regulatory daemon ──────────
     wr_cmd = sub.add_parser(
         "watch-regulatory",
@@ -5325,6 +5390,84 @@ def _cmd_digest(args: argparse.Namespace, quiet: bool) -> int:
 
     print(f"squash digest: unknown subcommand {sub_cmd!r}", file=sys.stderr)
     return 2
+
+
+def _cmd_insurance_package(args: argparse.Namespace, quiet: bool) -> int:
+    """Sprint 24 W237 — `squash insurance-package`.
+
+    Generate AI cyber insurance risk package for underwriting submission.
+
+    Exit codes:
+      0   success
+      1   build failure (empty model directory etc.)
+      2   configuration error
+    """
+    try:
+        from squash.insurance import InsuranceBuilder, MunichReAdapter, CoalitionAdapter, GenericAdapter
+    except ImportError as exc:
+        print(f"squash insurance-package unavailable: {exc}", file=sys.stderr)
+        return 2
+
+    models_dir = Path(getattr(args, "ip_models_dir", ".") or ".")
+    if not models_dir.exists():
+        print(f"insurance-package: path not found: {models_dir}", file=sys.stderr)
+        return 2
+
+    quiet_mode = quiet or getattr(args, "quiet", False)
+    org = getattr(args, "ip_org", "") or ""
+
+    try:
+        pkg = InsuranceBuilder().build(models_dir, org_name=org)
+    except Exception as exc:  # noqa: BLE001
+        print(f"insurance-package: build failed: {exc}", file=sys.stderr)
+        return 1
+
+    emit_json    = getattr(args, "ip_json", False)
+    underwriter  = getattr(args, "ip_underwriter", None)
+    output_dir_s = getattr(args, "ip_output_dir", None)
+    zip_path_s   = getattr(args, "ip_zip", None)
+
+    output_dir = Path(output_dir_s) if output_dir_s else models_dir
+    written: dict[str, Path] = {}
+
+    # Write JSON + Markdown
+    written.update(pkg.save(output_dir))
+
+    # Write ZIP if requested
+    if zip_path_s:
+        zip_path = Path(zip_path_s)
+        pkg.save_zip(zip_path)
+        written["zip"] = zip_path
+
+    # JSON / underwriter output to stdout
+    if emit_json:
+        if underwriter == "munich-re":
+            payload = json.dumps(MunichReAdapter().format(pkg), indent=2, sort_keys=True)
+        elif underwriter == "coalition":
+            payload = json.dumps(CoalitionAdapter().format(pkg), indent=2, sort_keys=True)
+        elif underwriter == "generic":
+            payload = json.dumps(GenericAdapter().format(pkg), indent=2, sort_keys=True)
+        else:
+            payload = pkg.to_json()
+        print(payload)
+    elif not quiet_mode:
+        risk_label = (
+            "🔴 HIGH" if pkg.aggregate_risk_score > 60 else
+            "🟡 MEDIUM" if pkg.aggregate_risk_score > 30 else "🟢 LOW"
+        )
+        print(
+            f"✓ AI Insurance Package — {pkg.total_models} model(s) · "
+            f"Risk: {risk_label} ({pkg.aggregate_risk_score}/100) · "
+            f"Compliance: {pkg.aggregate_compliance_score}/100"
+        )
+        if pkg.critical_cves:
+            print(f"   ⚠️  {pkg.critical_cves} critical/high CVE(s) requiring remediation")
+        if pkg.high_risk_count:
+            print(f"   ⚠️  {pkg.high_risk_count} high-risk model(s)")
+        for fmt, p in written.items():
+            print(f"   [{fmt}] {p}")
+
+    return 0
 
 
 def _cmd_simulate_audit(args: argparse.Namespace, quiet: bool) -> int:
@@ -8632,6 +8775,8 @@ def main() -> None:
         sys.exit(_cmd_approval_export(args, quiet))
     elif args.command == "digest":
         sys.exit(_cmd_digest(args, quiet))
+    elif args.command == "insurance-package":
+        sys.exit(_cmd_insurance_package(args, quiet))
     elif args.command == "simulate-audit":
         sys.exit(_cmd_simulate_audit(args, quiet))
     elif args.command == "watch-regulatory":
