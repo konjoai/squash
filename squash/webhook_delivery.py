@@ -437,8 +437,14 @@ class WebhookDelivery:
 # ---------------------------------------------------------------------------
 
 def _utc_now() -> str:
+    """ISO-8601 UTC string. Phase G.2: drops deprecated ``datetime.utcnow()``;
+    routes through the injectable :func:`squash.clock.utc_now` so tests can
+    freeze the clock at the module boundary."""
     import datetime
-    return datetime.datetime.utcnow().isoformat() + "Z"
+    from squash.clock import utc_now as _now
+    return (
+        _now().astimezone(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    )
 
 
 def _row_to_endpoint(row: tuple) -> WebhookEndpoint:

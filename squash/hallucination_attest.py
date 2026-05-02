@@ -977,6 +977,7 @@ class HallucinationAttester:
         probes: list[Probe] | None = None,
         priv_key_path: Path | None = None,
         squash_version: str = "1",
+        clock: Any = None,
     ) -> HallucinationAttestation:
         if domain not in _DEFAULT_THRESHOLDS:
             raise ValueError(
@@ -1017,8 +1018,32 @@ class HallucinationAttester:
         ci_lo, ci_hi = _wilson_ci(h_count, n)
         passes = rate <= threshold
 
+        # Phase G.2: deterministic cert_id keyed on the immutable inputs
+        # (model + domain + sorted probe IDs + computed metrics). Two
+        # consecutive runs over the same inputs yield the same ID. Clock
+        # is injected via the new `clock=` parameter further below; the
+        # default uses the system clock so existing call-sites still work.
+        from squash.canon import canonical_bytes as _cbytes
+        from squash.clock import SystemClock as _SysClock
+        from squash.ids import cert_id as _cert_id
+
+        clk = clock if clock is not None else _SysClock()
+        issued_at = (
+            clk()
+            .astimezone(timezone.utc)
+            .replace(microsecond=0)
+            .strftime("%Y-%m-%dT%H:%M:%SZ")
+        )
+        id_seed = {
+            "schema": _SCHEMA,
+            "model_id": model_id or model_endpoint,
+            "domain": domain,
+            "probe_ids": sorted(p.probe.probe_id for p in results),
+            "rate": round(rate, 6),
+        }
+
         cert = HallucinationAttestation(
-            cert_id="hac-" + uuid.uuid4().hex[:16],
+            cert_id=_cert_id("hac", id_seed),
             schema=_SCHEMA,
             model_id=model_id or model_endpoint,
             domain=domain,
@@ -1031,7 +1056,7 @@ class HallucinationAttester:
             passes_threshold=passes,
             domain_context=_DOMAIN_CONTEXT.get(domain, ""),
             probe_results=results,
-            issued_at=datetime.now(tz=timezone.utc).isoformat(),
+            issued_at=issued_at,
             squash_version=squash_version,
         )
 
@@ -1045,7 +1070,9 @@ def _sign(cert: HallucinationAttestation, priv_path: Path) -> HallucinationAttes
     from cryptography.hazmat.primitives import serialization
     from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
-    payload = json.dumps(cert.body_dict(), sort_keys=True, separators=(",", ":")).encode()
+    # Phase G.2: RFC 8785 canonical bytes — every signed payload byte-stable.
+    from squash.canon import canonical_bytes as _cb
+    payload = _cb(cert.body_dict())
     priv_obj = serialization.load_pem_private_key(priv_path.read_bytes(), password=None)
     if not isinstance(priv_obj, Ed25519PrivateKey):
         raise ValueError("hallucination-attest signing requires Ed25519 private key")
@@ -1074,7 +1101,9 @@ def verify_certificate(cert: HallucinationAttestation) -> tuple[bool, str]:
         return False, f"public key load failed: {e}"
     if not isinstance(pub, Ed25519PublicKey):
         return False, "not Ed25519"
-    payload = json.dumps(cert.body_dict(), sort_keys=True, separators=(",", ":")).encode()
+    # Phase G.2: RFC 8785 canonical bytes — every signed payload byte-stable.
+    from squash.canon import canonical_bytes as _cb
+    payload = _cb(cert.body_dict())
     try:
         pub.verify(bytes.fromhex(cert.signature_hex), payload)
         return True, "signature valid"

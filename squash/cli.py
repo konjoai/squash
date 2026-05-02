@@ -343,6 +343,38 @@ def _build_parser() -> argparse.ArgumentParser:
         default=False,
         help="Exit 2 when no bundle is found (treat unsigned BOMs as failures)",
     )
+    verify_cmd.add_argument(
+        "--check-timestamp",
+        action="store_true",
+        default=False,
+        help="Phase G.3: also verify the RFC 3161 TSA timestamp token "
+             "(requires tsa_token.json in the attestation dir).",
+    )
+
+    # ── squash self-verify ─────────────────────────────────────────────────────
+    # Phase G.3 — full chain walker. Validates input_manifest, canonical
+    # body, Ed25519 signature, RFC 3161 timestamp, and SLSA provenance
+    # for an attestation directory. Exit 0 only when every link verifies.
+    self_verify_cmd = sub.add_parser(
+        "self-verify",
+        help="Walk the full crypto chain (input manifest → canonical body → "
+             "Ed25519 → RFC 3161 → SLSA) and exit 0 only on success",
+    )
+    self_verify_cmd.add_argument(
+        "--attestation-dir", "-d",
+        default=".",
+        help="Directory containing the squash attestation artefacts (default: cwd).",
+    )
+    self_verify_cmd.add_argument(
+        "--offline",
+        action="store_true",
+        help="Skip network-dependent checks (TSA, Rekor).",
+    )
+    self_verify_cmd.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit machine-readable JSON instead of text.",
+    )
 
     # ── squash report ──────────────────────────────────────────────────────────
     report_cmd = sub.add_parser(
@@ -4079,6 +4111,17 @@ def _cmd_verify(args: argparse.Namespace, quiet: bool) -> int:
     if result:
         if not quiet:
             print(f"✓ verified: {bom_path}")
+        # Phase G.3: opt-in TSA roundtrip check.
+        if getattr(args, "check_timestamp", False):
+            from squash.self_verify import check_tsa_timestamp
+
+            att_dir = bom_path.parent
+            tsa_check = check_tsa_timestamp(att_dir)
+            if not quiet:
+                icon = "✓" if tsa_check.passed else "✗"
+                print(f"{icon} timestamp: {tsa_check.detail}")
+            if not tsa_check.passed and args.strict:
+                return 2
         return 0
 
     print(f"✗ verification FAILED: {bom_path}", file=sys.stderr)
@@ -10630,6 +10673,16 @@ def main() -> None:
         sys.exit(_cmd_diff(args, quiet))
     elif args.command == "verify":
         sys.exit(_cmd_verify(args, quiet))
+    elif args.command == "self-verify":
+        # Phase G.3 — chain walker
+        from squash.self_verify import main as _self_verify_main
+
+        argv = ["--attestation-dir", args.attestation_dir]
+        if getattr(args, "offline", False):
+            argv.append("--offline")
+        if getattr(args, "json", False):
+            argv.append("--json")
+        sys.exit(_self_verify_main(argv))
     elif args.command == "keygen":
         sys.exit(_cmd_keygen(args, quiet))
     elif args.command == "verify-local":

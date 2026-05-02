@@ -195,16 +195,26 @@ class CycloneDXBuilder:
             for h in file_hashes
         )
 
+        # Phase G.2: deterministic serialNumber (uuid5 keyed on the BOM
+        # subject), and clock-injected timestamp. Two consecutive builds
+        # over the same model produce byte-identical BOMs.
+        from squash.clock import utc_now as _utc_now
+        from squash.ids import deterministic_uuid as _det_uuid
+
+        _serial_seed = {
+            "model_id": meta.model_id,
+            "file_hashes": sorted(
+                (h.get("path", ""), h.get("content", "")) for h in file_hashes
+            ),
+        }
         bom: dict[str, Any] = {
             "bomFormat": "CycloneDX",
             "specVersion": _CDEX_SPEC_VERSION,
             "$schema": _CDEX_SCHEMA_URL,
             "version": 1,
-            "serialNumber": f"urn:uuid:{uuid.uuid4()}",
+            "serialNumber": f"urn:uuid:{_det_uuid(_serial_seed)}",
             "metadata": {
-                "timestamp": datetime.datetime.now(datetime.timezone.utc).strftime(
-                    "%Y-%m-%dT%H:%M:%SZ"
-                ),
+                "timestamp": _utc_now().strftime("%Y-%m-%dT%H:%M:%SZ"),
                 "tools": [
                     {
                         "vendor": "squishai",

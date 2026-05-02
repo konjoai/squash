@@ -819,8 +819,18 @@ class CarbonAttestation:
         kwh_per_day = energy_est.kwh_per_inference * inferences_per_day
         kwh_per_year = kwh_per_day * 365.25
 
+        # Phase G.2: deterministic cert_id keyed on model identity + deployment.
+        from squash.ids import cert_id as _cert_id
+        _seed = {
+            "model_id": model_id,
+            "deployment_region": deployment_region,
+            "architecture": architecture,
+            "hardware": hardware,
+            "param_count": param_count,
+            "kwh_per_inference": round(energy_est.kwh_per_inference, 9),
+        }
         cert = cls(
-            cert_id=f"carbon-{uuid.uuid4().hex[:16]}",
+            cert_id=_cert_id("carbon", _seed),
             model_id=model_id,
             deployment_region=deployment_region,
             architecture=architecture,
@@ -853,8 +863,10 @@ class CarbonAttestation:
     def sign(self, key: bytes | None = None) -> "CarbonAttestation":
         if key is None:
             key = _signing_key()
-        payload = json.dumps(self.to_dict(), sort_keys=True, separators=(",", ":"))
-        self.signature = hmac.new(key, payload.encode(), hashlib.sha256).hexdigest()
+        # Phase G.2: RFC 8785 canonical bytes for the signed body.
+        from squash.canon import canonical_bytes as _cb
+        payload = _cb(self.to_dict())
+        self.signature = hmac.new(key, payload, hashlib.sha256).hexdigest()
         return self
 
     def verify(self, key: bytes | None = None) -> bool:
@@ -862,11 +874,12 @@ class CarbonAttestation:
             return False
         if key is None:
             key = _signing_key()
+        from squash.canon import canonical_bytes as _cb
         sig = self.signature
         self.signature = ""
-        payload = json.dumps(self.to_dict(), sort_keys=True, separators=(",", ":"))
+        payload = _cb(self.to_dict())
         self.signature = sig
-        expected = hmac.new(key, payload.encode(), hashlib.sha256).hexdigest()
+        expected = hmac.new(key, payload, hashlib.sha256).hexdigest()
         return hmac.compare_digest(expected, sig)
 
 

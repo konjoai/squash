@@ -52,6 +52,8 @@ from squash.spdx_builder import SpdxBuilder, SpdxOptions
 from squash.policy import PolicyEngine, PolicyResult, AVAILABLE_POLICIES
 from squash.scanner import ModelScanner, ScanResult
 from squash.oms_signer import OmsSigner, _is_offline
+from squash.canon import canonical_bytes
+from squash.clock import Clock, SystemClock
 
 log = logging.getLogger(__name__)
 
@@ -128,6 +130,17 @@ class AttestConfig:
     training_dataset_ids: list[str] = field(default_factory=list)
     awq_alpha: float | None = None
     awq_group_size: int | None = None
+    # Phase G.3 — Cryptographic chain
+    emit_input_manifest: bool = True
+    """When True, write ``input_manifest.json`` with SHA-256 of every
+    ingested file as the first action of the pipeline."""
+    timestamp_with_tsa: bool = False
+    """When True, send the canonical attestation digest to an RFC 3161
+    TSA after signing and embed the response in ``tsa_token.json``.
+    Endpoint is read from ``SQUASH_TSA_URL`` (default DigiCert)."""
+    tsa_url: str | None = None
+    """Override the TSA endpoint. When None, reads ``SQUASH_TSA_URL`` /
+    falls back to DigiCert."""
 
 
 @dataclass
@@ -145,6 +158,12 @@ class AttestResult:
     signature_path: Path | None = None
     master_record_path: Path | None = None
     vex_report_path: Path | None = None
+    input_manifest_path: Path | None = None
+    """Phase G.3: path to the input_manifest.json. Always written if
+    ``AttestConfig.emit_input_manifest`` is True (the default)."""
+    tsa_token_path: Path | None = None
+    """Phase G.3: path to the RFC 3161 TSA timestamp envelope. None when
+    timestamping was disabled or skipped (offline / network failure)."""
     error: str = ""
 
     def summary(self) -> str:
@@ -212,6 +231,27 @@ class AttestPipeline:
             output_dir=out_dir,
             passed=True,
         )
+
+        # ── Step 0: Phase G.3 — Input manifest (FIRST action) ────────────
+        # Hash every ingested file before any analysis runs. Every later
+        # finding cites a digest in this manifest, and squash self-verify
+        # walks the chain backward from the cert to the manifest to the
+        # on-disk bytes.
+        if config.emit_input_manifest:
+            try:
+                from squash.input_manifest import build_input_manifest
+
+                manifest = build_input_manifest(weight_dir)
+                manifest_path = manifest.write(out_dir / "input_manifest.json")
+                result.input_manifest_path = manifest_path
+                log.info(
+                    "Input manifest: %d file(s), root=%s, sha256=%s",
+                    manifest.file_count,
+                    manifest.root_path_basename,
+                    manifest.manifest_sha256[:12],
+                )
+            except Exception as exc:
+                log.warning("Input manifest emission failed (non-fatal): %s", exc)
 
         # ── Step 1: Security scan ──────────────────────────────────────────
         scan_result: ScanResult | None = None
@@ -382,9 +422,46 @@ class AttestPipeline:
 
         # ── Step 8: Master attestation record ─────────────────────────────
         master = _build_master_record(config, result)
+        # Phase G.3: embed input_manifest_sha256 in the master record so
+        # the cert is content-addressed back to the ingested file set.
+        if result.input_manifest_path is not None:
+            try:
+                manifest_dict = json.loads(result.input_manifest_path.read_text())
+                master["input_manifest_sha256"] = manifest_dict.get("manifest_sha256", "")
+            except Exception:
+                pass
         master_out = out_dir / "squash-attest.json"
         _write_json(master_out, master)
         result.master_record_path = master_out
+
+        # Phase G.3: optional RFC 3161 trusted timestamping over the
+        # canonical bytes of the master record. Network failures are
+        # logged at WARN and never fail the cert (use --strict-tsa to
+        # opt into the strict mode in the CLI).
+        if config.timestamp_with_tsa:
+            try:
+                from squash.canon import canonical_bytes as _cb
+                from squash.tsa import maybe_timestamp
+
+                body_bytes = _cb(master)
+                tsa_result = maybe_timestamp(body_bytes, url=config.tsa_url)
+                if tsa_result is not None:
+                    tsa_out = out_dir / "tsa_token.json"
+                    tsa_payload = {
+                        "schema": "squash.tsa-token/v1",
+                        "tsa_url": tsa_result.tsa_url,
+                        "request_b64": tsa_result.request_b64,
+                        "response_b64": tsa_result.response_b64,
+                        "nonce": tsa_result.nonce,
+                        "subject_sha256": __import__("hashlib").sha256(body_bytes).hexdigest(),
+                    }
+                    _write_canonical(tsa_out, tsa_payload)
+                    result.tsa_token_path = tsa_out
+                    log.info("RFC 3161 TSA timestamp embedded → %s", tsa_out)
+                else:
+                    log.warning("RFC 3161 TSA timestamp skipped (network or offline)")
+            except Exception as exc:
+                log.warning("RFC 3161 TSA timestamp failed (non-fatal): %s", exc)
 
         log.info(
             "Attestation complete for %s → %s [%s]",
@@ -401,8 +478,32 @@ class AttestPipeline:
 
 
 def _write_json(path: Path, obj: Any) -> None:
+    """Atomic write of *obj* to *path* as RFC 8785 canonical JSON.
+
+    Phase G.2: replaces ``json.dumps(obj, indent=2, default=str)``. The
+    output is byte-stable across hosts/runs so that a re-run with the
+    same inputs produces a re-run with the same SHA-256. ``default=str``
+    is gone — any unsupported type now raises :class:`squash.canon.CanonError`
+    at the boundary, where the conversion rule is reviewable.
+    """
+    # Normalise via ``canonical_bytes`` first so we fail fast on unknown
+    # types; then re-emit with sort_keys+indent for human readability.
+    # Both forms are byte-stable on rerun and produce the same SHA-256
+    # under :func:`squash.canon.canonical_bytes` (which renormalises).
+    parsed = json.loads(canonical_bytes(obj))
     tmp = path.with_suffix(".tmp")
-    tmp.write_text(json.dumps(obj, indent=2, default=str))
+    tmp.write_text(json.dumps(parsed, indent=2, sort_keys=True, ensure_ascii=False))
+    tmp.replace(path)
+
+
+def _write_canonical(path: Path, obj: Any) -> None:
+    """Atomic write of *obj* to *path* as bare RFC 8785 bytes.
+
+    Use for files that are directly signed/anchored — the absence of
+    indent guarantees the on-disk bytes are exactly what was hashed.
+    """
+    tmp = path.with_suffix(".tmp")
+    tmp.write_bytes(canonical_bytes(obj))
     tmp.replace(path)
 
 
@@ -456,9 +557,9 @@ def _annotate_bom_with_scan(bom_path: Path, scan: ScanResult) -> None:
         if vulns:
             bom["vulnerabilities"] = vulns
         bom["squash:scan_result"] = scan.status
-        # Atomic write
+        # Phase G.2: canonical bytes — the BOM is the signed body.
         tmp = bom_path.with_suffix(".tmp")
-        tmp.write_text(json.dumps(bom, indent=2))
+        tmp.write_bytes(canonical_bytes(bom))
         tmp.replace(bom_path)
     except OSError as e:
         log.warning("Could not annotate BOM with scan result: %s", e)
@@ -474,11 +575,25 @@ def _bind_training_provenance(bom_path: Path, dataset_ids: list[str]) -> None:
         log.warning("Training data provenance binding failed (non-fatal): %s", e)
 
 
-def _build_master_record(config: AttestConfig, result: AttestResult) -> dict[str, Any]:
-    """Build the squash-attest.json master record."""
+def _build_master_record(
+    config: AttestConfig,
+    result: AttestResult,
+    clock: Clock | None = None,
+) -> dict[str, Any]:
+    """Build the squash-attest.json master record.
+
+    Phase G.2: ``clock`` is injected so reproducibility tests can freeze
+    time. Production callers leave it ``None`` and get the system clock.
+    """
     import squash as squish  # version reference
 
-    now = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    clk = clock if clock is not None else SystemClock()
+    now = (
+        clk()
+        .astimezone(datetime.timezone.utc)
+        .replace(microsecond=0)
+        .strftime("%Y-%m-%dT%H:%M:%SZ")
+    )
     policies_summary = {
         name: {
             "passed": pr.passed,
@@ -615,9 +730,8 @@ class CompositeAttestPipeline:
             )
             parent_bom_path = output_dir / "cyclonedx-composed.json"
             tmp = parent_bom_path.with_suffix(".tmp")
-            tmp.write_text(
-                json.dumps(parent_bom, indent=2), encoding="utf-8"
-            )
+            # Phase G.2: canonical bytes for parent BOM (signable surface).
+            tmp.write_bytes(canonical_bytes(parent_bom))
             tmp.replace(parent_bom_path)
         except Exception as exc:
             log.warning("CompositeAttestPipeline: parent BOM assembly failed — %s", exc)

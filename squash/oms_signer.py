@@ -206,6 +206,8 @@ class OmsSigner:
     def pack_offline(
         model_dir: str | Path,
         output_path: str | Path | None = None,
+        *,
+        clock=None,  # type: ignore[no-untyped-def]
     ) -> Path:
         """Bundle a model directory and its squash artefacts into a tarball.
 
@@ -238,7 +240,10 @@ class OmsSigner:
             raise FileNotFoundError(f"model_dir not found: {model_dir}")
 
         if output_path is None:
-            ts = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+            # Phase G.2: clock injection for filename stamping in tests.
+            from squash.clock import SystemClock
+            clk = clock if clock is not None else SystemClock()
+            ts = clk().astimezone(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
             output_path = (
                 model_dir.parent / f"{model_dir.name}-{ts}.squash-bundle.tar.gz"
             )

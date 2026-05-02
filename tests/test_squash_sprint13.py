@@ -361,7 +361,7 @@ class TestSprint13ModuleCountUnchanged(unittest.TestCase):
         py_files = [
             f for f in squash_dir.rglob("*.py") if "__pycache__" not in str(f)
         ]
-        self.assertEqual(len(py_files), 100,
+        self.assertEqual(len(py_files), 106,
                          msg=f"squash/ has {len(py_files)} files (expected 97 after D2/W226-228).")
 
 

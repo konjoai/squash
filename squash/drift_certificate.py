@@ -89,12 +89,12 @@ from typing import Any
 
 log = logging.getLogger(__name__)
 
-# Re-use the canonical JSON contract established by anchor.py to keep
-# hash semantics consistent across the squash provenance chain.
+# Phase G.2: route through the central RFC 8785 implementation in
+# squash.canon so every Tier 0/1 signed payload uses identical
+# canonicalisation rules.
 def _canonical_json(value: Any) -> bytes:
-    return json.dumps(
-        value, sort_keys=True, separators=(",", ":"), ensure_ascii=False
-    ).encode("utf-8")
+    from squash.canon import canonical_bytes
+    return canonical_bytes(value)
 
 
 def _utcnow() -> datetime:
@@ -634,9 +634,17 @@ class DriftCertificateIssuer:
         evaluator = SLAEvaluator()
         result = evaluator.evaluate(spec, ledger, end=end)
 
+        # Phase G.2: deterministic cert_id keyed on the SLA spec + result digest.
+        from squash.ids import cert_id as _cert_id
         now = _utcnow()
         valid_until = now + timedelta(days=spec.window_days)
-        cert_id = "dsc-" + uuid.uuid4().hex[:16]
+        cert_id = _cert_id(
+            "dsc",
+            {
+                "spec": spec.to_dict() if hasattr(spec, "to_dict") else asdict(spec),
+                "result_digest": result.digest_hex if hasattr(result, "digest_hex") else None,
+            },
+        )
 
         cert = DriftCertificate(
             cert_id=cert_id,

@@ -248,8 +248,15 @@ class DataLineageTracer:
         if model_id is None:
             model_id = model_path.name
 
+        # Phase G.2 — REPRODUCIBILITY KILLER FIX. The previous form mixed
+        # `datetime.now().isoformat()` into the hash input, so two consecutive
+        # traces over the same model yielded different cert_ids by design.
+        # Lineage is a property of the *model + datasets*, not of the wallclock.
+        # The new ID is keyed only on inputs that are stable across runs;
+        # the issue timestamp lives in `issued_at` (separate field).
+        from squash.canon import canonical_bytes as _cb
         cert_id = hashlib.sha256(
-            f"{model_id}{datetime.datetime.now().isoformat()}".encode()
+            _cb({"model_id": model_id, "datasets": sorted(datasets or [])})
         ).hexdigest()[:16].upper()
 
         config_src = ""

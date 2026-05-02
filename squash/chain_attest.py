@@ -243,8 +243,21 @@ class ChainAttestation:
         return d
 
     def canonical_json(self) -> str:
-        """Deterministic JSON serialisation used for signing."""
-        return json.dumps(self.to_dict(include_signature=False), sort_keys=True)
+        """RFC 8785 canonical JSON of the body — used for HMAC signing.
+
+        Phase G.2: every byte that gets signed flows through
+        :func:`squash.canon.canonical_bytes`. Two runs over the same chain
+        produce byte-identical signatures.
+        """
+        from squash.canon import canonical_str
+
+        return canonical_str(self.to_dict(include_signature=False))
+
+    def canonical_bytes(self) -> bytes:
+        """RFC 8785 canonical bytes of the signed body."""
+        from squash.canon import canonical_bytes
+
+        return canonical_bytes(self.to_dict(include_signature=False))
 
     def to_json(self, indent: int = 2) -> str:
         return json.dumps(self.to_dict(), indent=indent, sort_keys=True)
@@ -410,8 +423,17 @@ class ChainAttestPipeline:
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
 
-def _utc_now_iso() -> str:
-    return datetime.datetime.now(datetime.timezone.utc).isoformat()
+def _utc_now_iso(clock: Any = None) -> str:
+    """ISO-8601 UTC string. Phase G.2: clock injection for repro tests."""
+    from squash.clock import SystemClock
+
+    clk = clock if clock is not None else SystemClock()
+    return (
+        clk()
+        .astimezone(datetime.timezone.utc)
+        .replace(microsecond=0)
+        .strftime("%Y-%m-%dT%H:%M:%SZ")
+    )
 
 
 def _attest_component(

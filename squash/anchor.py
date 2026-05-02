@@ -103,19 +103,22 @@ _NODE_PREFIX = b"\x01"
 # ---------------------------------------------------------------------------
 
 def canonical_json(value: Any) -> bytes:
-    """Return deterministic JSON bytes for *value*.
+    """Return RFC 8785 canonical JSON bytes for *value*.
 
-    Two requirements that ``json.dumps`` does not satisfy by default:
+    Phase G.2: this delegates to :func:`squash.canon.canonical_bytes` so
+    the same canonicalisation discipline (sorted keys, no whitespace,
+    sorted sets, ECMAScript-format numbers, no implicit ``str()``
+    coercion) is shared by every signed payload in the codebase.
 
-    * **Sorted keys** at every nesting level — so dict insertion order
-      cannot change the hash.
-    * **No whitespace** — so a re-pretty-printed copy of the document
-      hashes identically.
-
-    UTF-8 is used directly (``ensure_ascii=False``) so non-ASCII model
-    names hash byte-identically across locales.
+    Backwards-compatible with the prior in-process implementation for
+    every dict / list / primitive value squash actually emits — verified
+    by ``tests/test_canon_compat.py``. New restriction: dict keys must
+    be strings, sets are sorted, naive datetimes are rejected. The audit
+    contract demands all three.
     """
-    return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    from squash.canon import canonical_bytes
+
+    return canonical_bytes(value)
 
 
 def hash_attestation(record: dict[str, Any]) -> str:
@@ -589,13 +592,26 @@ class AnchorLedger:
             raise RuntimeError("nothing to commit: staged batch is empty")
         tree = MerkleTree([s.record_hash for s in staged])
         backend_data = backend.anchor(tree.root_hex, tree.leaf_count)
+        from squash.ids import cert_id
+
+        # Phase G.2: deterministic anchor ID — keyed on the Merkle root and
+        # backend identity, NOT on a fresh uuid4. Two replays of the same
+        # batch under the same backend produce the same anchor_id, so the
+        # signed/anchored bytes are byte-identical on rerun.
+        timestamp = time.time()
+        anchor_seed = {
+            "root": tree.root_hex,
+            "leaf_count": tree.leaf_count,
+            "backend": backend.name,
+            "backend_data": backend_data,
+        }
         anchor = Anchor(
-            anchor_id="anc-" + uuid.uuid4().hex[:12],
+            anchor_id=cert_id("anc", anchor_seed)[:16],  # "anc-" + 12 hex
             root=tree.root_hex,
             leaf_count=tree.leaf_count,
             backend=backend.name,
             backend_data=backend_data,
-            timestamp=time.time(),
+            timestamp=timestamp,
         )
         proofs = {s.attestation_id: tree.proof(i) for i, s in enumerate(staged)}
         entry = LedgerEntry(anchor=anchor, attestations=staged, proofs=proofs)
