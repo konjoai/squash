@@ -31,3 +31,4 @@ attestation_*.json
 cyclonedx-mlbom.json
 sbom.spdx.json
 provenance.json
+.hypothesis/

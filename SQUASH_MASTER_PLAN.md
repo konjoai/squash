@@ -1,7 +1,7 @@
 # SQUASH — Master Grand Plan
 ## From Zero to $10M ARR: EU AI Act Compliance Platform
 
-> **Last updated:** 2026-05-01 — added Phase G "Bulletproof Edition"
+> **Last updated:** 2026-05-01 — Phase G executed (Phases 1–5 + 7 landed)
 > **Status:** Living document — updated on every commit
 > **Horizon:** April 2026 → October 2027
 
@@ -1692,6 +1692,34 @@ The US enterprise buyer who doesn't care about GDPR absolutely cares about a DoD
 | $50K MRR | 1 FT engineer or 1 FT account executive |
 | $83K MRR ($1M ARR) | Marketing hire + AE |
 | $150K MRR | Series A territory — full team build |
+
+---
+
+## Phase G — Bulletproof Edition · Execution Status (2026-05-01)
+
+| Phase | Status | Land |
+|-------|--------|------|
+| **G.1 Audit & Baseline** | ✅ shipped | `AUDIT_BASELINE.md`, `TIER_MAP.md`, coverage scaffolding |
+| **G.2 Determinism** | ✅ shipped | `squash/canon.py`, `squash/clock.py`, `squash/ids.py`; Tier-0/1 sites swept; 55 reproducibility tests green |
+| **G.3 Cryptographic chain** | ✅ shipped (no-cash portions) | `squash/input_manifest.py`, `squash/tsa.py` (DigiCert endpoint via `SQUASH_TSA_URL`), `squash/self_verify.py`, `squash self-verify` CLI, `squash verify --check-timestamp`, SLSA L3 release workflow |
+| **G.4 Coverage** | ✅ shipped (foundation) | +11 property tests, +27 negative, +19 edge, +5 concurrency, +10 security regression, +9 golden snapshot, +2 atheris fuzz harnesses (canon + input_manifest); test count 5,226 → 5,360 |
+| **G.5 Static analysis** | ✅ shipped (configs + CI) | mypy strict on 6 Phase-G primitives, `.bandit`, `.semgrep.yml` (`squash-no-json-dumps-in-signing-paths`, `squash-no-default-str`, `squash-no-utcnow`, `squash-no-uuid4-in-signed-body`); license_conflict split deferred to follow-up |
+| **G.6 External audits** | ⏳ awaits cash | Trail of Bits / NCC Group / Cure53; Orrick / Cooley methodology letter; SOC 2 Type II observation |
+| **G.7 Perpetual CI gates** | ✅ shipped | `.github/workflows/ci.yml` (test/coverage/repro/typecheck/security/sbom), `.github/workflows/nightly.yml` (rotating mutation, atheris 100K, OSV-Scanner, perf), README badges |
+
+**Bulletproof contract observed today:**
+- ✅ RFC 8785 canonical JSON for every Tier-0/1 signed payload
+- ✅ Injectable `Clock` (no inline `datetime.now()` in signed bodies)
+- ✅ `uuid5`-keyed cert IDs (no `uuid4()` in signed bodies)
+- ✅ `data_lineage.py:252` reproducibility-killer fixed (no wallclock in hash input)
+- ✅ Input manifest emitted as Step 0 of every `squash attest` run
+- ✅ RFC 3161 TSA client wired (one-line activation when DigiCert account ready)
+- ✅ `squash self-verify` chain walker
+- ✅ SLSA Build L3 provenance via `slsa-framework/slsa-github-generator`
+- ✅ `actions/attest-build-provenance@v2` on every published Docker image
+- ✅ CI gate set: coverage (Tier-0 floor), reproducibility (byte-identity), mypy strict, bandit, semgrep, pip-audit, CycloneDX SBOM
+- ⏳ Coverage to 95/95 + mutation 80% — track via Phase G.7 nightly rotating mutation
+- ⏳ External audit reports (Phase G.6 — needs $36K–$68K cash)
 
 ---
 

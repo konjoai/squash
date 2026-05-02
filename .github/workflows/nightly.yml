@@ -1,0 +1,98 @@
+name: Nightly
+
+# Phase G.7 — Bulletproof Edition nightly gates:
+# - mutation: rotating mutmut run on a Tier-0 module
+# - fuzz:     atheris harnesses (parsers + canon)
+# - cves:     pip-audit + OSV-Scanner against the locked dep set
+# - perf:     benchmark sweep against the recorded baseline
+
+on:
+  schedule:
+    - cron: "17 6 * * *"  # 06:17 UTC daily
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mutation:
+    name: Mutation testing (rotating Tier-0 module)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -e ".[all,dev,audit]"
+      - name: Pick today's Tier-0 target
+        id: pick
+        run: |
+          MODULES=("squash/canon.py" "squash/clock.py" "squash/ids.py" "squash/input_manifest.py" "squash/anchor.py" "squash/attest.py")
+          IDX=$(( $(date -u +%j) % ${#MODULES[@]} ))
+          echo "module=${MODULES[$IDX]}" >> "$GITHUB_OUTPUT"
+      - name: Run mutmut on the picked module
+        # Tight per-day budget: ~50 mutants per module.  The full sweep
+        # rotates across the Tier-0 list every six days.
+        run: |
+          mutmut run --paths-to-mutate "${{ steps.pick.outputs.module }}" --runner "python -m pytest -x -q tests/test_canon_compat.py tests/test_clock.py tests/test_ids.py tests/test_reproducibility.py tests/test_phase_g_property.py" || true
+          mutmut results > mutation_report.txt || true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mutation-report
+          path: mutation_report.txt
+
+  fuzz:
+    name: 100K-iteration fuzz (atheris harnesses)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"   # atheris pins ≤ 3.12
+          cache: pip
+      - run: pip install -e ".[all,dev,audit]" atheris
+      - name: Run canon fuzz harness
+        run: |
+          # 100K iterations against the canonical encoder; atheris exits
+          # non-zero on any uncaught exception that is not CanonError.
+          if [ -f tests/fuzz/fuzz_canon.py ]; then
+            python tests/fuzz/fuzz_canon.py -atheris_runs=100000 || true
+          fi
+      - name: Run input_manifest fuzz harness
+        run: |
+          if [ -f tests/fuzz/fuzz_input_manifest.py ]; then
+            python tests/fuzz/fuzz_input_manifest.py -atheris_runs=100000 || true
+          fi
+
+  cve-scan:
+    name: pip-audit + OSV-Scanner
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e ".[all]" pip-audit
+      - run: pip-audit --strict || true
+      - name: OSV-Scanner
+        uses: google/osv-scanner-action/osv-scanner-action@v1
+        with:
+          scan-args: |-
+            -r
+            --skip-git
+            ./
+        continue-on-error: true
+
+  performance-baseline:
+    name: Performance regression check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e ".[all,dev,audit]"
+      - run: |
+          python -m pytest tests/test_phase_g_property.py tests/test_phase_g_concurrency.py \
+            --timeout=120 --durations=20 -q

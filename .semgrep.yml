@@ -1,0 +1,77 @@
+# Phase G.5 — Custom Semgrep rules for the squash codebase.
+# Run via:  semgrep --config p/security-audit --config .semgrep.yml squash/
+#
+# These rules encode the discipline of AUDIT_BASELINE.md:
+# 1. No raw json.dumps in any file that signs a payload — must go
+#    through squash.canon.canonical_bytes.
+# 2. No datetime.utcnow() — deprecated in Python 3.12 + non-injectable.
+# 3. No uuid.uuid4() in a Tier-0/1 emitter's signed body construction —
+#    must use squash.ids.cert_id() or deterministic_uuid().
+# 4. No `default=str` in json.dumps — silent type-coercion is a
+#    reproducibility killer.
+
+rules:
+  - id: squash-no-json-dumps-in-signing-paths
+    pattern: json.dumps(...)
+    paths:
+      include:
+        - "squash/attest.py"
+        - "squash/oms_signer.py"
+        - "squash/anchor.py"
+        - "squash/chain_attest.py"
+        - "squash/slsa.py"
+        - "squash/hallucination_attest.py"
+        - "squash/drift_certificate.py"
+        - "squash/carbon_attest.py"
+        - "squash/data_lineage.py"
+        - "squash/input_manifest.py"
+        - "squash/self_verify.py"
+        - "squash/tsa.py"
+    message: >
+      json.dumps in a signing/attestation path is an evidence-grade
+      regression. Use squash.canon.canonical_bytes (RFC 8785) instead.
+      See AUDIT_BASELINE.md §1.1.
+    severity: ERROR
+    languages: [python]
+
+  - id: squash-no-default-str
+    pattern: json.dumps(..., default=str, ...)
+    message: >
+      json.dumps(default=str) silently coerces unknown types
+      (Path, datetime, etc.) and is non-portable across OSes. Use
+      squash.canon.canonical_bytes which fails loudly on unknown types.
+    severity: ERROR
+    languages: [python]
+
+  - id: squash-no-utcnow
+    pattern: datetime.datetime.utcnow()
+    message: >
+      datetime.utcnow() is deprecated in Python 3.12 and returns naive
+      datetimes. Use datetime.datetime.now(datetime.timezone.utc) and,
+      in Tier-0/1 paths, an injected squash.clock.Clock.
+    severity: WARNING
+    languages: [python]
+
+  - id: squash-no-uuid4-in-signed-body
+    patterns:
+      - pattern: uuid.uuid4(...)
+      - pattern-not-inside: |
+          # operational paths — fresh per-request IDs are the right behaviour
+          def $F(...):
+            ...
+    paths:
+      include:
+        - "squash/attest.py"
+        - "squash/oms_signer.py"
+        - "squash/anchor.py"
+        - "squash/chain_attest.py"
+        - "squash/slsa.py"
+        - "squash/hallucination_attest.py"
+        - "squash/drift_certificate.py"
+        - "squash/carbon_attest.py"
+    message: >
+      uuid.uuid4() in a Tier-0/1 module: prefer squash.ids.cert_id()
+      keyed on the canonical input, so byte-identical inputs produce
+      byte-identical cert IDs.
+    severity: WARNING
+    languages: [python]

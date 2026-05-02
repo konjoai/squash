@@ -29,6 +29,11 @@ jobs:
     permissions:
       contents: read
       packages: write
+      # Phase G.3 — Bulletproof Edition: needed for SLSA build provenance
+      # via the GitHub Attestations API. Each pushed image carries an
+      # OCI build attestation resolving back to this workflow + commit SHA.
+      id-token: write       # Sigstore OIDC for keyless signing
+      attestations: write   # actions/attest-build-provenance
 
     steps:
       - name: Checkout
@@ -68,7 +73,8 @@ jobs:
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build and push Docker image
-        uses: docker/build-push-action@v5
+        id: push
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: ./Dockerfile
@@ -77,6 +83,21 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          # Phase G.3: max-mode provenance embeds the full build graph
+          # (source SHA, base image digest, builder identity) into the
+          # OCI image attestation.
+          provenance: mode=max
+          sbom: true
+
+      - name: Generate SLSA build attestation
+        # Pushes a signed in-toto Statement to the registry, attached to
+        # the image digest. Verifiers retrieve it via `cosign download
+        # attestation` or `gh attestation verify`.
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-name: ${{ env.GHCR_IMAGE }}
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: true
 
       - name: Verify image health
         run: |

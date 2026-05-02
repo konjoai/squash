@@ -7,6 +7,12 @@
 [![License](https://img.shields.io/badge/license-Apache_2.0-blue)](LICENSE)
 [![Python](https://img.shields.io/pypi/pyversions/squash-ai)](https://pypi.org/project/squash-ai/)
 [![EU AI Act](https://img.shields.io/badge/EU%20AI%20Act-Annex%20IV%20ready-green)](https://getsquash.dev)
+[![Reproducibility](https://img.shields.io/badge/Bulletproof%20Edition-byte--identical-purple)](AUDIT_BASELINE.md)
+[![SLSA](https://img.shields.io/badge/SLSA-Build_L3-success)](https://slsa.dev/spec/v1.0/levels)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/konjoai/squash/badge)](https://scorecard.dev/viewer/?uri=github.com/konjoai/squash)
+[![Sigstore Cosign](https://img.shields.io/badge/Sigstore-cosign%20signed-blue)](https://docs.sigstore.dev/)
+[![RFC 8785](https://img.shields.io/badge/canonical%20JSON-RFC%208785-yellow)](https://datatracker.ietf.org/doc/html/rfc8785)
+[![RFC 3161](https://img.shields.io/badge/timestamp-RFC%203161-yellow)](https://datatracker.ietf.org/doc/html/rfc3161)
 
 > **⏰ EU AI Act high-risk enforcement: August 2, 2026**
 >

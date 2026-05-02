@@ -181,10 +181,22 @@ def _hash_file(path: Path, *, chunk: int = 1 << 16) -> tuple[str, int]:
 
 
 def manifest_hash(manifest: InputManifest) -> str:
-    """SHA-256 of canonical bytes of the manifest with self-hash field removed."""
-    return hashlib.sha256(
-        canonical_bytes(manifest.to_dict(include_self_hash=False))
-    ).hexdigest()
+    """Cryptographic identity of the manifest.
+
+    Computes SHA-256 of canonical bytes of the manifest **with**:
+
+    * ``manifest_sha256`` removed (avoid self-reference)
+    * ``root_path`` removed (filesystem-dependent — varies across hosts)
+    * ``generated_at`` removed (clock-dependent)
+
+    What remains is the set of (relative path, size, sha256) tuples plus
+    the schema URI and aggregate counts. Two builds of the same input
+    set on different machines yield the same manifest_sha256.
+    """
+    d = manifest.to_dict(include_self_hash=False)
+    d.pop("root_path", None)
+    d.pop("generated_at", None)
+    return hashlib.sha256(canonical_bytes(d)).hexdigest()
 
 
 def build_input_manifest(
