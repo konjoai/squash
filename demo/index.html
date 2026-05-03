@@ -1,0 +1,1090 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Squash — Prove your AI is trustworthy</title>
+<meta name="description" content="Squash signs every model attestation with cryptographic proof. Verifiable in seconds, identical every time." />
+<meta name="color-scheme" content="dark" />
+<style>
+:root {
+  --bg: #0a0c12;
+  --bg-elev: #11141d;
+  --bg-elev-2: #161a26;
+  --line: #232838;
+  --line-strong: #2f3548;
+  --ink: #e7eaf3;
+  --ink-dim: #98a0b3;
+  --ink-faint: #5a6378;
+  --accent: #b794ff;          /* primary konjo purple */
+  --accent-2: #8c5dff;
+  --accent-3: #5dd9ff;        /* cyan accent */
+  --accent-4: #6df0c2;        /* green */
+  --warn: #f7b955;
+  --bad: #ff6b8a;
+  --good: #6df0c2;
+  --code-bg: #0c0f17;
+  --pill-live: #6df0c233;
+  --pill-est: #f7b95533;
+  --grad: linear-gradient(135deg, #b794ff 0%, #5dd9ff 50%, #6df0c2 100%);
+  --grad-dim: linear-gradient(135deg, #b794ff33, #5dd9ff33);
+  --shadow: 0 20px 60px -20px rgba(140, 93, 255, 0.18);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font: 15px/1.55 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Inter, Roboto, "Helvetica Neue", Arial;
+  letter-spacing: -0.005em;
+  overflow-x: hidden;
+}
+a { color: var(--accent-3); text-decoration: none; }
+a:hover { color: var(--accent); }
+code, pre, .mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 13px;
+}
+button {
+  font: inherit;
+  cursor: pointer;
+  border: 1px solid var(--line-strong);
+  background: var(--bg-elev-2);
+  color: var(--ink);
+  padding: 9px 18px;
+  border-radius: 9px;
+  letter-spacing: 0;
+  transition: border-color .15s, background .15s, transform .08s;
+}
+button:hover { border-color: var(--accent); }
+button:active { transform: translateY(1px); }
+button.primary {
+  background: var(--grad);
+  color: #0a0c12;
+  border: none;
+  font-weight: 600;
+}
+button.primary:hover { filter: brightness(1.1); }
+button:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+input, select, textarea {
+  font: inherit;
+  background: var(--bg-elev-2);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  padding: 9px 12px;
+  border-radius: 8px;
+  outline: none;
+}
+input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+
+/* Layout */
+header.nav {
+  position: sticky; top: 0; z-index: 50;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 36px;
+  background: rgba(10, 12, 18, 0.7);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--line);
+}
+.brand {
+  display: flex; align-items: center; gap: 10px;
+  font-weight: 700; letter-spacing: -0.02em;
+}
+.brand-mark {
+  width: 26px; height: 26px;
+  background: var(--grad);
+  border-radius: 7px;
+  position: relative;
+}
+.brand-mark::after {
+  content: ""; position: absolute; inset: 5px;
+  background: var(--bg);
+  border-radius: 4px;
+}
+.nav-links { display: flex; gap: 22px; font-size: 14px; }
+.nav-links a { color: var(--ink-dim); }
+.nav-links a:hover { color: var(--ink); }
+
+main { max-width: 1180px; margin: 0 auto; padding: 0 28px 80px; }
+
+/* Hero */
+.hero {
+  padding: 80px 0 60px;
+  position: relative;
+}
+.hero::before {
+  content: ""; position: absolute; inset: 0;
+  background: radial-gradient(60% 50% at 30% 30%, rgba(183,148,255,0.08), transparent 70%),
+              radial-gradient(50% 40% at 80% 20%, rgba(93,217,255,0.07), transparent 70%);
+  pointer-events: none;
+  z-index: -1;
+}
+h1.title {
+  font-size: clamp(56px, 9vw, 124px);
+  line-height: 0.95;
+  letter-spacing: -0.04em;
+  margin: 0 0 20px;
+  background: var(--grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-weight: 800;
+}
+.tagline {
+  font-size: clamp(20px, 2.5vw, 26px);
+  color: var(--ink);
+  max-width: 720px;
+  margin: 0 0 16px;
+  font-weight: 400;
+}
+.subline {
+  color: var(--ink-dim);
+  max-width: 720px;
+  font-size: 17px;
+  margin: 0 0 28px;
+}
+.hero-cta { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-top: 22px; }
+
+/* Server pill */
+.server-pill {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: var(--bg-elev-2);
+  border: 1px solid var(--line);
+  color: var(--ink-dim);
+  font-size: 13px;
+}
+.server-pill[data-state="live"] {
+  background: var(--pill-live);
+  border-color: rgba(109, 240, 194, 0.3);
+  color: var(--good);
+}
+.server-pill[data-state="est"] {
+  background: var(--pill-est);
+  border-color: rgba(247, 185, 85, 0.3);
+  color: var(--warn);
+}
+.dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 12px currentColor;
+  animation: pulse 1.6s ease-in-out infinite;
+}
+@keyframes pulse { 50% { opacity: 0.45; transform: scale(1.15); } }
+
+/* Hero stats */
+.hero-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-top: 48px;
+}
+.stat-card {
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 22px 20px;
+  position: relative;
+  overflow: hidden;
+  transition: border-color .2s, transform .2s;
+}
+.stat-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+.stat-card::before {
+  content: ""; position: absolute; left: 0; top: 0; right: 0; height: 2px;
+  background: var(--grad); opacity: 0; transition: opacity .2s;
+}
+.stat-card:hover::before { opacity: 1; }
+.stat-num {
+  font-size: 32px;
+  font-weight: 700;
+  background: var(--grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: -0.02em;
+}
+.stat-label {
+  font-size: 13px;
+  color: var(--ink-dim);
+  margin-top: 4px;
+  letter-spacing: 0.01em;
+}
+
+/* Section */
+section.panel {
+  margin-top: 56px;
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 28px 32px;
+  box-shadow: var(--shadow);
+}
+.panel-head {
+  display: flex; justify-content: space-between; align-items: baseline;
+  gap: 16px; flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+.panel-head h2 {
+  margin: 0; font-size: 22px; letter-spacing: -0.01em;
+}
+.panel-head .subt { color: var(--ink-dim); font-size: 14px; max-width: 520px; }
+
+.badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-weight: 600;
+  background: var(--pill-est);
+  color: var(--warn);
+  border: 1px solid rgba(247, 185, 85, 0.2);
+}
+.badge.live { background: var(--pill-live); color: var(--good); border-color: rgba(109, 240, 194, 0.25); }
+.badge.tier-0 { background: rgba(183,148,255,0.15); color: var(--accent); border-color: rgba(183,148,255,0.3); }
+
+.row { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+@media (max-width: 760px) { .row { grid-template-columns: 1fr; } }
+
+.io-block { display: flex; flex-direction: column; gap: 10px; }
+.io-label { font-size: 12px; color: var(--ink-dim); text-transform: uppercase; letter-spacing: 0.06em; }
+.code-out {
+  background: var(--code-bg);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 14px 16px;
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 360px;
+  overflow: auto;
+  font-family: ui-monospace, monospace;
+  font-size: 12.5px;
+  color: var(--ink);
+}
+.code-out .k { color: var(--accent); }
+.code-out .s { color: var(--accent-4); }
+.code-out .n { color: var(--accent-3); }
+.code-out .b { color: var(--warn); }
+
+textarea.code-input {
+  min-height: 200px;
+  font-family: ui-monospace, monospace;
+  font-size: 13px;
+  background: var(--code-bg);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px 14px;
+  resize: vertical;
+}
+
+/* Field rows */
+.field-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+.field-row label { color: var(--ink-dim); font-size: 13px; min-width: 100px; }
+
+.kv {
+  display: grid; grid-template-columns: max-content 1fr;
+  gap: 8px 16px;
+  font-size: 14px;
+  margin-top: 14px;
+}
+.kv .k { color: var(--ink-dim); }
+.kv .v { font-weight: 500; }
+.kv .v.good { color: var(--good); }
+.kv .v.bad { color: var(--bad); }
+.kv .v.warn { color: var(--warn); }
+.kv .v.mono { font-family: ui-monospace, monospace; font-size: 12.5px; }
+
+/* Verdict pill (genealogy / copyright) */
+.verdict-pill {
+  display: inline-block;
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.verdict-pill.clean, .verdict-pill.low { background: rgba(109,240,194,0.15); color: var(--good); }
+.verdict-pill.warning, .verdict-pill.medium { background: rgba(247,185,85,0.15); color: var(--warn); }
+.verdict-pill.blocked, .verdict-pill.high { background: rgba(255,107,138,0.15); color: var(--bad); }
+.verdict-pill.uncertain { background: rgba(152,160,179,0.15); color: var(--ink-dim); }
+
+/* Donut placeholder for genealogy composition */
+.donut { display: flex; flex-direction: column; gap: 8px; padding-top: 8px; }
+.donut-row { display: grid; grid-template-columns: max-content 1fr max-content; gap: 10px; align-items: center; font-size: 13px; }
+.donut-bar { background: var(--bg-elev-2); height: 10px; border-radius: 5px; overflow: hidden; }
+.donut-fill { height: 100%; background: var(--grad); }
+.donut-val { color: var(--ink-dim); font-variant-numeric: tabular-nums; font-size: 12px; min-width: 36px; text-align: right; }
+
+/* Self-verify checklist */
+.checklist { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
+.checklist-item {
+  display: grid; grid-template-columns: 24px 1fr max-content; gap: 12px; align-items: center;
+  padding: 10px 14px;
+  background: var(--bg-elev-2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  opacity: 0;
+  transform: translateY(4px);
+  animation: slideIn .35s ease forwards;
+}
+@keyframes slideIn { to { opacity: 1; transform: translateY(0); } }
+.check-icon { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 13px; }
+.check-icon.pass { background: rgba(109,240,194,0.18); color: var(--good); }
+.check-icon.fail { background: rgba(255,107,138,0.18); color: var(--bad); }
+.check-name { font-weight: 500; }
+.check-detail { color: var(--ink-dim); font-size: 12.5px; }
+
+/* "How it works" flow */
+.flow {
+  display: flex; align-items: center; gap: 14px;
+  margin-top: 28px;
+  flex-wrap: wrap;
+}
+.flow-step {
+  flex: 1;
+  min-width: 140px;
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 16px 14px;
+  text-align: center;
+  position: relative;
+  transition: border-color .2s, transform .2s;
+}
+.flow-step:hover { border-color: var(--accent); transform: translateY(-2px); }
+.flow-step .icon { font-size: 28px; line-height: 1; margin-bottom: 8px; }
+.flow-step .label { font-weight: 600; font-size: 14px; margin-bottom: 4px; }
+.flow-step .desc { color: var(--ink-dim); font-size: 12px; line-height: 1.4; }
+.flow-arrow { color: var(--accent); font-size: 22px; }
+@media (max-width: 720px) { .flow-arrow { display: none; } }
+
+/* Why squash matters cards */
+.why-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 24px;
+}
+@media (max-width: 760px) { .why-grid { grid-template-columns: 1fr; } }
+.why-card {
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 22px 22px 26px;
+  position: relative;
+  overflow: hidden;
+}
+.why-card::before {
+  content: ""; position: absolute; inset: 0;
+  background: var(--grad-dim);
+  opacity: 0; transition: opacity .25s;
+}
+.why-card:hover::before { opacity: 0.5; }
+.why-card > * { position: relative; }
+.why-icon { font-size: 30px; margin-bottom: 12px; }
+.why-card h3 { margin: 0 0 8px; font-size: 17px; }
+.why-card p { margin: 0; color: var(--ink-dim); font-size: 14px; line-height: 1.5; }
+
+/* Feature cards */
+.features {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 22px;
+}
+@media (max-width: 760px) { .features { grid-template-columns: 1fr; } }
+.feature {
+  background: var(--bg-elev-2);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 18px 20px;
+  transition: border-color .15s;
+}
+.feature:hover { border-color: var(--accent); }
+.feature .label { font-weight: 600; font-size: 15px; margin-bottom: 4px; }
+.feature .what { color: var(--ink-dim); font-size: 13px; line-height: 1.45; }
+.feature .what code { background: var(--bg-elev); padding: 1px 6px; border-radius: 4px; font-size: 11.5px; color: var(--accent-3); }
+
+/* Footer */
+footer {
+  margin-top: 60px;
+  padding: 28px 0 8px;
+  border-top: 1px solid var(--line);
+  display: flex; justify-content: space-between; flex-wrap: wrap; gap: 14px;
+  color: var(--ink-faint); font-size: 13px;
+}
+
+/* Loading spinner inside buttons */
+.spin {
+  display: inline-block; width: 12px; height: 12px;
+  border: 2px solid currentColor; border-right-color: transparent;
+  border-radius: 50%;
+  animation: rot 0.7s linear infinite;
+  vertical-align: -2px;
+  margin-right: 6px;
+}
+@keyframes rot { to { transform: rotate(360deg); } }
+
+.muted { color: var(--ink-dim); }
+.tiny { font-size: 12px; }
+.gap { height: 14px; }
+.flex { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <div class="brand">
+    <div class="brand-mark"></div>
+    <span>Squash</span>
+  </div>
+  <div class="nav-links">
+    <a href="#attest">Attest</a>
+    <a href="#canon">Canonical JSON</a>
+    <a href="#genealogy">Genealogy</a>
+    <a href="#copyright">Copyright</a>
+    <a href="#self">Self-verify</a>
+    <a href="#how">How it works</a>
+  </div>
+</header>
+
+<main>
+
+<!-- HERO -->
+<section class="hero">
+  <h1 class="title">Squash</h1>
+  <p class="tagline">Prove your AI is trustworthy — signed attestations, verified in seconds.</p>
+  <p class="subline">
+    Every model gets a tamper-proof certificate. Identical bytes on every host.
+    Backed by RFC 8785 canonical JSON, RFC 3161 trusted timestamps, and SLSA Build Level 3 provenance.
+    Open source. Apache 2.0. Real cryptography, real receipts.
+  </p>
+
+  <div class="hero-cta">
+    <a href="#attest"><button class="primary">Try a real attestation →</button></a>
+    <a href="https://github.com/konjoai/squash"><button>View on GitHub</button></a>
+    <span class="server-pill" id="serverPill" data-state="checking">
+      <span class="dot"></span>
+      <span id="serverPillText">Checking server…</span>
+    </span>
+  </div>
+
+  <div class="hero-stats">
+    <div class="stat-card">
+      <div class="stat-num" data-counter="5355">0</div>
+      <div class="stat-label">Tests passing</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num">RFC&nbsp;8785</div>
+      <div class="stat-label">Canonical JSON</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num">RFC&nbsp;3161</div>
+      <div class="stat-label">Trusted timestamps</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num">SLSA&nbsp;L3</div>
+      <div class="stat-label">Build provenance</div>
+    </div>
+  </div>
+</section>
+
+<!-- ATTEST + VERIFY -->
+<section class="panel" id="attest">
+  <div class="panel-head">
+    <div>
+      <h2>Attest &amp; Verify <span class="badge tier-0" id="attestLive">EST</span></h2>
+      <p class="subt">Type a model name and a fake artefact hash, click <em>Attest</em>, then <em>Verify</em>. Every byte you see is generated by the real squash pipeline.</p>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="io-block">
+      <div class="io-label">Inputs</div>
+      <div class="field-row">
+        <label for="attModel">Model name</label>
+        <input id="attModel" value="demo-bert-base" style="flex:1; min-width: 180px"/>
+      </div>
+      <div class="field-row">
+        <label for="attHash">Artefact hash</label>
+        <input id="attHash" value="abc123def456" style="flex:1; min-width: 180px"/>
+      </div>
+      <div class="field-row">
+        <button class="primary" id="btnAttest">Attest</button>
+        <button id="btnVerify" disabled>Verify last attestation</button>
+        <span class="tiny muted" id="attTiming"></span>
+      </div>
+      <div class="kv" id="attKv"></div>
+    </div>
+    <div class="io-block">
+      <div class="io-label">Signed attestation (canonical JSON)</div>
+      <div class="code-out" id="attOut">// click Attest to generate a real signed cert</div>
+    </div>
+  </div>
+</section>
+
+<!-- CANONICAL JSON PROVER -->
+<section class="panel" id="canon">
+  <div class="panel-head">
+    <div>
+      <h2>Canonical JSON prover <span class="badge tier-0" id="canonLive">EST</span></h2>
+      <p class="subt">No matter what order the keys are in, the signature is always the same. Paste any JSON below and watch.</p>
+    </div>
+  </div>
+  <div class="row">
+    <div class="io-block">
+      <div class="io-label">Your JSON (any key order)</div>
+      <textarea class="code-input" id="canonIn">{
+  "model_id": "gpt-4-q4",
+  "scores": [0.95, 0.92, 0.88],
+  "passed": true,
+  "tags": ["prod", "us-west-2"]
+}</textarea>
+      <div class="flex">
+        <button class="primary" id="btnCanon">Canonicalise</button>
+        <button id="btnScramble">Scramble keys</button>
+        <span class="tiny muted" id="canonStats"></span>
+      </div>
+    </div>
+    <div class="io-block">
+      <div class="io-label">RFC 8785 canonical bytes</div>
+      <div class="code-out" id="canonOut">// click Canonicalise to compare two key orderings</div>
+    </div>
+  </div>
+</section>
+
+<!-- GENEALOGY -->
+<section class="panel" id="genealogy">
+  <div class="panel-head">
+    <div>
+      <h2>Model genealogy explorer <span class="badge tier-0" id="genLive">EST</span></h2>
+      <p class="subt">Where did this AI learn from? Is it safe to use commercially? Pick a family — squash walks the chain back to the base model and its training data.</p>
+    </div>
+  </div>
+  <div class="flex" style="margin-bottom: 16px">
+    <label class="muted tiny">Model family:</label>
+    <select id="genSelect">
+      <option value="llama">LLaMA (Meta)</option>
+      <option value="llama-2">LLaMA 2 (Meta)</option>
+      <option value="llama-3">LLaMA 3 (Meta)</option>
+      <option value="mistral">Mistral</option>
+      <option value="mixtral">Mixtral (MoE)</option>
+      <option value="gpt-2">GPT-2 (OpenAI)</option>
+      <option value="falcon">Falcon (TII)</option>
+      <option value="bloom">BLOOM (BigScience)</option>
+      <option value="qwen">Qwen (Alibaba)</option>
+      <option value="gemma">Gemma (Google)</option>
+    </select>
+    <button class="primary" id="btnGen">Trace genealogy</button>
+  </div>
+  <div class="row">
+    <div class="io-block">
+      <div class="io-label">Verdict</div>
+      <div class="kv" id="genKv"></div>
+      <div class="gap"></div>
+      <div class="io-label">Training data composition</div>
+      <div class="donut" id="genDonut"><div class="muted tiny">Run a trace to see breakdown.</div></div>
+    </div>
+    <div class="io-block">
+      <div class="io-label">Derivation chain</div>
+      <div class="code-out" id="genChain">// pick a family + click Trace</div>
+    </div>
+  </div>
+</section>
+
+<!-- COPYRIGHT -->
+<section class="panel" id="copyright">
+  <div class="panel-head">
+    <div>
+      <h2>Copyright compatibility checker <span class="badge tier-0" id="cprLive">EST</span></h2>
+      <p class="subt">Pick two licences and a deployment scenario. Squash tells you in plain English whether the combination is safe for your intended use.</p>
+    </div>
+  </div>
+  <div class="flex" style="margin-bottom: 16px">
+    <label class="muted tiny">Model licence:</label>
+    <select id="cprA">
+      <option>Apache-2.0</option>
+      <option>MIT</option>
+      <option>BSD-3-Clause</option>
+      <option>GPL-3.0</option>
+      <option>AGPL-3.0</option>
+      <option>CC-BY-4.0</option>
+      <option>CC-BY-NC-4.0</option>
+      <option>CC-BY-SA-4.0</option>
+      <option>OpenRAIL</option>
+    </select>
+    <label class="muted tiny">Training data licence:</label>
+    <select id="cprB">
+      <option>MIT</option>
+      <option>Apache-2.0</option>
+      <option>BSD-3-Clause</option>
+      <option>GPL-3.0</option>
+      <option>CC-BY-4.0</option>
+      <option>CC-BY-NC-4.0</option>
+      <option>CC-BY-SA-4.0</option>
+      <option>Unknown</option>
+    </select>
+    <label class="muted tiny">Deployment use:</label>
+    <select id="cprUse">
+      <option value="commercial">Commercial</option>
+      <option value="research">Research</option>
+      <option value="internal">Internal</option>
+    </select>
+    <button class="primary" id="btnCpr">Check compatibility</button>
+  </div>
+  <div class="row">
+    <div class="io-block">
+      <div class="io-label">Verdict</div>
+      <div class="kv" id="cprKv"></div>
+    </div>
+    <div class="io-block">
+      <div class="io-label">Plain English</div>
+      <div id="cprNote" class="code-out" style="white-space: normal; line-height:1.55;">// pick licences + click Check</div>
+    </div>
+  </div>
+</section>
+
+<!-- SELF-VERIFY -->
+<section class="panel" id="self">
+  <div class="panel-head">
+    <div>
+      <h2>Self-verify panel <span class="badge tier-0" id="svLive">EST</span></h2>
+      <p class="subt">A trustworthy AI compliance tool needs to prove it hasn't been tampered with. This button asks squash to verify itself, link by link.</p>
+    </div>
+  </div>
+  <div class="flex">
+    <button class="primary" id="btnSelf">Run self-verify</button>
+    <span class="tiny muted" id="svTiming"></span>
+  </div>
+  <div class="checklist" id="svList">
+    <div class="muted tiny">Click the button to walk: input manifest → canonical body → Ed25519 → RFC 3161 → SLSA.</div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="panel" id="how">
+  <div class="panel-head"><div>
+    <h2>How it works</h2>
+    <p class="subt">Five steps. No PhD required.</p>
+  </div></div>
+  <div class="flow">
+    <div class="flow-step">
+      <div class="icon">📦</div>
+      <div class="label">1. The Model</div>
+      <div class="desc">Your trained weights, configs, tokeniser — whatever you ship.</div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">
+      <div class="icon">🧾</div>
+      <div class="label">2. The Receipt</div>
+      <div class="desc">Squash hashes every file. Names what's in there. Like a packing list.</div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">
+      <div class="icon">📐</div>
+      <div class="label">3. The Fingerprint</div>
+      <div class="desc">All facts get squeezed into a fixed shape — same bytes every time.</div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">
+      <div class="icon">🔒</div>
+      <div class="label">4. Lock it</div>
+      <div class="desc">A cryptographic signature seals the fingerprint. Tamper = obvious.</div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">
+      <div class="icon">✓</div>
+      <div class="label">5. Prove it</div>
+      <div class="desc">Anyone, anywhere, anytime can re-check the seal. No central authority.</div>
+    </div>
+  </div>
+</section>
+
+<!-- WHY SQUASH -->
+<section class="panel">
+  <div class="panel-head"><div>
+    <h2>Why this matters</h2>
+    <p class="subt">Three questions every team shipping AI eventually has to answer.</p>
+  </div></div>
+  <div class="why-grid">
+    <div class="why-card">
+      <div class="why-icon">📚</div>
+      <h3>Was this model trained on copyrighted data?</h3>
+      <p>The answer used to be "we hope not." Squash gives you a signed report that walks back through the model's family tree to the original training corpus.</p>
+    </div>
+    <div class="why-card">
+      <div class="why-icon">🛡️</div>
+      <h3>Can I prove this AI hasn't been tampered with?</h3>
+      <p>Cryptographic attestations bind the model bytes to a signature. If anything changed — weights, config, even a single byte — verification fails loudly.</p>
+    </div>
+    <div class="why-card">
+      <div class="why-icon">🎯</div>
+      <h3>Did this output come from the model I think it did?</h3>
+      <p>Every attestation contains the exact SHA-256 of the model that produced it. No room for swap-the-weights attacks in production.</p>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="panel">
+  <div class="panel-head"><div>
+    <h2>Plain-English features</h2>
+    <p class="subt">The technical names live in the source code. Here's what they do for you.</p>
+  </div></div>
+  <div class="features">
+    <div class="feature">
+      <div class="label">🔐 Tamper-proof certificates</div>
+      <div class="what">Every signed cert proves the model bytes haven't changed since attestation. <code>SLSA Build L3</code></div>
+    </div>
+    <div class="feature">
+      <div class="label">⏱️ Trusted timestamps</div>
+      <div class="what">An external authority co-signs <em>when</em> the cert was issued. Even squash can't back-date. <code>RFC 3161</code></div>
+    </div>
+    <div class="feature">
+      <div class="label">🧪 Identical every time</div>
+      <div class="what">Same input → same signed bytes, on any computer, in any year. <code>RFC 8785</code></div>
+    </div>
+    <div class="feature">
+      <div class="label">🌳 Know your model's history</div>
+      <div class="what">Which family. Which datasets. Which copyright risks. <code>squash.genealogy</code></div>
+    </div>
+    <div class="feature">
+      <div class="label">⚖️ Licence safety check</div>
+      <div class="what">Combine licences and deployment scenarios. Get a verdict + recommendations. <code>squash.copyright</code></div>
+    </div>
+    <div class="feature">
+      <div class="label">🤖 Automated red-team testing</div>
+      <div class="what">Mathematical properties checked across millions of inputs every night. <code>Hypothesis</code></div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div>© 2026 Konjo AI · Apache 2.0 · <a href="https://github.com/konjoai/squash">github.com/konjoai/squash</a></div>
+  <div class="tiny">Make it Konjo. Build · Ship · Repeat.</div>
+</footer>
+
+</main>
+
+<script>
+// ---------- API plumbing ----------
+const API_BASE = (() => {
+  // When loaded via the demo server, use same-origin. Otherwise probe localhost:8002.
+  if (window.location.hostname && window.location.port) {
+    return window.location.origin;
+  }
+  return "http://localhost:8002";
+})();
+
+let LIVE = false;
+
+async function api(path, body) {
+  const opts = body
+    ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }
+    : {};
+  const res = await fetch(API_BASE + path, opts);
+  if (!res.ok) throw new Error(`${path} → HTTP ${res.status}`);
+  return res.json();
+}
+
+function setLive() {
+  LIVE = true;
+  document.querySelectorAll(".badge").forEach(b => {
+    b.classList.add("live"); b.classList.remove("tier-0");
+    b.textContent = "LIVE";
+  });
+  const pill = document.getElementById("serverPill");
+  pill.dataset.state = "live";
+  document.getElementById("serverPillText").innerHTML = "✓ Live · real squash";
+}
+
+function setEst(reason) {
+  const pill = document.getElementById("serverPill");
+  pill.dataset.state = "est";
+  document.getElementById("serverPillText").innerHTML = "▶ Run <code>python demo/server.py</code>";
+  document.querySelectorAll(".badge").forEach(b => { b.textContent = "EST"; });
+}
+
+async function probeServer() {
+  try {
+    const h = await api("/api/health");
+    if (h && h.ok) {
+      setLive();
+      document.querySelectorAll('[data-counter]').forEach(el => {
+        if (h.tests > 0) el.dataset.counter = String(h.tests);
+      });
+      kickCounters();
+    } else {
+      setEst();
+    }
+  } catch (e) {
+    setEst(e.message);
+  }
+}
+
+// ---------- Hero counters ----------
+function kickCounters() {
+  document.querySelectorAll('[data-counter]').forEach(el => {
+    const target = parseInt(el.dataset.counter, 10);
+    if (!Number.isFinite(target)) return;
+    const dur = 1100;
+    const t0 = performance.now();
+    function step(now) {
+      const t = Math.min(1, (now - t0) / dur);
+      const v = Math.round(target * (1 - Math.pow(1 - t, 3)));
+      el.textContent = v.toLocaleString();
+      if (t < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  });
+}
+
+// ---------- Tiny JSON syntax highlighter ----------
+function syntax(json) {
+  if (typeof json !== "string") json = JSON.stringify(json, null, 2);
+  return json
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/("([^"\\]|\\.)*?")(\s*:)/g, '<span class="k">$1</span>$3')
+    .replace(/("([^"\\]|\\.)*?")/g, '<span class="s">$1</span>')
+    .replace(/\b(true|false|null)\b/g, '<span class="b">$1</span>')
+    .replace(/\b(-?\d+(\.\d+)?([eE][+-]?\d+)?)\b/g, '<span class="n">$1</span>');
+}
+const $ = (id) => document.getElementById(id);
+
+// ---------- Attest + Verify ----------
+let LAST_ATT = null;
+
+$("btnAttest").addEventListener("click", async () => {
+  const btn = $("btnAttest");
+  btn.innerHTML = '<span class="spin"></span>Attesting…';
+  btn.disabled = true;
+  $("attTiming").textContent = "";
+  try {
+    const r = await api("/api/attest", {
+      model_name: $("attModel").value,
+      artifact_hash: $("attHash").value,
+      metadata: { source: "demo" },
+    });
+    LAST_ATT = r.attestation;
+    $("attOut").innerHTML = syntax(r.attestation || {});
+    const kv = $("attKv");
+    kv.innerHTML = "";
+    const rows = [
+      ["model_id", r.attestation?.model_id || "—"],
+      ["passed", r.attestation?.passed ? "<span class='good'>✓ PASS</span>" : "<span class='warn'>scan flagged</span>"],
+      ["attested_at", r.attestation?.attested_at || "—"],
+      ["input_manifest_sha256", "<span class='mono'>" + (r.attestation?.input_manifest_sha256 || "—").slice(0, 32) + "…</span>"],
+      ["BOM components", String(r.bom_summary?.components ?? 0)],
+      ["canonical bytes", `${r.canonical_json_bytes ?? "—"} B`],
+      ["latency", `${r.latency_ms} ms`],
+    ];
+    for (const [k, v] of rows) {
+      kv.innerHTML += `<div class="k">${k}</div><div class="v">${v}</div>`;
+    }
+    $("attTiming").innerHTML = `done in <strong>${r.latency_ms} ms</strong>`;
+    $("btnVerify").disabled = false;
+  } catch (e) {
+    $("attOut").textContent = "Error: " + e.message + "\n\n(start the server: python demo/server.py)";
+  } finally {
+    btn.innerHTML = "Attest";
+    btn.disabled = false;
+  }
+});
+
+$("btnVerify").addEventListener("click", async () => {
+  if (!LAST_ATT) return;
+  const btn = $("btnVerify");
+  btn.innerHTML = '<span class="spin"></span>Verifying…';
+  btn.disabled = true;
+  try {
+    const r = await api("/api/verify", { attestation: LAST_ATT });
+    const kv = $("attKv");
+    let html = "";
+    html += `<div class="k">verdict</div><div class="v ${r.valid ? 'good' : 'bad'}">${r.valid ? '✓ VALID' : '✗ INVALID'}</div>`;
+    html += `<div class="k">checks passed</div><div class="v">${r.checks_passed.length}</div>`;
+    for (const c of r.checks_passed) html += `<div class="k">&nbsp;&nbsp;✓</div><div class="v good">${c}</div>`;
+    if (r.checks_failed.length) {
+      html += `<div class="k">checks failed</div><div class="v bad">${r.checks_failed.length}</div>`;
+      for (const c of r.checks_failed) html += `<div class="k">&nbsp;&nbsp;✗</div><div class="v bad">${c}</div>`;
+    }
+    html += `<div class="k">latency</div><div class="v">${r.latency_ms} ms</div>`;
+    kv.innerHTML = html;
+  } catch (e) {
+    $("attOut").textContent = "Verify error: " + e.message;
+  } finally {
+    btn.innerHTML = "Verify last attestation";
+    btn.disabled = false;
+  }
+});
+
+// ---------- Canonical ----------
+$("btnScramble").addEventListener("click", () => {
+  try {
+    const obj = JSON.parse($("canonIn").value);
+    const keys = Object.keys(obj).sort(() => Math.random() - 0.5);
+    const re = {};
+    for (const k of keys) re[k] = obj[k];
+    $("canonIn").value = JSON.stringify(re, null, 2);
+  } catch (e) { /* noop */ }
+});
+
+$("btnCanon").addEventListener("click", async () => {
+  const btn = $("btnCanon");
+  btn.innerHTML = '<span class="spin"></span>Encoding…'; btn.disabled = true;
+  try {
+    const data = JSON.parse($("canonIn").value);
+    const r = await api("/api/canon", { data });
+    let html = "<div class='io-label' style='margin-bottom:8px'>as supplied</div>";
+    html += syntax(r.deterministic_proof[0]?.canonical || r.canonical);
+    if (r.deterministic_proof.length > 1) {
+      html += "<div class='io-label' style='margin: 14px 0 8px'>keys reversed (different insertion order)</div>";
+      html += syntax(r.deterministic_proof[1].canonical);
+      const same = r.deterministic_proof[0].canonical === r.deterministic_proof[1].canonical;
+      html += `<div style='margin-top: 14px; padding: 10px 14px; background: ${same ? 'rgba(109,240,194,0.12)' : 'rgba(255,107,138,0.12)'}; border-radius: 8px; color: ${same ? 'var(--good)' : 'var(--bad)'};'>`;
+      html += same ? "✓ Identical bytes — the signature is the same." : "✗ Bytes differ — encoder bug!";
+      html += "</div>";
+    }
+    $("canonOut").innerHTML = html;
+    $("canonStats").innerHTML = `<strong>${r.bytes}</strong> bytes · sha256 <code>${r.sha256.slice(0, 24)}…</code>`;
+  } catch (e) {
+    $("canonOut").textContent = "Error: " + e.message;
+  } finally {
+    btn.innerHTML = "Canonicalise"; btn.disabled = false;
+  }
+});
+
+// ---------- Genealogy ----------
+$("btnGen").addEventListener("click", async () => {
+  const btn = $("btnGen");
+  btn.innerHTML = '<span class="spin"></span>Tracing…'; btn.disabled = true;
+  try {
+    const r = await api("/api/genealogy", { model_name: $("genSelect").value });
+    const kv = $("genKv");
+    const verdictCls = (r.contamination_verdict || "").toLowerCase();
+    const riskCls = (r.copyright_risk || "").toLowerCase();
+    let html = "";
+    html += `<div class="k">model</div><div class="v mono">${r.model_id}</div>`;
+    html += `<div class="k">root family</div><div class="v">${r.root_family || "—"}</div>`;
+    html += `<div class="k">chain depth</div><div class="v">${r.depth} step(s)</div>`;
+    html += `<div class="k">contamination</div><div class="v"><span class="verdict-pill ${verdictCls}">${r.contamination_verdict || '—'}</span></div>`;
+    html += `<div class="k">copyright risk</div><div class="v"><span class="verdict-pill ${riskCls}">${r.copyright_risk || '—'} (${r.copyright_score}/100)</span></div>`;
+    if (r.copyright_sources.length) {
+      html += `<div class="k">flagged sources</div><div class="v">${r.copyright_sources.slice(0,3).join(", ")}</div>`;
+    }
+    if (r.signature) html += `<div class="k">signature</div><div class="v mono">${r.signature}</div>`;
+    kv.innerHTML = html;
+
+    const donut = $("genDonut");
+    if (r.training_composition && r.training_composition.length) {
+      const max = Math.max(...r.training_composition.map(c => c.weight));
+      donut.innerHTML = r.training_composition.map(c => `
+        <div class="donut-row">
+          <div class="muted tiny">${c.label}</div>
+          <div class="donut-bar"><div class="donut-fill" style="width:${(c.weight/max*100).toFixed(0)}%"></div></div>
+          <div class="donut-val">${c.weight}</div>
+        </div>`).join("");
+    } else {
+      donut.innerHTML = '<div class="muted tiny">No itemised dataset composition (proprietary or undisclosed).</div>';
+    }
+
+    $("genChain").innerHTML = syntax(r.nodes || []);
+  } catch (e) {
+    $("genChain").textContent = "Error: " + e.message;
+  } finally {
+    btn.innerHTML = "Trace genealogy"; btn.disabled = false;
+  }
+});
+
+// ---------- Copyright ----------
+$("btnCpr").addEventListener("click", async () => {
+  const btn = $("btnCpr");
+  btn.innerHTML = '<span class="spin"></span>Checking…'; btn.disabled = true;
+  try {
+    const r = await api("/api/copyright", {
+      licenses: [$("cprA").value, $("cprB").value],
+      deployment_use: $("cprUse").value,
+    });
+    const kv = $("cprKv");
+    const compat = r.compatible === true ? "good" : r.compatible === false ? "bad" : "warn";
+    const compatLabel = r.compatible === true ? "✓ Compatible" : r.compatible === false ? "✗ NOT compatible" : "⚠ Uncertain";
+    const riskCls = (r.risk_tier || "").toLowerCase();
+    let html = "";
+    html += `<div class="k">deployment use</div><div class="v">${r.deployment_use}</div>`;
+    html += `<div class="k">compatibility</div><div class="v ${compat}">${compatLabel}</div>`;
+    html += `<div class="k">risk tier</div><div class="v"><span class="verdict-pill ${riskCls}">${r.risk_tier} (${r.risk_score}/100)</span></div>`;
+    html += `<div class="k">model licence</div><div class="v mono">${r.model_license.spdx_id}</div>`;
+    html += `<div class="k">commercial OK</div><div class="v">${r.model_license.commercial_ok === true ? '✓' : r.model_license.commercial_ok === false ? '✗' : '?'}</div>`;
+    if (r.training_data_licenses.length) {
+      html += `<div class="k">training licences</div><div class="v">${r.training_data_licenses.map(l => l.spdx_id).join(", ")}</div>`;
+    }
+    if (r.signature) html += `<div class="k">signature</div><div class="v mono">${r.signature}</div>`;
+    kv.innerHTML = html;
+
+    let note = `<strong>${r.verdict}.</strong>`;
+    if (r.compatibility_issues.length) {
+      note += "<br><br><strong>Issues:</strong><ul>";
+      for (const i of r.compatibility_issues.slice(0, 4)) note += `<li>${i.description}</li>`;
+      note += "</ul>";
+    }
+    if (r.recommendations.length) {
+      note += "<strong>Recommendations:</strong><ul>";
+      for (const rec of r.recommendations.slice(0, 4)) note += `<li>${rec}</li>`;
+      note += "</ul>";
+    }
+    $("cprNote").innerHTML = note;
+  } catch (e) {
+    $("cprNote").textContent = "Error: " + e.message;
+  } finally {
+    btn.innerHTML = "Check compatibility"; btn.disabled = false;
+  }
+});
+
+// ---------- Self-verify ----------
+$("btnSelf").addEventListener("click", async () => {
+  const btn = $("btnSelf");
+  btn.innerHTML = '<span class="spin"></span>Walking chain…'; btn.disabled = true;
+  $("svTiming").textContent = "";
+  $("svList").innerHTML = "";
+  const t0 = performance.now();
+  try {
+    const r = await api("/api/self-verify", {});
+    let i = 0;
+    for (const c of r.checks) {
+      const item = document.createElement("div");
+      item.className = "checklist-item";
+      item.style.animationDelay = `${i * 90}ms`;
+      const icon = c.result === "pass" ? "pass" : "fail";
+      item.innerHTML = `
+        <div class="check-icon ${icon}">${icon === 'pass' ? '✓' : '✗'}</div>
+        <div>
+          <div class="check-name">${c.name.replace(/_/g, " ")}</div>
+          <div class="check-detail">${c.detail || ''}</div>
+        </div>
+        <div class="muted tiny">${c.result}</div>`;
+      $("svList").appendChild(item);
+      i++;
+    }
+    const summary = document.createElement("div");
+    summary.className = "checklist-item";
+    summary.style.animationDelay = `${i * 90}ms`;
+    summary.innerHTML = `
+      <div class="check-icon ${r.overall === 'pass' ? 'pass' : 'fail'}">${r.overall === 'pass' ? '✓' : '✗'}</div>
+      <div>
+        <div class="check-name"><strong>overall ${r.overall.toUpperCase()}</strong></div>
+        <div class="check-detail">${r.checks.length} checks completed</div>
+      </div>
+      <div></div>`;
+    $("svList").appendChild(summary);
+    $("svTiming").innerHTML = `walked in <strong>${(performance.now() - t0).toFixed(0)} ms</strong>`;
+  } catch (e) {
+    $("svList").innerHTML = `<div class="check-detail bad" style="color: var(--bad)">Error: ${e.message}</div>`;
+  } finally {
+    btn.innerHTML = "Run self-verify"; btn.disabled = false;
+  }
+});
+
+// ---------- Boot ----------
+probeServer();
+// counters fire on probe; if no server, kick at boot anyway.
+setTimeout(() => { if (!LIVE) kickCounters(); }, 350);
+</script>
+
+</body>
+</html>

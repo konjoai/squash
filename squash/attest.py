@@ -587,7 +587,15 @@ def _build_master_record(
     """
     import squash as squish  # version reference
 
-    clk = clock if clock is not None else SystemClock()
+    # Phase G.2: when no explicit clock is passed, route through the
+    # module-level default so `with_clock(FrozenClock(...))` propagates
+    # into the signed body. Tests rely on this; see
+    # tests/test_reproducibility.py::TestPipelineReproducibility.
+    if clock is None:
+        from squash.clock import get_default_clock
+        clk = get_default_clock()
+    else:
+        clk = clock
     now = (
         clk()
         .astimezone(datetime.timezone.utc)
