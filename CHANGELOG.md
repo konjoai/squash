@@ -5,6 +5,43 @@ Format: [Conventional Commits](https://www.conventionalcommits.org/) · [Keep a 
 
 ---
 
+## [3.0.1] — 2026-05-04 — Konjo Edition Demo + CI fixes
+
+### Fixed
+- **`squash demo` crash on Python 3.12+** — duplicate `diff` and `webhook` subparser
+  registrations caused `argparse.ArgumentError: conflicting subparser` on every invocation.
+  Renamed old CycloneDX SBOM diff subcommand to `sbom-diff` and old K8s admission
+  webhook to `k8s-webhook`.
+- **Output directory vanishes after demo** — `TemporaryDirectory` context exited before
+  the user could open the path. Output now persists at `~/Desktop/squash-demo/TIMESTAMP/`.
+- **mypy strict gate failures** — 5 unused `type: ignore` comments removed from
+  `clock.py`, `canon.py`, `edge_formats.py`, `scanner.py`; `risk.py` type annotations
+  fixed (`dict` → `dict[str, Any]`); pyproject.toml overrides added for non-Phase-G
+  modules (`nist_rmf`, `model_card`, `report`, `integrations.kubernetes`).
+- **Nightly OSV-Scanner** — `google/osv-scanner-action@v1` tag deleted upstream;
+  bumped to `@v2.0.2`.
+- **PyPI publish SBOM collision** — `cyclonedx-py` was writing the SBOM into `dist/`
+  causing `pypa/gh-action-pypi-publish` to reject it as an invalid distribution;
+  moved to `sbom/` subdirectory.
+- **SLSA publish deadlock** — `upload-assets: true` fails with Server Error when
+  triggered via `workflow_dispatch` (no release event context); set to `false` and
+  decoupled publish job from provenance success.
+
+### Added
+- **`squash demo` Konjo Edition** — full animated rewrite of the sales demo CLI:
+  four-act Rich flow (Setup → Scan → Verdict → Output), color-coded compliance score
+  panel, auto-opens HTML report in browser and output folder in Finder/Explorer.
+- **`squash/demo_report.py`** — self-contained HTML executive compliance summary
+  (15 KB, zero external deps, Konjo dark aesthetic matching `demo/index.html`).
+  WeasyPrint PDF export when available.
+- **`--no-open`, `--no-color`, `--explore`** flags on `squash demo`.
+- **`build-wheel.yml`** — GitHub Actions workflow that builds a universal wheel on
+  every push to main and uploads it as a 14-day artifact for fast CI installs.
+- **`[demo]` optional-dep group** — `pip install "squash-ai[demo]"` pulls `rich>=12.0`
+  for the animated CLI experience.
+
+---
+
 ## [3.0.0] — 2026-05-03 — Bulletproof Edition (Phase G)
 
 > "Correctness is the floor, not the ceiling."
