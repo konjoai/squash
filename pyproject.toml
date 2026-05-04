@@ -86,6 +86,9 @@ audit = [
     "pip-audit>=2.7",
     "rfc8785>=0.1.2",
 ]
+demo = [
+    "rich>=12.0",
+]
 all = [
     "squash-ai[api,signing,sbom,billing,integrations]",
 ]

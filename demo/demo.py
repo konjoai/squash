@@ -666,16 +666,26 @@ SECTIONS = [
 
 
 def run(only: int | None) -> None:
-    banner(
-        "Squash — Bulletproof Edition demo",
-        "Every section runs against the real squash codebase. No mocks.",
-    )
+    if _RICH:
+        console.print()
+        console.print(
+            Panel.fit(
+                "[bold #b794ff]S Q U A S H[/bold #b794ff]  [dim]·[/dim]  "
+                "[bold white]Technical Walkthrough[/bold white]\n"
+                "[dim]Every section runs against the real squash codebase. No mocks.[/dim]",
+                border_style="#b794ff",
+                padding=(1, 4),
+            )
+        )
+    else:
+        banner(
+            "Squash — Technical Walkthrough",
+            "Every section runs against the real squash codebase. No mocks.",
+        )
 
-    work_dir = Path(tempfile.mkdtemp(prefix="squash-demo-"))
-    info(f"Scratch: {work_dir}")
+    work_dir = Path(tempfile.mkdtemp(prefix="squash-explore-"))
 
     try:
-        # Section 2 produces an attestation dir we reuse in 3, 4, 5.
         att_state: dict | None = None
 
         for idx, (title, fn) in enumerate(SECTIONS, start=1):
@@ -699,8 +709,9 @@ def run(only: int | None) -> None:
             else:
                 fn(work_dir)
     finally:
+        # Scratch dir is internal — safe to remove after the walkthrough.
         try:
-            shutil.rmtree(work_dir)
+            shutil.rmtree(work_dir, ignore_errors=True)
         except Exception:
             pass
 
@@ -708,22 +719,34 @@ def run(only: int | None) -> None:
         console.print()
         console.print(
             Panel.fit(
-                "[bold magenta]Make it Konjo.[/bold magenta]\n"
-                "[dim]Every section above ran real squash code against real bytes.[/dim]",
-                border_style="magenta",
+                "[bold #b794ff]Make it Konjo.[/bold #b794ff]\n"
+                "[dim]Every section above ran real squash code against real bytes.[/dim]\n\n"
+                "[dim]Sales demo:[/dim]  [bold #5dd9ff]squash demo[/bold #5dd9ff]\n"
+                "[dim]Web demo:  [/dim]  [bold #5dd9ff]squash demo --server[/bold #5dd9ff]",
+                border_style="#b794ff",
+                padding=(1, 4),
             )
         )
     else:
         print()
         print("=" * 72)
         print("  Make it Konjo.")
+        print("  Sales demo:  squash demo")
+        print("  Web demo:    squash demo --server")
         print("=" * 72)
 
 
 def main() -> int:
-    p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--section", type=int, default=None, help="Run a single numbered section (1–10).")
-    p.add_argument("--no-color", action="store_true", help="Disable rich output.")
+    p = argparse.ArgumentParser(
+        description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    p.add_argument(
+        "--section", type=int, default=None,
+        metavar="N",
+        help="Run only section N (1–10).",
+    )
+    p.add_argument("--no-color", action="store_true", help="Plain text output.")
     args = p.parse_args()
 
     if args.no_color:
