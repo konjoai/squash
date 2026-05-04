@@ -95,9 +95,9 @@ try:  # pragma: no cover - optional dependency presence is environmental
     def _encode_with_rfc8785(value: Any) -> bytes:
         return _rfc8785.dumps(value)
 except ImportError:  # pragma: no cover - only one branch runs per environment
-    _rfc8785 = None  # type: ignore[assignment]
+    _rfc8785 = None  # type: ignore[assignment]  # noqa: F841 — intentional None sentinel
 
-    def _encode_with_rfc8785(value: Any) -> bytes:  # type: ignore[misc]
+    def _encode_with_rfc8785(value: Any) -> bytes:
         raise RuntimeError("rfc8785 unavailable — should fall through to fallback")
 
 

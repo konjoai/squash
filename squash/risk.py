@@ -18,6 +18,7 @@ import json
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
+from typing import Any
 
 
 # ── EU AI Act risk categories ──────────────────────────────────────────────────
@@ -105,7 +106,7 @@ _HIGH_SENSITIVITY_SIGNALS = {
 }
 
 
-def _load_bom(bom_path: Path) -> dict:
+def _load_bom(bom_path: Path) -> dict[str, Any]:
     """Load and return a CycloneDX BOM dict, or return an empty dict."""
     p = Path(bom_path)
     if not p.exists():
@@ -116,7 +117,7 @@ def _load_bom(bom_path: Path) -> dict:
         return {}
 
 
-def _collect_signals(bom: dict) -> dict[str, list[str]]:
+def _collect_signals(bom: dict[str, Any]) -> dict[str, Any]:
     """Extract risk signals from a BOM.
 
     Returns a dict with keys:
@@ -125,14 +126,14 @@ def _collect_signals(bom: dict) -> dict[str, list[str]]:
     ``has_provenance`` — bool as str,
     ``component_count`` — str.
     """
-    model_card: dict = {}
+    model_card: dict[str, Any] = {}
     for comp in bom.get("components", []):
         mc = comp.get("modelCard", {})
         if mc:
             model_card = mc
             break
 
-    considerations: dict = model_card.get("considerations", {})
+    considerations: dict[str, Any] = model_card.get("considerations", {})
     use_cases: list[str] = [
         uc.get("description", uc) if isinstance(uc, dict) else str(uc)
         for uc in considerations.get("useCases", [])
@@ -377,7 +378,7 @@ class RemediationStep:
 
 def generate_remediation_plan(
     risk_tier: str,
-    policy_results: dict,
+    policy_results: dict[str, Any],
     open_vex: int,
     attestation_passed: bool = True,
 ) -> list[RemediationStep]:

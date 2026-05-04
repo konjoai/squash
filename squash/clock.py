@@ -181,7 +181,7 @@ def with_clock(clock: Clock | Callable[[], _dt.datetime]) -> Iterator[Clock]:
     global _DEFAULT
     prev = _DEFAULT
     try:
-        _DEFAULT = clock  # type: ignore[assignment]
-        yield clock  # type: ignore[misc]
+        _DEFAULT = clock
+        yield clock
     finally:
         _DEFAULT = prev

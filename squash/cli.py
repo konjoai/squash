@@ -308,14 +308,14 @@ def _build_parser() -> argparse.ArgumentParser:
         help="(hf:// only) Suppress non-essential output.",
     )
 
-    # ── squash diff ───────────────────────────────────────────────────────────
-    diff_cmd = sub.add_parser(
-        "diff",
+    # ── squash sbom-diff ──────────────────────────────────────────────────────
+    sbom_diff_cmd = sub.add_parser(
+        "sbom-diff",
         help="Compare two CycloneDX SBOM snapshots and report differences",
     )
-    diff_cmd.add_argument("sbom_a", metavar="SBOM_A", help="Older (baseline) SBOM JSON file")
-    diff_cmd.add_argument("sbom_b", metavar="SBOM_B", help="Newer SBOM JSON file")
-    diff_cmd.add_argument(
+    sbom_diff_cmd.add_argument("sbom_a", metavar="SBOM_A", help="Older (baseline) SBOM JSON file")
+    sbom_diff_cmd.add_argument("sbom_b", metavar="SBOM_B", help="Newer SBOM JSON file")
+    sbom_diff_cmd.add_argument(
         "--exit-1-on-regression",
         action="store_true",
         default=False,
@@ -671,7 +671,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
     # ── Wave 27 — Kubernetes admission webhook ─────────────────────────────────
     webhook_cmd = sub.add_parser(
-        "webhook",
+        "k8s-webhook",
         help="Start the Kubernetes admission webhook server",
         description=(
             "Run an HTTPS validating admission webhook that enforces Squash BOM "
@@ -679,7 +679,7 @@ def _build_parser() -> argparse.ArgumentParser:
             "squash.ai/attestation-required=true must carry a valid "
             "squash.ai/bom-digest annotation whose digest is present in the "
             "configured policy store.\n\n"
-            "Example: squash webhook --port 8443 --tls-cert /tls/tls.crt "
+            "Example: squash k8s-webhook --port 8443 --tls-cert /tls/tls.crt "
             "--tls-key /tls/tls.key --policy-store /var/squash/policy-store.json"
         ),
     )
@@ -4055,7 +4055,7 @@ def _cmd_scan_hf(args: argparse.Namespace, quiet: bool) -> int:
     return 0 if report.is_safe else 1
 
 
-def _cmd_diff(args: argparse.Namespace, quiet: bool) -> int:
+def _cmd_sbom_diff(args: argparse.Namespace, quiet: bool) -> int:
     try:
         from squash.sbom_builder import SbomDiff
     except ImportError as e:
@@ -4742,7 +4742,7 @@ def _cmd_ci_run(args: argparse.Namespace, quiet: bool) -> int:
 
 # ── Wave 27 — Kubernetes admission webhook handler ─────────────────────────────
 
-def _cmd_webhook(args: argparse.Namespace, quiet: bool) -> int:
+def _cmd_k8s_webhook(args: argparse.Namespace, quiet: bool) -> int:
     from squash.integrations.kubernetes import (
         KubernetesWebhookHandler,
         WebhookConfig,
@@ -10751,6 +10751,8 @@ def main() -> None:
         sys.exit(_cmd_policies(args, quiet))
     elif args.command == "scan":
         sys.exit(_cmd_scan(args, quiet))
+    elif args.command == "sbom-diff":
+        sys.exit(_cmd_sbom_diff(args, quiet))
     elif args.command == "diff":
         sys.exit(_cmd_diff(args, quiet))
     elif args.command == "verify":
@@ -10793,8 +10795,8 @@ def main() -> None:
         sys.exit(_cmd_monitor(args, quiet))
     elif args.command == "ci-run":
         sys.exit(_cmd_ci_run(args, quiet))
-    elif args.command == "webhook":
-        sys.exit(_cmd_webhook(args, quiet))
+    elif args.command == "k8s-webhook":
+        sys.exit(_cmd_k8s_webhook(args, quiet))
     elif args.command == "shadow-ai":
         sys.exit(_cmd_shadow_ai(args, quiet))
     elif args.command == "vex-publish":
@@ -10885,10 +10887,6 @@ def main() -> None:
         sys.exit(_cmd_incident(args, quiet))
     elif args.command == "board-report":
         sys.exit(_cmd_board_report(args, quiet))
-    elif args.command == "diff":
-        sys.exit(_cmd_diff(args, quiet))
-    elif args.command == "webhook":
-        sys.exit(_cmd_webhook(args, quiet))
     elif args.command == "telemetry":
         sys.exit(_cmd_telemetry(args, quiet))
     elif args.command == "gitops":

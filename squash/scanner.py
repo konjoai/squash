@@ -484,7 +484,7 @@ class ModelScanner:
 
         # Try accurate parsing via onnx library
         try:
-            import onnx  # type: ignore[import-untyped]
+            import onnx
 
             model = onnx.load(str(file_path))
             for initializer in model.graph.initializer:

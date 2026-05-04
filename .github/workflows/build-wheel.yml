@@ -1,0 +1,66 @@
+name: Build wheel (fast install artefact)
+
+# Builds a universal wheel + sdist on every push to main and on PRs.
+# The resulting wheel is uploaded as a GitHub Actions artefact so that:
+#   • CI jobs can pip-install it directly (no build step, no sdist overhead)
+#   • QA and preview testers can grab a pre-built wheel from the Actions tab
+#     without waiting for a PyPI release
+#
+# Install the latest main-branch wheel locally:
+#   gh run download -n wheel --dir /tmp/squash-wheel
+#   pip install /tmp/squash-wheel/*.whl
+# Or even faster with uv:
+#   uv pip install /tmp/squash-wheel/*.whl
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "squash/**"
+      - "pyproject.toml"
+      - "uv.lock"
+  pull_request:
+    branches: [main]
+    paths:
+      - "squash/**"
+      - "pyproject.toml"
+  workflow_dispatch:
+
+concurrency:
+  group: build-wheel-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build wheel + sdist
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv (faster build toolchain)
+        run: pip install uv
+
+      - name: Build wheel and sdist
+        run: |
+          uv build
+          ls -lh dist/
+
+      - name: Verify wheel installs cleanly
+        run: |
+          uv pip install --system dist/*.whl
+          python -c "import squash; print('squash', squash.__version__, 'OK')"
+
+      - name: Upload wheel artefact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheel
+          path: dist/
+          retention-days: 14
+          if-no-files-found: error

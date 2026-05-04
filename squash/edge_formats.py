@@ -214,12 +214,12 @@ class TFLiteParser:
 
     @classmethod
     def _parse_with_sdk(cls, raw: bytes, meta: TFLiteMetadata) -> None:
-        import flatbuffers  # type: ignore[import]  # noqa: PLC0415
+        import flatbuffers  # noqa: PLC0415
         # tflite-runtime exposes a schema; we use flatbuffers reflection as a
         # lighter path that avoids the full TensorFlow runtime import.
         # If flatbuffers is available but tflite_schema is not, fall through.
         try:
-            from tflite.Model import Model  # type: ignore[import]  # noqa: PLC0415
+            from tflite.Model import Model  # noqa: PLC0415
         except ImportError:
             raise ImportError("tflite_schema unavailable")
 
@@ -338,7 +338,7 @@ class CoreMLParser:
 
     @classmethod
     def _parse_with_sdk(cls, package_path: Path, meta: CoreMLMetadata) -> None:
-        import coremltools as ct  # type: ignore[import]  # noqa: PLC0415
+        import coremltools as ct  # noqa: PLC0415
         model = ct.models.MLModel(str(package_path))
         spec = model.get_spec()
         desc = spec.description
