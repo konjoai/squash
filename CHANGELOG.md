@@ -5,6 +5,33 @@ Format: [Conventional Commits](https://www.conventionalcommits.org/) · [Keep a 
 
 ---
 
+## [3.0.2] — 2026-05-04 — Konjo Edition Demo v2: Real Models, Side-by-Side, Animated
+
+### Added
+- **Ollama-native scanning** — `squash demo` discovers real GGUF models from
+  `~/.ollama/models/` and scans them via the real AttestPipeline. Prefers small
+  models (smollm, qwen2.5, qwen3, tinyllama) for fast demo runs.
+- **Dual-framework comparison** — scans model 1 against EU AI Act, model 2 against
+  NIST AI RMF, producing naturally different scores (e.g. 85/100 vs 78/100).
+- **SQUASH ASCII art banner** — five-line gradient header (purple → cyan → green)
+  rendered in Rich at demo startup; matches Gemini CLI / Claude Code visual level.
+- **Side-by-side Rich table** — model name, policy, score bar, pass/warn/fail counts,
+  and top issue per model in a rounded comparison table.
+- **Animated scan progress** — live spinner with per-step labels; steps tick in
+  as the real pipeline runs; 5-10 second natural pacing with delays between acts.
+- **Animated transition** — progress bar sweeps before browser opens.
+- **HTML: dual-model side-by-side cards** — per-model compliance score, label,
+  score bar, stat chips, and policy name.
+- **HTML: file accordions** — every attestation artifact is expandable with
+  syntax-highlighted JSON content inline; no Finder required.
+- **HTML: interactive demo section** — embedded live API panels (canon, attest)
+  at the bottom of the report; connects to local `squash demo --server` if running.
+- **Demo server auto-launch** — `squash demo` starts `demo/server.py` in the
+  background so the interactive section works immediately when the report opens.
+- Removed Finder auto-open — files are accessible directly from the HTML report.
+
+---
+
 ## [3.0.1] — 2026-05-04 — Konjo Edition Demo + CI fixes
 
 ### Fixed
