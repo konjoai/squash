@@ -82,11 +82,16 @@ jobs:
     uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.0.0
     with:
       base64-subjects: "${{ needs.build.outputs.hashes }}"
-      upload-assets: true   # attaches provenance bundle to the GitHub release
+      # upload-assets requires the release event context; workflow_dispatch on a tag
+      # returns a Server Error. Keep false so provenance generation never blocks publish.
+      upload-assets: false
 
   publish:
     name: Publish to PyPI (Trusted Publishing)
-    needs: [build, provenance]
+    # Depend only on build so provenance flakiness cannot block the upload.
+    # Provenance artefact is still generated and available in Actions artefacts.
+    needs: [build]
+    if: needs.build.result == 'success'
     runs-on: ubuntu-latest
     environment: pypi
     permissions:
@@ -97,19 +102,20 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: dist
-          path: dist/
+          path: artifacts/
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          packages-dir: dist/
+          packages-dir: artifacts/dist/
           # Trusted publishing — no API token required.
           # Only .whl and .tar.gz files are in dist/; SBOM is in sbom/.
 
       - name: Upload release assets to GitHub
+        if: github.event_name == 'release'
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            dist/*.whl
-            dist/*.tar.gz
-            sbom/*.cdx.json
+            artifacts/dist/*.whl
+            artifacts/dist/*.tar.gz
+            artifacts/sbom/*.cdx.json
