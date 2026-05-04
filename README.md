@@ -1,4 +1,4 @@
-# Squash — Squash violations, not velocity.
+<img width="750" alt="squash-logo" src="https://github.com/user-attachments/assets/2970234a-8579-42c2-a318-fa9bcdc18877" />
 
 **The `pytest` of AI compliance. Runs in your CI/CD pipeline. Ships in 10 seconds.**
 
