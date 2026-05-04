@@ -18,7 +18,7 @@ Frameworks covered: EU AI Act · NIST AI RMF · ISO 42001 · OWASP LLM Top 10 ·
 FedRAMP · CMMC · SOC 2-AI · HITRUST · GDPR-AI · DORA
 """
 
-__version__ = "0.9.14"
+__version__ = "3.0.0"
 
 from squash.sbom_builder import CompressRunMeta, CycloneDXBuilder, SbomDiff, SbomRegistry, EvalBinder
 from squash.oms_signer import OmsSigner, OmsVerifier

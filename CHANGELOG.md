@@ -5,6 +5,136 @@ Format: [Conventional Commits](https://www.conventionalcommits.org/) · [Keep a 
 
 ---
 
+## [3.0.0] — 2026-05-03 — Bulletproof Edition (Phase G)
+
+> "Correctness is the floor, not the ceiling."
+>
+> Major version bump for the cryptographic-chain hardening lane: every
+> Tier-0/1 attestation is now byte-identical on rerun, every signed payload
+> flows through RFC 8785 canonical JSON, every cert ID is keyed on the
+> input (uuid5, never uuid4), every clock is injectable, every release
+> wheel + Docker image carries SLSA Build Level 3 provenance, and the
+> entire chain — input manifest → canonical body → Ed25519 → RFC 3161 TSA
+> → SLSA — is verifiable end-to-end via `squash self-verify`.
+
+### Added — Cryptographic primitives (Phase G.2)
+
+- **`squash/canon.py`** — RFC 8785 (JCS) canonical JSON encoder.
+  Wraps the `rfc8785` reference library when present; pure-stdlib
+  fallback otherwise. Rejects naive datetimes, non-finite floats,
+  non-string dict keys, and unknown types — no silent `default=str`
+  coercion. Sets serialised sorted by their canonical-bytes key.
+- **`squash/clock.py`** — injectable `Clock` protocol with `SystemClock`
+  (production) and `FrozenClock` (tests). `with_clock()` context manager
+  + module-level default for code that cannot carry a clock parameter
+  explicitly.
+- **`squash/ids.py`** — `deterministic_uuid(payload)` →
+  `uuid5(SQUASH_NS, canonical)`, `cert_id(prefix, payload)` →
+  `"{prefix}-{16-hex}"`. Project namespace pinned forever
+  (`8b7c4a2e-1d3f-5e6a-9b8c-0d1e2f3a4b5c`).
+
+### Added — Cryptographic chain (Phase G.3)
+
+- **`squash/input_manifest.py`** — SHA-256 every ingested file BEFORE
+  any analysis runs (Step 0 of every `squash attest`). Self-hashing
+  manifest schema `squash.input-manifest/v1`. `verify_manifest()`
+  re-hashes and compares.
+- **`squash/tsa.py`** — RFC 3161 trusted-timestamp client. Hand-rolled
+  DER `TimeStampReq` encoder (no third-party PKIX wrapper). Endpoint via
+  `SQUASH_TSA_URL` env var (default `http://timestamp.digicert.com`).
+- **`squash/self_verify.py`** — full chain walker.
+  `input_manifest → canonical body → Ed25519 → RFC 3161 → SLSA`.
+- **CLI: `squash self-verify -d <dir> [--offline] [--json]`**.
+- **CLI: `squash verify --check-timestamp`**.
+- **`AttestConfig.timestamp_with_tsa` / `tsa_url`** — opt-in TSA
+  roundtrip; emits `tsa_token.json`. Master record now embeds
+  `input_manifest_sha256`.
+
+### Changed — Tier-0/1 sites swept (`AUDIT_BASELINE.md` §7, 22 line-items)
+
+- `attest.py`, `slsa.py`, `anchor.py`, `chain_attest.py`,
+  `hallucination_attest.py`, `drift_certificate.py`, `carbon_attest.py`,
+  `data_lineage.py`, `sbom_builder.py`, `oms_signer.py`,
+  `webhook_delivery.py` — every signed/anchored payload now flows
+  through `squash.canon`; every clock injectable; every cert ID via
+  `squash.ids.cert_id`.
+- **`data_lineage.py:252` — REPRODUCIBILITY KILLER FIX.** `cert_id` no
+  longer mixes `datetime.now()` into the hash input.
+- **`slsa.py._attach_to_bom`** — now idempotent (no duplicate ext-refs).
+
+### Added — Tests (Phase G.4)
+
+134 new Phase-G tests across 10 new files + 2 atheris fuzz harnesses:
+`test_canon_compat.py` (26), `test_clock.py` (10), `test_ids.py` (9),
+`test_reproducibility.py` (10), `test_phase_g_property.py` (11),
+`test_phase_g_negative.py` (27), `test_phase_g_edge.py` (19),
+`test_phase_g_concurrency.py` (5), `test_phase_g_security.py` (10),
+`test_phase_g_snapshot.py` (9), plus `tests/fuzz/fuzz_canon.py` and
+`tests/fuzz/fuzz_input_manifest.py` for the nightly 100K-iter run.
+
+**Test count: 5,226 → 5,362 passing.**
+
+### Added — Static analysis (Phase G.5)
+
+- `pyproject.toml` — `mypy --strict` override on the 6 Phase-G primitive
+  modules.
+- `.bandit` — bandit config for `bandit -r squash/ -ll`.
+- `.semgrep.yml` — 4 custom rules: `squash-no-json-dumps-in-signing-paths`,
+  `squash-no-default-str`, `squash-no-utcnow`, `squash-no-uuid4-in-signed-body`.
+
+### Added — CI gates (Phase G.7)
+
+- **`.github/workflows/ci.yml`** rebuilt with 6 jobs: test (3.10/3.11/3.12),
+  coverage with Tier-0 floor gate, reproducibility, mypy strict,
+  security (bandit + semgrep + pip-audit), CycloneDX SBOM artefact.
+- **`.github/workflows/nightly.yml`** — rotating mutmut on Tier-0 modules
+  (6-day cycle), 100K-iter atheris fuzz, OSV-Scanner, perf baseline.
+- **`.github/workflows/publish.yml`** — SLSA Build L3 via
+  `slsa-framework/slsa-github-generator@v2.0.0`. Three jobs: build,
+  provenance (delegated trusted builder), publish to PyPI via Trusted
+  Publishing.
+- **`.github/workflows/publish-image.yml`** — `provenance: mode=max` +
+  `actions/attest-build-provenance@v2` for OCI image attestations on GHCR.
+
+### Added — Demo Day package
+
+- **`demo/demo.py`** — 10-section runnable Python walkthrough.
+- **`demo/server.py`** — stdlib `ThreadingHTTPServer` exposing 8 real
+  squash endpoints. Boots in <1.2 s.
+- **`demo/index.html`** — interactive demo page (40 KB, dark Konjo
+  aesthetic). 5 interactive panels all hitting the real backend.
+- **CLI: `squash demo --walkthrough` / `squash demo --server [--port N]`**
+  — defer to the bundled `demo/` scripts.
+
+### Added — Planning + audit docs
+
+- **`AUDIT_BASELINE.md`** — 22-point line-numbered fix list.
+- **`TIER_MAP.md`** — every `squash/*.py` classified Tier 0–4 with
+  per-tier coverage / mutation / mypy / repro gates.
+- **`SQUASH_MASTER_PLAN.md`** — Phase G section with G.1 → G.7 ticket
+  grid, execution status table, v3.0.0 exit criteria.
+
+### Changed — Misc
+
+- **`action.yml`** — adds plural `policies` input (recommended v3+ alias
+  for `policy`); both work, `policies` takes precedence when set.
+- **`squash/__init__.py`** — version drift fixed (was 0.9.14 vs
+  pyproject 2.7.0; both now 3.0.0).
+- **`README.md`** — adds Bulletproof Edition badges (Reproducibility,
+  SLSA L3, Scorecard, Sigstore, RFC 8785, RFC 3161).
+- **`CLAUDE.md`** — adds the KONJO acronym (Know · Outline · Nail ·
+  Justify · Optimize) to the top.
+
+### Deferred
+
+- **`license_conflict.py` split** into `database.py / scanner.py /
+  reporter.py` — 1,357-line refactor scheduled as a focused follow-up PR.
+- **Phase G.6 — External audits** ($36K–$68K cash window): Trail of Bits
+  / NCC Group / Cure53 security review, Orrick / Cooley AI legal
+  methodology opinion letter, SOC 2 Type II observation period.
+
+---
+
 ## [2.7.0] — 2026-05-01 — D5: Industry Compliance Benchmarking (W249-W250)
 
 > "How do we compare?" — Every enterprise QBR starts here.

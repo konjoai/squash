@@ -15,9 +15,13 @@ def _read_version() -> str:
 
 
 class TestSquashVersion:
-    def test_version_is_1_4_0(self):
+    def test_version_is_3_0_0(self):
+        # v3.0.0 — Bulletproof Edition release (Phase G complete).
+        # Bumped from 2.7.0 with the closure sprint that landed CHANGELOG,
+        # squash demo CLI, and resolved version drift between
+        # squash/__init__.py and pyproject.toml.
         version = _read_version()
-        assert version == "1.4.0", f"Expected version 1.4.0, got {version}"
+        assert version == "3.0.0", f"Expected version 3.0.0, got {version}"
 
     def test_version_follows_semver(self):
         version = _read_version()
@@ -30,6 +34,19 @@ class TestSquashVersion:
         for suffix in ("dev", "rc", "alpha", "beta", "a0", "b0"):
             assert suffix not in version, f"Unexpected prerelease suffix in {version}"
 
-    def test_version_major_is_1(self):
+    def test_version_major_is_3(self):
+        # v3 = Bulletproof Edition. Major bump driven by the cryptographic
+        # chain primitives (canon, clock, ids, input_manifest, tsa,
+        # self_verify) and the determinism-by-default contract.
         version = _read_version()
-        assert version.split(".")[0] == "1"
+        assert version.split(".")[0] == "3"
+
+    def test_init_version_matches_pyproject(self):
+        # Phase G closure: kill the version drift between
+        # squash/__init__.py and pyproject.toml.
+        import importlib
+
+        squash = importlib.import_module("squash")
+        assert squash.__version__ == _read_version(), (
+            f"Version drift: __init__.py={squash.__version__} pyproject={_read_version()}"
+        )

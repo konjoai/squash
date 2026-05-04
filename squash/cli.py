@@ -3694,6 +3694,27 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Policy to evaluate (default: eu-ai-act).",
     )
     demo_cmd.add_argument("--quiet", action="store_true", help="Suppress output")
+    demo_cmd.add_argument(
+        "--walkthrough",
+        action="store_true",
+        help=(
+            "Run the v3 Bulletproof Edition walkthrough (demo/demo.py): 10 sections "
+            "exercising RFC 8785 canonical JSON, the attestation pipeline, the chain "
+            "walker, model genealogy, copyright check, and the clock abstraction."
+        ),
+    )
+    demo_cmd.add_argument(
+        "--server",
+        action="store_true",
+        help="Start the demo HTTP server (demo/server.py) bound to localhost:8002.",
+    )
+    demo_cmd.add_argument(
+        "--port",
+        type=int,
+        default=8002,
+        metavar="PORT",
+        help="Port for --server (default 8002).",
+    )
 
     # ── W162 — squash init ────────────────────────────────────────────────────
     init_cmd = sub.add_parser(
@@ -8385,12 +8406,73 @@ torch.save(model.state_dict(), "model.pt")
 '''
 
 
+def _locate_demo_script(name: str) -> Path | None:
+    """Return the path to a bundled demo script, or None when not packaged."""
+    # Try the source repo layout first.
+    candidates = [
+        Path(__file__).resolve().parent.parent / "demo" / name,
+        Path.cwd() / "demo" / name,
+    ]
+    for c in candidates:
+        if c.exists():
+            return c
+    return None
+
+
+def _run_demo_walkthrough() -> int:
+    """Defer to ``demo/demo.py`` — the v3 Bulletproof Edition tour."""
+    script = _locate_demo_script("demo.py")
+    if script is None:
+        print(
+            "demo/demo.py not found. Install from source or fetch the repo:\n"
+            "    git clone https://github.com/konjoai/squash && cd squash && "
+            "python demo/demo.py",
+            file=sys.stderr,
+        )
+        return 2
+    import subprocess as _sp
+
+    return _sp.call([sys.executable, str(script)])
+
+
+def _run_demo_server(port: int) -> int:
+    """Defer to ``demo/server.py`` on the requested port."""
+    script = _locate_demo_script("server.py")
+    if script is None:
+        print(
+            "demo/server.py not found. Install from source or fetch the repo:\n"
+            "    git clone https://github.com/konjoai/squash && cd squash && "
+            "python demo/server.py",
+            file=sys.stderr,
+        )
+        return 2
+    import subprocess as _sp
+
+    return _sp.call([sys.executable, str(script), "--port", str(port)])
+
+
 def _cmd_demo(args: argparse.Namespace, quiet: bool) -> int:  # noqa: C901
-    """W160 — zero-friction first-value demo attestation."""
+    """W160 — zero-friction first-value demo attestation.
+
+    v3 Bulletproof Edition adds two flags:
+
+    * ``--walkthrough`` — defer to ``demo/demo.py`` for the 10-section tour
+      of canon / clock / ids / input_manifest / self_verify / genealogy /
+      copyright. The original demo (BERT-shaped artefact + AttestPipeline)
+      remains the default.
+    * ``--server`` — start ``demo/server.py`` on localhost:PORT (default
+      8002) and serve the interactive HTML at ``/``.
+    """
     import tempfile
     import struct
 
     from pathlib import Path as _Path
+
+    # Phase G v3: defer to the bundled walkthrough / server when requested.
+    if getattr(args, "walkthrough", False):
+        return _run_demo_walkthrough()
+    if getattr(args, "server", False):
+        return _run_demo_server(getattr(args, "port", 8002))
 
     try:
         from squash.attest import AttestConfig, AttestPipeline

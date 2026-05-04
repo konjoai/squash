@@ -20,6 +20,27 @@
 
 ---
 
+## v3.0.0 — Bulletproof Edition
+
+Every Tier-0/1 attestation is **byte-identical on rerun**. Every signed
+payload flows through **RFC 8785 canonical JSON**. Every cert ID is
+keyed on the input (UUIDv5, never UUIDv4). Every clock is injectable.
+Every release wheel + Docker image carries **SLSA Build Level 3**
+provenance. The full chain — input manifest → canonical body → Ed25519
+→ RFC 3161 trusted timestamp → SLSA — is verifiable end-to-end via
+[`squash self-verify`](squash/self_verify.py).
+
+```bash
+squash demo --walkthrough     # 10-section Bulletproof tour
+squash demo --server          # interactive HTML demo at localhost:8002
+squash self-verify -d ./out   # walk the chain on any attestation
+```
+
+See [CHANGELOG.md §3.0.0](CHANGELOG.md), [AUDIT_BASELINE.md](AUDIT_BASELINE.md),
+[TIER_MAP.md](TIER_MAP.md), and [demo/](demo/) for the full surface.
+
+---
+
 ## See it in 10 seconds
 
 ```bash

@@ -29,6 +29,14 @@ inputs:
     required: false
     default: "eu-ai-act"
 
+  policies:
+    description: >
+      Plural alias for `policy` (recommended in v3+). Same value
+      semantics: comma-separated SPDX-style policy IDs. When set,
+      takes precedence over `policy`.
+    required: false
+    default: "eu-ai-act"
+
   sign:
     description: >
       Sign the attestation with Sigstore keyless signing via Rekor.
@@ -179,7 +187,12 @@ runs:
         [ -n "${{ inputs.output-dir }}"              ] && EXTRA_FLAGS="$EXTRA_FLAGS --output-dir '${{ inputs.output-dir }}'"
 
         # Policy flags
-        IFS=',' read -ra POLICIES <<< "${{ inputs.policy }}"
+        # v3+: prefer the plural `policies` input; fall back to `policy`.
+        POLICY_LIST="${{ inputs.policies }}"
+        if [ -z "$POLICY_LIST" ] || [ "$POLICY_LIST" = "eu-ai-act" ]; then
+          POLICY_LIST="${{ inputs.policy }}"
+        fi
+        IFS=',' read -ra POLICIES <<< "$POLICY_LIST"
         for p in "${POLICIES[@]}"; do
           EXTRA_FLAGS="$EXTRA_FLAGS --policy $(echo "$p" | xargs)"
         done
