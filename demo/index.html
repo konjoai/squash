@@ -3,292 +3,184 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Squash — Prove your AI is trustworthy</title>
-<meta name="description" content="Squash signs every model attestation with cryptographic proof. Verifiable in seconds, identical every time." />
+<title>Squash — squash violations, not velocity.</title>
+<meta name="description" content="Bulletproof Edition: signed attestations, RFC 8785 canonical JSON, RFC 3161 timestamps, SLSA Build L3, Ollama side-by-side scan, branded Annex IV PDF reports." />
 <meta name="color-scheme" content="dark" />
 <style>
 :root {
-  --bg: #0a0c12;
-  --bg-elev: #11141d;
-  --bg-elev-2: #161a26;
-  --line: #232838;
-  --line-strong: #2f3548;
-  --ink: #e7eaf3;
-  --ink-dim: #98a0b3;
-  --ink-faint: #5a6378;
-  --accent: #b794ff;          /* primary konjo purple */
-  --accent-2: #8c5dff;
-  --accent-3: #5dd9ff;        /* cyan accent */
-  --accent-4: #6df0c2;        /* green */
+  /* Squash logo palette */
+  --bg: #0a121e;
+  --bg-elev: #11192a;
+  --bg-elev-2: #161f31;
+  --line: #1d2538;
+  --line-strong: #2a3346;
+  --ink: #e4e8ee;
+  --ink-dim: #7a8294;
+  --ink-faint: #4d5567;
+  --accent: #3fc66d;
+  --accent-2: #5dd9ff;
+  --accent-3: #b794ff;
   --warn: #f7b955;
   --bad: #ff6b8a;
-  --good: #6df0c2;
-  --code-bg: #0c0f17;
-  --pill-live: #6df0c233;
-  --pill-est: #f7b95533;
-  --grad: linear-gradient(135deg, #b794ff 0%, #5dd9ff 50%, #6df0c2 100%);
-  --grad-dim: linear-gradient(135deg, #b794ff33, #5dd9ff33);
-  --shadow: 0 20px 60px -20px rgba(140, 93, 255, 0.18);
+  --good: #3fc66d;
+  --code-bg: #06101e;
+  --pill-live: rgba(63, 198, 109, 0.18);
+  --pill-est: rgba(247, 185, 85, 0.18);
+  --grad: linear-gradient(135deg, #3fc66d 0%, #5dd9ff 100%);
+  --grad-dim: linear-gradient(135deg, rgba(63,198,109,0.2), rgba(93,217,255,0.2));
+  --shadow: 0 30px 80px -28px rgba(63,198,109,0.18), 0 18px 50px -22px rgba(0,0,0,0.45);
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
 body {
   background: var(--bg);
+  background-image:
+    radial-gradient(60% 40% at 50% 0%, rgba(63,198,109,0.07) 0%, transparent 60%),
+    radial-gradient(40% 30% at 80% 30%, rgba(93,217,255,0.05) 0%, transparent 70%);
   color: var(--ink);
   font: 15px/1.55 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Inter, Roboto, "Helvetica Neue", Arial;
   letter-spacing: -0.005em;
   overflow-x: hidden;
 }
-a { color: var(--accent-3); text-decoration: none; }
-a:hover { color: var(--accent); }
-code, pre, .mono {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
-  font-size: 13px;
-}
+a { color: var(--accent); text-decoration: none; }
+a:hover { color: var(--accent-2); }
+code, pre, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; }
 button {
-  font: inherit;
-  cursor: pointer;
+  font: inherit; cursor: pointer;
   border: 1px solid var(--line-strong);
   background: var(--bg-elev-2);
   color: var(--ink);
   padding: 9px 18px;
   border-radius: 9px;
-  letter-spacing: 0;
-  transition: border-color .15s, background .15s, transform .08s;
+  transition: border-color .15s, background .15s, transform .08s, box-shadow .15s;
 }
-button:hover { border-color: var(--accent); }
+button:hover { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(63,198,109,0.1); }
 button:active { transform: translateY(1px); }
 button.primary {
-  background: var(--grad);
-  color: #0a0c12;
-  border: none;
-  font-weight: 600;
+  background: var(--accent); color: #0a121e;
+  border: 1px solid var(--accent); font-weight: 700;
 }
-button.primary:hover { filter: brightness(1.1); }
-button:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+button.primary:hover { filter: brightness(1.08); box-shadow: 0 0 24px rgba(63,198,109,0.4); }
+button.medium {
+  padding: 12px 26px; font-size: 15px; font-weight: 700;
+  background: var(--accent); color: #0a121e;
+  border: 1px solid var(--accent); border-radius: 11px;
+  display: inline-flex; gap: 10px; align-items: center;
+  box-shadow: 0 0 0 0 rgba(63,198,109,0.45);
+  animation: pdfPulse 2.4s ease-in-out infinite;
+}
+button.medium:hover { animation: none; box-shadow: 0 0 30px rgba(63,198,109,0.5); }
+@keyframes pdfPulse { 50% { box-shadow: 0 0 0 9px rgba(63,198,109,0); } }
+button:disabled { opacity: .4; cursor: not-allowed; transform: none; box-shadow: none; }
 input, select, textarea {
-  font: inherit;
-  background: var(--bg-elev-2);
-  border: 1px solid var(--line);
-  color: var(--ink);
-  padding: 9px 12px;
-  border-radius: 8px;
-  outline: none;
+  font: inherit; background: var(--bg-elev-2); border: 1px solid var(--line);
+  color: var(--ink); padding: 9px 12px; border-radius: 8px; outline: none;
 }
-input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+input:focus, select:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(63,198,109,0.15); }
 
-/* Layout */
 header.nav {
   position: sticky; top: 0; z-index: 50;
   display: flex; align-items: center; justify-content: space-between;
   padding: 14px 36px;
-  background: rgba(10, 12, 18, 0.7);
-  backdrop-filter: blur(12px);
+  background: rgba(10, 18, 30, 0.78); backdrop-filter: blur(14px);
   border-bottom: 1px solid var(--line);
 }
-.brand {
-  display: flex; align-items: center; gap: 10px;
-  font-weight: 700; letter-spacing: -0.02em;
-}
-.brand-mark {
-  width: 26px; height: 26px;
-  background: var(--grad);
-  border-radius: 7px;
-  position: relative;
-}
-.brand-mark::after {
-  content: ""; position: absolute; inset: 5px;
-  background: var(--bg);
-  border-radius: 4px;
-}
+.brand { display: flex; align-items: center; gap: 12px; font-weight: 800; letter-spacing: -0.02em; font-size: 17px; }
+.brand .squas { color: var(--ink); }
+.brand .h { color: var(--accent); position: relative; }
+.brand .h::after { content: ""; position: absolute; left: -2px; right: -22px; bottom: -3px; height: 2px; background: var(--accent); }
 .nav-links { display: flex; gap: 22px; font-size: 14px; }
 .nav-links a { color: var(--ink-dim); }
 .nav-links a:hover { color: var(--ink); }
-
 main { max-width: 1180px; margin: 0 auto; padding: 0 28px 80px; }
 
-/* Hero */
-.hero {
-  padding: 80px 0 60px;
-  position: relative;
-}
-.hero::before {
-  content: ""; position: absolute; inset: 0;
-  background: radial-gradient(60% 50% at 30% 30%, rgba(183,148,255,0.08), transparent 70%),
-              radial-gradient(50% 40% at 80% 20%, rgba(93,217,255,0.07), transparent 70%);
-  pointer-events: none;
-  z-index: -1;
-}
+.hero { padding: 72px 0 48px; position: relative; }
 h1.title {
-  font-size: clamp(56px, 9vw, 124px);
-  line-height: 0.95;
-  letter-spacing: -0.04em;
-  margin: 0 0 20px;
-  background: var(--grad);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  font-weight: 800;
+  font-size: clamp(64px, 11vw, 152px); line-height: 0.92;
+  letter-spacing: -0.05em; margin: 0 0 18px; font-weight: 900;
+  display: inline-block;
 }
-.tagline {
-  font-size: clamp(20px, 2.5vw, 26px);
-  color: var(--ink);
-  max-width: 720px;
-  margin: 0 0 16px;
-  font-weight: 400;
+.title .squas {
+  background: linear-gradient(135deg, #ffffff 0%, #d8dde8 100%);
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
 }
-.subline {
-  color: var(--ink-dim);
-  max-width: 720px;
-  font-size: 17px;
-  margin: 0 0 28px;
+.title .h { color: var(--accent); position: relative; }
+.title .h::after {
+  content: ""; position: absolute; left: -8px; right: -34px; bottom: 5px;
+  height: clamp(4px, 0.6vw, 8px); background: var(--accent); border-radius: 2px;
 }
-.hero-cta { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-top: 22px; }
+.tagline { font-size: clamp(22px, 2.6vw, 28px); color: var(--ink); max-width: 760px; margin: 0 0 16px; }
+.subline { color: var(--ink-dim); max-width: 760px; font-size: 17px; margin: 0 0 28px; }
+.hero-cta { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-top: 24px; }
 
-/* Server pill */
 .server-pill {
-  display: inline-flex; align-items: center; gap: 8px;
-  padding: 7px 14px;
-  border-radius: 999px;
-  background: var(--bg-elev-2);
-  border: 1px solid var(--line);
-  color: var(--ink-dim);
-  font-size: 13px;
+  display: inline-flex; align-items: center; gap: 9px;
+  padding: 8px 16px; border-radius: 999px;
+  background: var(--bg-elev-2); border: 1px solid var(--line);
+  color: var(--ink-dim); font-size: 13px; font-family: ui-monospace, monospace;
 }
-.server-pill[data-state="live"] {
-  background: var(--pill-live);
-  border-color: rgba(109, 240, 194, 0.3);
-  color: var(--good);
-}
-.server-pill[data-state="est"] {
-  background: var(--pill-est);
-  border-color: rgba(247, 185, 85, 0.3);
-  color: var(--warn);
-}
-.dot {
-  width: 7px; height: 7px; border-radius: 50%;
-  background: currentColor;
-  box-shadow: 0 0 12px currentColor;
-  animation: pulse 1.6s ease-in-out infinite;
-}
-@keyframes pulse { 50% { opacity: 0.45; transform: scale(1.15); } }
+.server-pill[data-state="live"] { background: var(--pill-live); border-color: rgba(63,198,109,0.35); color: var(--accent); }
+.server-pill[data-state="est"] { background: var(--pill-est); border-color: rgba(247,185,85,0.3); color: var(--warn); }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; box-shadow: 0 0 14px currentColor; animation: pulse 1.6s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: 0.45; transform: scale(1.18); } }
 
-/* Hero stats */
-.hero-stats {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 14px;
-  margin-top: 48px;
-}
+.hero-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-top: 56px; }
+@media (max-width: 760px) { .hero-stats { grid-template-columns: repeat(2, 1fr); } }
 .stat-card {
-  background: var(--bg-elev);
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  padding: 22px 20px;
-  position: relative;
-  overflow: hidden;
-  transition: border-color .2s, transform .2s;
+  background: var(--bg-elev); border: 1px solid var(--line); border-radius: 14px;
+  padding: 22px; position: relative; overflow: hidden;
+  transition: border-color .2s, transform .2s, box-shadow .2s;
 }
-.stat-card:hover { border-color: var(--accent); transform: translateY(-2px); }
-.stat-card::before {
-  content: ""; position: absolute; left: 0; top: 0; right: 0; height: 2px;
-  background: var(--grad); opacity: 0; transition: opacity .2s;
-}
+.stat-card:hover { border-color: var(--accent); transform: translateY(-3px); box-shadow: 0 0 0 3px rgba(63,198,109,0.08); }
+.stat-card::before { content: ""; position: absolute; left: 0; top: 0; right: 0; height: 2px; background: var(--grad); opacity: 0; transition: opacity .25s; }
 .stat-card:hover::before { opacity: 1; }
-.stat-num {
-  font-size: 32px;
-  font-weight: 700;
-  background: var(--grad);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  letter-spacing: -0.02em;
-}
-.stat-label {
-  font-size: 13px;
-  color: var(--ink-dim);
-  margin-top: 4px;
-  letter-spacing: 0.01em;
-}
+.stat-num { font-size: 30px; font-weight: 800; color: var(--accent); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.stat-label { font-size: 13px; color: var(--ink-dim); margin-top: 6px; }
 
-/* Section */
 section.panel {
-  margin-top: 56px;
-  background: var(--bg-elev);
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  padding: 28px 32px;
-  box-shadow: var(--shadow);
+  margin-top: 60px; background: var(--bg-elev); border: 1px solid var(--line);
+  border-radius: 16px; padding: 30px 34px; box-shadow: var(--shadow); position: relative;
 }
-.panel-head {
-  display: flex; justify-content: space-between; align-items: baseline;
-  gap: 16px; flex-wrap: wrap;
-  margin-bottom: 18px;
-}
-.panel-head h2 {
-  margin: 0; font-size: 22px; letter-spacing: -0.01em;
-}
-.panel-head .subt { color: var(--ink-dim); font-size: 14px; max-width: 520px; }
+section.panel.hilite { border-color: rgba(63,198,109,0.3); background: linear-gradient(180deg, var(--bg-elev) 0%, rgba(63,198,109,0.04) 100%); }
+.panel-head { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; flex-wrap: wrap; margin-bottom: 22px; }
+.panel-head h2 { margin: 0; font-size: 23px; letter-spacing: -0.01em; font-weight: 700; }
+.panel-head h2 .accent { color: var(--accent); }
+.panel-head .subt { color: var(--ink-dim); font-size: 14px; max-width: 560px; }
 
 .badge {
   display: inline-flex; align-items: center; gap: 6px;
-  padding: 4px 9px;
-  border-radius: 999px;
-  font-size: 11px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  font-weight: 600;
-  background: var(--pill-est);
-  color: var(--warn);
-  border: 1px solid rgba(247, 185, 85, 0.2);
+  padding: 4px 10px; border-radius: 999px;
+  font-size: 11px; letter-spacing: 0.05em; text-transform: uppercase;
+  font-weight: 700; background: var(--pill-est); color: var(--warn);
+  border: 1px solid rgba(247,185,85,0.25); font-family: ui-monospace, monospace;
 }
-.badge.live { background: var(--pill-live); color: var(--good); border-color: rgba(109, 240, 194, 0.25); }
-.badge.tier-0 { background: rgba(183,148,255,0.15); color: var(--accent); border-color: rgba(183,148,255,0.3); }
+.badge.live { background: var(--pill-live); color: var(--accent); border-color: rgba(63,198,109,0.3); }
 
-.row { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.row { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
 @media (max-width: 760px) { .row { grid-template-columns: 1fr; } }
-
 .io-block { display: flex; flex-direction: column; gap: 10px; }
-.io-label { font-size: 12px; color: var(--ink-dim); text-transform: uppercase; letter-spacing: 0.06em; }
+.io-label { font-size: 11px; color: var(--ink-dim); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; }
 .code-out {
-  background: var(--code-bg);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 14px 16px;
-  white-space: pre-wrap;
-  word-break: break-all;
-  max-height: 360px;
-  overflow: auto;
-  font-family: ui-monospace, monospace;
-  font-size: 12.5px;
-  color: var(--ink);
+  background: var(--code-bg); border: 1px solid var(--line); border-radius: 10px;
+  padding: 14px 16px; white-space: pre-wrap; word-break: break-all;
+  max-height: 360px; overflow: auto;
+  font-family: ui-monospace, monospace; font-size: 12.5px; color: var(--ink);
 }
 .code-out .k { color: var(--accent); }
-.code-out .s { color: var(--accent-4); }
-.code-out .n { color: var(--accent-3); }
-.code-out .b { color: var(--warn); }
+.code-out .s { color: var(--accent-2); }
+.code-out .n { color: #ffd479; }
+.code-out .b { color: var(--accent-3); }
 
 textarea.code-input {
-  min-height: 200px;
-  font-family: ui-monospace, monospace;
-  font-size: 13px;
-  background: var(--code-bg);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 12px 14px;
-  resize: vertical;
+  min-height: 200px; font-family: ui-monospace, monospace; font-size: 13px;
+  background: var(--code-bg); border: 1px solid var(--line); border-radius: 10px;
+  padding: 12px 14px; resize: vertical;
 }
 
-/* Field rows */
 .field-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
 .field-row label { color: var(--ink-dim); font-size: 13px; min-width: 100px; }
 
-.kv {
-  display: grid; grid-template-columns: max-content 1fr;
-  gap: 8px 16px;
-  font-size: 14px;
-  margin-top: 14px;
-}
+.kv { display: grid; grid-template-columns: max-content 1fr; gap: 8px 18px; font-size: 14px; margin-top: 14px; }
 .kv .k { color: var(--ink-dim); }
 .kv .v { font-weight: 500; }
 .kv .v.good { color: var(--good); }
@@ -296,219 +188,183 @@ textarea.code-input {
 .kv .v.warn { color: var(--warn); }
 .kv .v.mono { font-family: ui-monospace, monospace; font-size: 12.5px; }
 
-/* Verdict pill (genealogy / copyright) */
 .verdict-pill {
-  display: inline-block;
-  padding: 5px 12px;
-  border-radius: 999px;
-  font-weight: 600;
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  display: inline-block; padding: 5px 12px; border-radius: 999px;
+  font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em;
+  font-family: ui-monospace, monospace;
 }
-.verdict-pill.clean, .verdict-pill.low { background: rgba(109,240,194,0.15); color: var(--good); }
-.verdict-pill.warning, .verdict-pill.medium { background: rgba(247,185,85,0.15); color: var(--warn); }
-.verdict-pill.blocked, .verdict-pill.high { background: rgba(255,107,138,0.15); color: var(--bad); }
-.verdict-pill.uncertain { background: rgba(152,160,179,0.15); color: var(--ink-dim); }
+.verdict-pill.clean, .verdict-pill.low { background: var(--pill-live); color: var(--accent); }
+.verdict-pill.warning, .verdict-pill.medium { background: var(--pill-est); color: var(--warn); }
+.verdict-pill.blocked, .verdict-pill.high { background: rgba(255,107,138,0.16); color: var(--bad); }
+.verdict-pill.uncertain { background: rgba(122,130,148,0.16); color: var(--ink-dim); }
 
-/* Donut placeholder for genealogy composition */
 .donut { display: flex; flex-direction: column; gap: 8px; padding-top: 8px; }
-.donut-row { display: grid; grid-template-columns: max-content 1fr max-content; gap: 10px; align-items: center; font-size: 13px; }
+.donut-row { display: grid; grid-template-columns: max-content 1fr max-content; gap: 12px; align-items: center; font-size: 13px; }
 .donut-bar { background: var(--bg-elev-2); height: 10px; border-radius: 5px; overflow: hidden; }
-.donut-fill { height: 100%; background: var(--grad); }
+.donut-fill { height: 100%; background: var(--grad); border-radius: 5px; }
 .donut-val { color: var(--ink-dim); font-variant-numeric: tabular-nums; font-size: 12px; min-width: 36px; text-align: right; }
 
-/* Self-verify checklist */
 .checklist { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
 .checklist-item {
-  display: grid; grid-template-columns: 24px 1fr max-content; gap: 12px; align-items: center;
-  padding: 10px 14px;
-  background: var(--bg-elev-2);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  opacity: 0;
-  transform: translateY(4px);
-  animation: slideIn .35s ease forwards;
+  display: grid; grid-template-columns: 28px 1fr max-content; gap: 14px; align-items: center;
+  padding: 12px 16px; background: var(--bg-elev-2); border: 1px solid var(--line); border-radius: 10px;
+  opacity: 0; transform: translateY(6px);
+  animation: slideIn .42s cubic-bezier(.2,.65,.3,1) forwards;
 }
 @keyframes slideIn { to { opacity: 1; transform: translateY(0); } }
-.check-icon { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 13px; }
-.check-icon.pass { background: rgba(109,240,194,0.18); color: var(--good); }
-.check-icon.fail { background: rgba(255,107,138,0.18); color: var(--bad); }
-.check-name { font-weight: 500; }
-.check-detail { color: var(--ink-dim); font-size: 12.5px; }
+.check-icon { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 13px; }
+.check-icon.pass { background: var(--pill-live); color: var(--accent); border: 1px solid rgba(63,198,109,0.4); }
+.check-icon.fail { background: rgba(255,107,138,0.18); color: var(--bad); border: 1px solid rgba(255,107,138,0.35); }
+.check-name { font-weight: 600; }
+.check-detail { color: var(--ink-dim); font-size: 13px; }
 
-/* "How it works" flow */
-.flow {
-  display: flex; align-items: center; gap: 14px;
-  margin-top: 28px;
-  flex-wrap: wrap;
+.compare {
+  display: grid; grid-template-columns: max-content 1fr 1fr; gap: 0;
+  border: 1px solid var(--line); border-radius: 12px; overflow: hidden; margin-top: 16px;
 }
+.compare > div { padding: 11px 16px; border-bottom: 1px solid var(--line); font-size: 13.5px; }
+.compare > div:nth-last-child(-n+3) { border-bottom: none; }
+.compare > div:nth-child(3n+1) { color: var(--ink-dim); background: var(--bg-elev-2); font-family: ui-monospace, monospace; font-size: 12px; }
+.compare > div.head { background: var(--bg-elev-2); color: var(--ink); font-weight: 700; font-size: 13px; }
+.compare > div.head.winner { color: var(--accent); }
+.compare > div.head.winner::after { content: "🏆"; margin-left: 8px; }
+
+.remediation {
+  background: var(--bg-elev-2); border: 1px solid var(--line);
+  border-left: 3px solid var(--accent); border-radius: 10px;
+  padding: 16px 18px; margin-top: 12px;
+}
+.remediation.error { border-left-color: var(--bad); }
+.remediation.warn { border-left-color: var(--warn); }
+.remediation.info { border-left-color: var(--accent-2); }
+.remediation .rtitle { font-weight: 700; font-size: 14.5px; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
+.remediation .rwhy { color: var(--ink-dim); font-size: 13px; line-height: 1.55; margin: 6px 0 10px; }
+.remediation .rsteps { padding-left: 18px; margin: 8px 0; color: var(--ink); font-size: 13px; }
+.remediation .rsteps li { margin: 3px 0; }
+.remediation .rcite { font-family: ui-monospace, monospace; font-size: 11.5px; color: var(--ink-dim); display: flex; gap: 14px; flex-wrap: wrap; margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--line); }
+.remediation .rcite a { color: var(--accent-2); }
+
+.sev-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; vertical-align: 1px; background: var(--ink-dim); }
+.sev-dot.error, .sev-dot.critical { background: var(--bad); }
+.sev-dot.warn { background: var(--warn); }
+.sev-dot.info { background: var(--accent-2); }
+
+.flow { display: flex; align-items: center; gap: 14px; margin-top: 28px; flex-wrap: wrap; }
 .flow-step {
-  flex: 1;
-  min-width: 140px;
-  background: var(--bg-elev);
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 16px 14px;
-  text-align: center;
-  position: relative;
-  transition: border-color .2s, transform .2s;
+  flex: 1; min-width: 130px; background: var(--bg-elev); border: 1px solid var(--line);
+  border-radius: 12px; padding: 18px 14px; text-align: center; position: relative;
+  transition: border-color .2s, transform .2s, box-shadow .2s;
 }
-.flow-step:hover { border-color: var(--accent); transform: translateY(-2px); }
-.flow-step .icon { font-size: 28px; line-height: 1; margin-bottom: 8px; }
-.flow-step .label { font-weight: 600; font-size: 14px; margin-bottom: 4px; }
-.flow-step .desc { color: var(--ink-dim); font-size: 12px; line-height: 1.4; }
-.flow-arrow { color: var(--accent); font-size: 22px; }
+.flow-step:hover { border-color: var(--accent); transform: translateY(-3px); box-shadow: 0 0 0 3px rgba(63,198,109,0.08); }
+.flow-step .icon { font-size: 30px; line-height: 1; margin-bottom: 8px; }
+.flow-step .label { font-weight: 700; font-size: 14px; margin-bottom: 4px; }
+.flow-step .desc { color: var(--ink-dim); font-size: 12px; line-height: 1.45; }
+.flow-arrow { color: var(--accent); font-size: 24px; font-weight: 700; }
 @media (max-width: 720px) { .flow-arrow { display: none; } }
 
-/* Why squash matters cards */
-.why-grid {
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 24px;
-}
+.why-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 24px; }
 @media (max-width: 760px) { .why-grid { grid-template-columns: 1fr; } }
 .why-card {
-  background: var(--bg-elev);
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 22px 22px 26px;
-  position: relative;
-  overflow: hidden;
+  background: var(--bg-elev); border: 1px solid var(--line); border-radius: 14px;
+  padding: 24px 22px 28px; position: relative; overflow: hidden; transition: transform .25s, border-color .25s;
 }
-.why-card::before {
-  content: ""; position: absolute; inset: 0;
-  background: var(--grad-dim);
-  opacity: 0; transition: opacity .25s;
-}
-.why-card:hover::before { opacity: 0.5; }
+.why-card:hover { transform: translateY(-3px); border-color: var(--accent); }
+.why-card::before { content: ""; position: absolute; inset: 0; background: var(--grad-dim); opacity: 0; transition: opacity .25s; }
+.why-card:hover::before { opacity: 0.35; }
 .why-card > * { position: relative; }
-.why-icon { font-size: 30px; margin-bottom: 12px; }
-.why-card h3 { margin: 0 0 8px; font-size: 17px; }
-.why-card p { margin: 0; color: var(--ink-dim); font-size: 14px; line-height: 1.5; }
+.why-icon { font-size: 32px; margin-bottom: 12px; }
+.why-card h3 { margin: 0 0 8px; font-size: 17px; font-weight: 700; }
+.why-card p { margin: 0; color: var(--ink-dim); font-size: 14px; line-height: 1.55; }
 
-/* Feature cards */
-.features {
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 22px;
-}
+.features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 22px; }
 @media (max-width: 760px) { .features { grid-template-columns: 1fr; } }
 .feature {
-  background: var(--bg-elev-2);
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 18px 20px;
-  transition: border-color .15s;
+  background: var(--bg-elev-2); border: 1px solid var(--line); border-radius: 12px;
+  padding: 18px 20px; transition: border-color .15s, transform .15s;
 }
-.feature:hover { border-color: var(--accent); }
-.feature .label { font-weight: 600; font-size: 15px; margin-bottom: 4px; }
+.feature:hover { border-color: var(--accent); transform: translateY(-2px); }
+.feature .label { font-weight: 700; font-size: 15px; margin-bottom: 6px; color: var(--ink); }
 .feature .what { color: var(--ink-dim); font-size: 13px; line-height: 1.45; }
-.feature .what code { background: var(--bg-elev); padding: 1px 6px; border-radius: 4px; font-size: 11.5px; color: var(--accent-3); }
+.feature .what code { background: var(--code-bg); padding: 1px 6px; border-radius: 4px; font-size: 11.5px; color: var(--accent); }
 
-/* Footer */
-footer {
-  margin-top: 60px;
-  padding: 28px 0 8px;
-  border-top: 1px solid var(--line);
-  display: flex; justify-content: space-between; flex-wrap: wrap; gap: 14px;
-  color: var(--ink-faint); font-size: 13px;
+.pdf-cta {
+  margin-top: 16px; padding: 22px;
+  background: var(--bg-elev-2); border: 1px dashed var(--line-strong); border-radius: 14px;
+  display: grid; grid-template-columns: 1fr max-content; gap: 16px; align-items: center;
 }
+@media (max-width: 720px) { .pdf-cta { grid-template-columns: 1fr; } }
+.pdf-cta .pdf-meta { font-size: 13px; color: var(--ink-dim); line-height: 1.5; }
+.pdf-cta .pdf-meta strong { color: var(--ink); }
 
-/* Loading spinner inside buttons */
-.spin {
-  display: inline-block; width: 12px; height: 12px;
-  border: 2px solid currentColor; border-right-color: transparent;
-  border-radius: 50%;
-  animation: rot 0.7s linear infinite;
-  vertical-align: -2px;
-  margin-right: 6px;
-}
+footer { margin-top: 80px; padding: 32px 0 14px; border-top: 1px solid var(--line); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 14px; color: var(--ink-faint); font-size: 13px; }
+
+.spin { display: inline-block; width: 12px; height: 12px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: rot 0.7s linear infinite; vertical-align: -2px; margin-right: 6px; }
 @keyframes rot { to { transform: rotate(360deg); } }
 
 .muted { color: var(--ink-dim); }
 .tiny { font-size: 12px; }
 .gap { height: 14px; }
 .flex { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+
+.reveal { opacity: 0; transform: translateY(20px); transition: opacity .6s ease, transform .6s ease; }
+.reveal.visible { opacity: 1; transform: translateY(0); }
 </style>
 </head>
 <body>
 
 <header class="nav">
-  <div class="brand">
-    <div class="brand-mark"></div>
-    <span>Squash</span>
-  </div>
+  <div class="brand"><span class="squas">squas</span><span class="h">h</span></div>
   <div class="nav-links">
     <a href="#attest">Attest</a>
-    <a href="#canon">Canonical JSON</a>
+    <a href="#canon">Canonical</a>
+    <a href="#ollama">Ollama</a>
     <a href="#genealogy">Genealogy</a>
     <a href="#copyright">Copyright</a>
     <a href="#self">Self-verify</a>
-    <a href="#how">How it works</a>
+    <a href="#pdf">PDF Report</a>
+    <a href="#how">How</a>
   </div>
 </header>
 
 <main>
 
-<!-- HERO -->
 <section class="hero">
-  <h1 class="title">Squash</h1>
-  <p class="tagline">Prove your AI is trustworthy — signed attestations, verified in seconds.</p>
+  <h1 class="title"><span class="squas">squas</span><span class="h">h</span></h1>
+  <p class="tagline">Squash violations, not velocity.</p>
   <p class="subline">
     Every model gets a tamper-proof certificate. Identical bytes on every host.
-    Backed by RFC 8785 canonical JSON, RFC 3161 trusted timestamps, and SLSA Build Level 3 provenance.
-    Open source. Apache 2.0. Real cryptography, real receipts.
+    RFC 8785 canonical JSON, RFC 3161 trusted timestamps, SLSA Build Level 3
+    provenance. Open source. Apache 2.0. Real cryptography, real receipts.
   </p>
-
   <div class="hero-cta">
-    <a href="#attest"><button class="primary">Try a real attestation →</button></a>
-    <a href="https://github.com/konjoai/squash"><button>View on GitHub</button></a>
+    <a href="#attest"><button class="primary">Run a real attestation →</button></a>
+    <a href="https://github.com/konjoai/squash" target="_blank" rel="noreferrer"><button>GitHub</button></a>
     <span class="server-pill" id="serverPill" data-state="checking">
       <span class="dot"></span>
       <span id="serverPillText">Checking server…</span>
     </span>
   </div>
-
   <div class="hero-stats">
-    <div class="stat-card">
-      <div class="stat-num" data-counter="5355">0</div>
-      <div class="stat-label">Tests passing</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-num">RFC&nbsp;8785</div>
-      <div class="stat-label">Canonical JSON</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-num">RFC&nbsp;3161</div>
-      <div class="stat-label">Trusted timestamps</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-num">SLSA&nbsp;L3</div>
-      <div class="stat-label">Build provenance</div>
-    </div>
+    <div class="stat-card"><div class="stat-num" data-counter="5361">0</div><div class="stat-label">Tests passing</div></div>
+    <div class="stat-card"><div class="stat-num">RFC&nbsp;8785</div><div class="stat-label">Canonical JSON</div></div>
+    <div class="stat-card"><div class="stat-num">RFC&nbsp;3161</div><div class="stat-label">Trusted timestamps</div></div>
+    <div class="stat-card"><div class="stat-num">SLSA&nbsp;L3</div><div class="stat-label">Build provenance</div></div>
   </div>
 </section>
 
-<!-- ATTEST + VERIFY -->
-<section class="panel" id="attest">
-  <div class="panel-head">
-    <div>
-      <h2>Attest &amp; Verify <span class="badge tier-0" id="attestLive">EST</span></h2>
-      <p class="subt">Type a model name and a fake artefact hash, click <em>Attest</em>, then <em>Verify</em>. Every byte you see is generated by the real squash pipeline.</p>
-    </div>
-  </div>
-
+<section class="panel reveal" id="attest">
+  <div class="panel-head"><div>
+    <h2><span class="accent">01.</span> Attest &amp; Verify <span class="badge" id="attestLive">EST</span></h2>
+    <p class="subt">Type a model name + a fake artefact hash. Click <em>Attest</em>. Real signed cert in &lt; 200 ms. Hit <em>Verify</em> to walk the chain.</p>
+  </div></div>
   <div class="row">
     <div class="io-block">
       <div class="io-label">Inputs</div>
+      <div class="field-row"><label for="attModel">Model name</label><input id="attModel" value="demo-bert-base" style="flex:1; min-width: 180px"/></div>
+      <div class="field-row"><label for="attHash">Artefact hash</label><input id="attHash" value="abc123def456" style="flex:1; min-width: 180px"/></div>
       <div class="field-row">
-        <label for="attModel">Model name</label>
-        <input id="attModel" value="demo-bert-base" style="flex:1; min-width: 180px"/>
-      </div>
-      <div class="field-row">
-        <label for="attHash">Artefact hash</label>
-        <input id="attHash" value="abc123def456" style="flex:1; min-width: 180px"/>
-      </div>
-      <div class="field-row">
-        <button class="primary" id="btnAttest">Attest</button>
-        <button id="btnVerify" disabled>Verify last attestation</button>
+        <button class="primary" id="btnAttest">⚡ Attest</button>
+        <button id="btnVerify" disabled>✓ Verify</button>
         <span class="tiny muted" id="attTiming"></span>
       </div>
       <div class="kv" id="attKv"></div>
@@ -520,14 +376,11 @@ footer {
   </div>
 </section>
 
-<!-- CANONICAL JSON PROVER -->
-<section class="panel" id="canon">
-  <div class="panel-head">
-    <div>
-      <h2>Canonical JSON prover <span class="badge tier-0" id="canonLive">EST</span></h2>
-      <p class="subt">No matter what order the keys are in, the signature is always the same. Paste any JSON below and watch.</p>
-    </div>
-  </div>
+<section class="panel reveal" id="canon">
+  <div class="panel-head"><div>
+    <h2><span class="accent">02.</span> Canonical JSON prover <span class="badge" id="canonLive">EST</span></h2>
+    <p class="subt">No matter what order the keys are in, the signature is always the same. Try it.</p>
+  </div></div>
   <div class="row">
     <div class="io-block">
       <div class="io-label">Your JSON (any key order)</div>
@@ -539,7 +392,7 @@ footer {
 }</textarea>
       <div class="flex">
         <button class="primary" id="btnCanon">Canonicalise</button>
-        <button id="btnScramble">Scramble keys</button>
+        <button id="btnScramble">↻ Scramble keys</button>
         <span class="tiny muted" id="canonStats"></span>
       </div>
     </div>
@@ -550,27 +403,37 @@ footer {
   </div>
 </section>
 
-<!-- GENEALOGY -->
-<section class="panel" id="genealogy">
-  <div class="panel-head">
-    <div>
-      <h2>Model genealogy explorer <span class="badge tier-0" id="genLive">EST</span></h2>
-      <p class="subt">Where did this AI learn from? Is it safe to use commercially? Pick a family — squash walks the chain back to the base model and its training data.</p>
-    </div>
+<section class="panel reveal hilite" id="ollama">
+  <div class="panel-head"><div>
+    <h2><span class="accent">03.</span> Ollama side-by-side scan <span class="badge" id="ollLive">EST</span></h2>
+    <p class="subt">Two random local Ollama models. Real attestation pipeline run against each. Severity-aware remediation cites EU AI Act, NIST AI RMF, and ISO 42001 by article number.</p>
+  </div></div>
+  <div class="flex" style="margin-bottom: 14px">
+    <button class="primary" id="btnOllama">🎲 Pick 2 random models &amp; scan</button>
+    <span class="tiny muted" id="ollMeta"></span>
   </div>
+  <div id="ollPair"></div>
+  <div id="ollRemediation" style="margin-top: 22px"></div>
+</section>
+
+<section class="panel reveal" id="genealogy">
+  <div class="panel-head"><div>
+    <h2><span class="accent">04.</span> Model genealogy explorer <span class="badge" id="genLive">EST</span></h2>
+    <p class="subt">Where did this AI learn from? Is it safe to use commercially? Walk the chain back to the base model and its training data.</p>
+  </div></div>
   <div class="flex" style="margin-bottom: 16px">
     <label class="muted tiny">Model family:</label>
     <select id="genSelect">
       <option value="llama">LLaMA (Meta)</option>
-      <option value="llama-2">LLaMA 2 (Meta)</option>
-      <option value="llama-3">LLaMA 3 (Meta)</option>
+      <option value="llama-2">LLaMA 2</option>
+      <option value="llama-3">LLaMA 3</option>
       <option value="mistral">Mistral</option>
       <option value="mixtral">Mixtral (MoE)</option>
-      <option value="gpt-2">GPT-2 (OpenAI)</option>
-      <option value="falcon">Falcon (TII)</option>
-      <option value="bloom">BLOOM (BigScience)</option>
-      <option value="qwen">Qwen (Alibaba)</option>
-      <option value="gemma">Gemma (Google)</option>
+      <option value="gpt-2">GPT-2</option>
+      <option value="falcon">Falcon</option>
+      <option value="bloom">BLOOM</option>
+      <option value="qwen">Qwen</option>
+      <option value="gemma">Gemma</option>
     </select>
     <button class="primary" id="btnGen">Trace genealogy</button>
   </div>
@@ -579,8 +442,8 @@ footer {
       <div class="io-label">Verdict</div>
       <div class="kv" id="genKv"></div>
       <div class="gap"></div>
-      <div class="io-label">Training data composition</div>
-      <div class="donut" id="genDonut"><div class="muted tiny">Run a trace to see breakdown.</div></div>
+      <div class="io-label">Training-data composition</div>
+      <div class="donut" id="genDonut"><div class="muted tiny">Run a trace to see the breakdown.</div></div>
     </div>
     <div class="io-block">
       <div class="io-label">Derivation chain</div>
@@ -589,37 +452,23 @@ footer {
   </div>
 </section>
 
-<!-- COPYRIGHT -->
-<section class="panel" id="copyright">
-  <div class="panel-head">
-    <div>
-      <h2>Copyright compatibility checker <span class="badge tier-0" id="cprLive">EST</span></h2>
-      <p class="subt">Pick two licences and a deployment scenario. Squash tells you in plain English whether the combination is safe for your intended use.</p>
-    </div>
-  </div>
+<section class="panel reveal" id="copyright">
+  <div class="panel-head"><div>
+    <h2><span class="accent">05.</span> Copyright compatibility checker <span class="badge" id="cprLive">EST</span></h2>
+    <p class="subt">Pick two licences and a deployment scenario. Plain-English verdict.</p>
+  </div></div>
   <div class="flex" style="margin-bottom: 16px">
     <label class="muted tiny">Model licence:</label>
     <select id="cprA">
-      <option>Apache-2.0</option>
-      <option>MIT</option>
-      <option>BSD-3-Clause</option>
-      <option>GPL-3.0</option>
-      <option>AGPL-3.0</option>
-      <option>CC-BY-4.0</option>
-      <option>CC-BY-NC-4.0</option>
-      <option>CC-BY-SA-4.0</option>
-      <option>OpenRAIL</option>
+      <option>Apache-2.0</option><option>MIT</option><option>BSD-3-Clause</option>
+      <option>GPL-3.0</option><option>AGPL-3.0</option><option>CC-BY-4.0</option>
+      <option>CC-BY-NC-4.0</option><option>CC-BY-SA-4.0</option><option>OpenRAIL</option>
     </select>
     <label class="muted tiny">Training data licence:</label>
     <select id="cprB">
-      <option>MIT</option>
-      <option>Apache-2.0</option>
-      <option>BSD-3-Clause</option>
-      <option>GPL-3.0</option>
-      <option>CC-BY-4.0</option>
-      <option>CC-BY-NC-4.0</option>
-      <option>CC-BY-SA-4.0</option>
-      <option>Unknown</option>
+      <option>MIT</option><option>Apache-2.0</option><option>BSD-3-Clause</option>
+      <option>GPL-3.0</option><option>CC-BY-4.0</option><option>CC-BY-NC-4.0</option>
+      <option>CC-BY-SA-4.0</option><option>Unknown</option>
     </select>
     <label class="muted tiny">Deployment use:</label>
     <select id="cprUse">
@@ -630,27 +479,21 @@ footer {
     <button class="primary" id="btnCpr">Check compatibility</button>
   </div>
   <div class="row">
-    <div class="io-block">
-      <div class="io-label">Verdict</div>
-      <div class="kv" id="cprKv"></div>
-    </div>
+    <div class="io-block"><div class="io-label">Verdict</div><div class="kv" id="cprKv"></div></div>
     <div class="io-block">
       <div class="io-label">Plain English</div>
-      <div id="cprNote" class="code-out" style="white-space: normal; line-height:1.55;">// pick licences + click Check</div>
+      <div id="cprNote" class="code-out" style="white-space: normal; line-height: 1.6;">// pick licences + click Check</div>
     </div>
   </div>
 </section>
 
-<!-- SELF-VERIFY -->
-<section class="panel" id="self">
-  <div class="panel-head">
-    <div>
-      <h2>Self-verify panel <span class="badge tier-0" id="svLive">EST</span></h2>
-      <p class="subt">A trustworthy AI compliance tool needs to prove it hasn't been tampered with. This button asks squash to verify itself, link by link.</p>
-    </div>
-  </div>
+<section class="panel reveal" id="self">
+  <div class="panel-head"><div>
+    <h2><span class="accent">06.</span> Self-verify panel <span class="badge" id="svLive">EST</span></h2>
+    <p class="subt">A trustworthy AI compliance tool needs to prove it hasn't been tampered with. This button asks squash to verify itself, link by link.</p>
+  </div></div>
   <div class="flex">
-    <button class="primary" id="btnSelf">Run self-verify</button>
+    <button class="primary" id="btnSelf">⚙ Run self-verify</button>
     <span class="tiny muted" id="svTiming"></span>
   </div>
   <div class="checklist" id="svList">
@@ -658,101 +501,68 @@ footer {
   </div>
 </section>
 
-<!-- HOW IT WORKS -->
-<section class="panel" id="how">
+<section class="panel reveal" id="pdf">
   <div class="panel-head"><div>
-    <h2>How it works</h2>
-    <p class="subt">Five steps. No PhD required.</p>
+    <h2><span class="accent">07.</span> Branded Annex IV PDF report <span class="badge" id="pdfLive">EST</span></h2>
+    <p class="subt">The same code path enterprise/premium subscribers use. WeasyPrint when present; HTML preview when not.</p>
   </div></div>
+  <div class="row" style="grid-template-columns: 1fr 1fr">
+    <div class="io-block">
+      <div class="field-row"><label class="muted tiny">Org name</label><input id="pdfOrg" value="Acme AI Inc." style="flex:1; min-width: 180px"/></div>
+      <div class="field-row"><label class="muted tiny">System name</label><input id="pdfSys" value="Bulletproof Sentiment Classifier" style="flex:1; min-width: 180px"/></div>
+      <div class="field-row">
+        <label class="muted tiny">Accent</label>
+        <input type="color" id="pdfColor" value="#3fc66d" style="width:46px; height:32px; padding: 0"/>
+        <span class="tiny muted">Squash green is the default — change for your brand.</span>
+      </div>
+    </div>
+    <div class="io-block">
+      <div class="pdf-cta">
+        <div class="pdf-meta">
+          <strong>Annex IV technical documentation</strong><br/>
+          12 sections · cover · exec summary · signature block · weasyprint-rendered.<br/>
+          <span class="tiny">Falls back to HTML preview when weasyprint isn't installed.</span>
+        </div>
+        <button class="medium" id="btnPdf">📄 Download PDF</button>
+      </div>
+      <div class="tiny muted" id="pdfStatus" style="margin-top: 12px"></div>
+    </div>
+  </div>
+</section>
+
+<section class="panel reveal" id="how">
+  <div class="panel-head"><div><h2><span class="accent">08.</span> How it works</h2><p class="subt">Five steps. No PhD required.</p></div></div>
   <div class="flow">
-    <div class="flow-step">
-      <div class="icon">📦</div>
-      <div class="label">1. The Model</div>
-      <div class="desc">Your trained weights, configs, tokeniser — whatever you ship.</div>
-    </div>
+    <div class="flow-step"><div class="icon">📦</div><div class="label">1. The Model</div><div class="desc">Your trained weights, configs, tokeniser — whatever you ship.</div></div>
     <div class="flow-arrow">→</div>
-    <div class="flow-step">
-      <div class="icon">🧾</div>
-      <div class="label">2. The Receipt</div>
-      <div class="desc">Squash hashes every file. Names what's in there. Like a packing list.</div>
-    </div>
+    <div class="flow-step"><div class="icon">🧾</div><div class="label">2. The Receipt</div><div class="desc">Squash hashes every file. A packing list — digitally fingerprinted.</div></div>
     <div class="flow-arrow">→</div>
-    <div class="flow-step">
-      <div class="icon">📐</div>
-      <div class="label">3. The Fingerprint</div>
-      <div class="desc">All facts get squeezed into a fixed shape — same bytes every time.</div>
-    </div>
+    <div class="flow-step"><div class="icon">📐</div><div class="label">3. The Fingerprint</div><div class="desc">All facts squeezed into a fixed shape. Same bytes, every time.</div></div>
     <div class="flow-arrow">→</div>
-    <div class="flow-step">
-      <div class="icon">🔒</div>
-      <div class="label">4. Lock it</div>
-      <div class="desc">A cryptographic signature seals the fingerprint. Tamper = obvious.</div>
-    </div>
+    <div class="flow-step"><div class="icon">🔒</div><div class="label">4. Lock it</div><div class="desc">A cryptographic signature seals the fingerprint. Tamper = obvious.</div></div>
     <div class="flow-arrow">→</div>
-    <div class="flow-step">
-      <div class="icon">✓</div>
-      <div class="label">5. Prove it</div>
-      <div class="desc">Anyone, anywhere, anytime can re-check the seal. No central authority.</div>
-    </div>
+    <div class="flow-step"><div class="icon">✓</div><div class="label">5. Prove it</div><div class="desc">Anyone, anywhere can re-check the seal. No central authority.</div></div>
   </div>
 </section>
 
-<!-- WHY SQUASH -->
-<section class="panel">
-  <div class="panel-head"><div>
-    <h2>Why this matters</h2>
-    <p class="subt">Three questions every team shipping AI eventually has to answer.</p>
-  </div></div>
+<section class="panel reveal">
+  <div class="panel-head"><div><h2><span class="accent">09.</span> Why this matters</h2><p class="subt">Three questions every team shipping AI eventually has to answer.</p></div></div>
   <div class="why-grid">
-    <div class="why-card">
-      <div class="why-icon">📚</div>
-      <h3>Was this model trained on copyrighted data?</h3>
-      <p>The answer used to be "we hope not." Squash gives you a signed report that walks back through the model's family tree to the original training corpus.</p>
-    </div>
-    <div class="why-card">
-      <div class="why-icon">🛡️</div>
-      <h3>Can I prove this AI hasn't been tampered with?</h3>
-      <p>Cryptographic attestations bind the model bytes to a signature. If anything changed — weights, config, even a single byte — verification fails loudly.</p>
-    </div>
-    <div class="why-card">
-      <div class="why-icon">🎯</div>
-      <h3>Did this output come from the model I think it did?</h3>
-      <p>Every attestation contains the exact SHA-256 of the model that produced it. No room for swap-the-weights attacks in production.</p>
-    </div>
+    <div class="why-card"><div class="why-icon">📚</div><h3>Was this model trained on copyrighted data?</h3><p>Squash gives you a signed report that walks back through the family tree to the original training corpus.</p></div>
+    <div class="why-card"><div class="why-icon">🛡️</div><h3>Can I prove this AI hasn't been tampered with?</h3><p>Cryptographic attestations bind the model bytes to a signature. If anything changed, verification fails loudly.</p></div>
+    <div class="why-card"><div class="why-icon">🎯</div><h3>Did this output come from the model I think it did?</h3><p>Every attestation contains the exact SHA-256 of the model that produced it.</p></div>
   </div>
 </section>
 
-<!-- FEATURES -->
-<section class="panel">
-  <div class="panel-head"><div>
-    <h2>Plain-English features</h2>
-    <p class="subt">The technical names live in the source code. Here's what they do for you.</p>
-  </div></div>
+<section class="panel reveal">
+  <div class="panel-head"><div><h2><span class="accent">10.</span> Plain-English features</h2><p class="subt">The technical names live in the source code. Here's what they do for you.</p></div></div>
   <div class="features">
-    <div class="feature">
-      <div class="label">🔐 Tamper-proof certificates</div>
-      <div class="what">Every signed cert proves the model bytes haven't changed since attestation. <code>SLSA Build L3</code></div>
-    </div>
-    <div class="feature">
-      <div class="label">⏱️ Trusted timestamps</div>
-      <div class="what">An external authority co-signs <em>when</em> the cert was issued. Even squash can't back-date. <code>RFC 3161</code></div>
-    </div>
-    <div class="feature">
-      <div class="label">🧪 Identical every time</div>
-      <div class="what">Same input → same signed bytes, on any computer, in any year. <code>RFC 8785</code></div>
-    </div>
-    <div class="feature">
-      <div class="label">🌳 Know your model's history</div>
-      <div class="what">Which family. Which datasets. Which copyright risks. <code>squash.genealogy</code></div>
-    </div>
-    <div class="feature">
-      <div class="label">⚖️ Licence safety check</div>
-      <div class="what">Combine licences and deployment scenarios. Get a verdict + recommendations. <code>squash.copyright</code></div>
-    </div>
-    <div class="feature">
-      <div class="label">🤖 Automated red-team testing</div>
-      <div class="what">Mathematical properties checked across millions of inputs every night. <code>Hypothesis</code></div>
-    </div>
+    <div class="feature"><div class="label">🔐 Tamper-proof certificates</div><div class="what">Every signed cert proves the model bytes haven't changed since attestation. <code>SLSA Build L3</code></div></div>
+    <div class="feature"><div class="label">⏱️ Trusted timestamps</div><div class="what">An external authority co-signs <em>when</em> the cert was issued. <code>RFC 3161</code></div></div>
+    <div class="feature"><div class="label">🧪 Identical every time</div><div class="what">Same input → same signed bytes, on any computer, in any year. <code>RFC 8785</code></div></div>
+    <div class="feature"><div class="label">🌳 Know your model's history</div><div class="what">Which family. Which datasets. Which copyright risks. <code>squash.genealogy</code></div></div>
+    <div class="feature"><div class="label">⚖️ Licence safety check</div><div class="what">Combine licences and deployment scenarios. Verdict + recommendations. <code>squash.copyright</code></div></div>
+    <div class="feature"><div class="label">🤖 Automated red-team testing</div><div class="what">Mathematical properties checked across millions of inputs every night. <code>Hypothesis</code></div></div>
   </div>
 </section>
 
@@ -764,41 +574,31 @@ footer {
 </main>
 
 <script>
-// ---------- API plumbing ----------
 const API_BASE = (() => {
-  // When loaded via the demo server, use same-origin. Otherwise probe localhost:8002.
-  if (window.location.hostname && window.location.port) {
-    return window.location.origin;
-  }
+  if (window.location.hostname && window.location.port) return window.location.origin;
   return "http://localhost:8002";
 })();
-
 let LIVE = false;
 
 async function api(path, body) {
-  const opts = body
-    ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }
-    : {};
+  const opts = body ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : {};
   const res = await fetch(API_BASE + path, opts);
-  if (!res.ok) throw new Error(`${path} → HTTP ${res.status}`);
+  if (!res.ok) {
+    let detail = ""; try { detail = (await res.json()).error || ""; } catch {}
+    throw new Error(`${path} → HTTP ${res.status}${detail ? ' · ' + detail : ''}`);
+  }
   return res.json();
 }
 
 function setLive() {
   LIVE = true;
-  document.querySelectorAll(".badge").forEach(b => {
-    b.classList.add("live"); b.classList.remove("tier-0");
-    b.textContent = "LIVE";
-  });
-  const pill = document.getElementById("serverPill");
-  pill.dataset.state = "live";
+  document.querySelectorAll(".badge").forEach(b => { b.classList.add("live"); b.textContent = "LIVE"; });
+  const pill = document.getElementById("serverPill"); pill.dataset.state = "live";
   document.getElementById("serverPillText").innerHTML = "✓ Live · real squash";
 }
-
-function setEst(reason) {
-  const pill = document.getElementById("serverPill");
-  pill.dataset.state = "est";
-  document.getElementById("serverPillText").innerHTML = "▶ Run <code>python demo/server.py</code>";
+function setEst() {
+  document.getElementById("serverPill").dataset.state = "est";
+  document.getElementById("serverPillText").innerHTML = "▶ Run <code style='color:inherit'>python demo/server.py</code>";
   document.querySelectorAll(".badge").forEach(b => { b.textContent = "EST"; });
 }
 
@@ -807,25 +607,17 @@ async function probeServer() {
     const h = await api("/api/health");
     if (h && h.ok) {
       setLive();
-      document.querySelectorAll('[data-counter]').forEach(el => {
-        if (h.tests > 0) el.dataset.counter = String(h.tests);
-      });
+      if (h.tests > 0) document.querySelectorAll('[data-counter]').forEach(el => { el.dataset.counter = String(h.tests); });
       kickCounters();
-    } else {
-      setEst();
-    }
-  } catch (e) {
-    setEst(e.message);
-  }
+    } else setEst();
+  } catch { setEst(); }
 }
 
-// ---------- Hero counters ----------
 function kickCounters() {
   document.querySelectorAll('[data-counter]').forEach(el => {
     const target = parseInt(el.dataset.counter, 10);
     if (!Number.isFinite(target)) return;
-    const dur = 1100;
-    const t0 = performance.now();
+    const dur = 1100, t0 = performance.now();
     function step(now) {
       const t = Math.min(1, (now - t0) / dur);
       const v = Math.round(target * (1 - Math.pow(1 - t, 3)));
@@ -836,7 +628,6 @@ function kickCounters() {
   });
 }
 
-// ---------- Tiny JSON syntax highlighter ----------
 function syntax(json) {
   if (typeof json !== "string") json = JSON.stringify(json, null, 2);
   return json
@@ -848,24 +639,24 @@ function syntax(json) {
 }
 const $ = (id) => document.getElementById(id);
 
-// ---------- Attest + Verify ----------
-let LAST_ATT = null;
+const io = new IntersectionObserver(entries => {
+  for (const e of entries) {
+    if (e.isIntersecting) { e.target.classList.add("visible"); io.unobserve(e.target); }
+  }
+}, { threshold: 0.08 });
+document.querySelectorAll(".reveal").forEach(el => io.observe(el));
 
+// Attest + Verify
+let LAST_ATT = null;
 $("btnAttest").addEventListener("click", async () => {
   const btn = $("btnAttest");
-  btn.innerHTML = '<span class="spin"></span>Attesting…';
-  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span>Attesting…'; btn.disabled = true;
   $("attTiming").textContent = "";
   try {
-    const r = await api("/api/attest", {
-      model_name: $("attModel").value,
-      artifact_hash: $("attHash").value,
-      metadata: { source: "demo" },
-    });
+    const r = await api("/api/attest", { model_name: $("attModel").value, artifact_hash: $("attHash").value, metadata: { source: "demo" } });
     LAST_ATT = r.attestation;
     $("attOut").innerHTML = syntax(r.attestation || {});
-    const kv = $("attKv");
-    kv.innerHTML = "";
+    const kv = $("attKv"); kv.innerHTML = "";
     const rows = [
       ["model_id", r.attestation?.model_id || "—"],
       ["passed", r.attestation?.passed ? "<span class='good'>✓ PASS</span>" : "<span class='warn'>scan flagged</span>"],
@@ -875,28 +666,21 @@ $("btnAttest").addEventListener("click", async () => {
       ["canonical bytes", `${r.canonical_json_bytes ?? "—"} B`],
       ["latency", `${r.latency_ms} ms`],
     ];
-    for (const [k, v] of rows) {
-      kv.innerHTML += `<div class="k">${k}</div><div class="v">${v}</div>`;
-    }
+    for (const [k, v] of rows) kv.innerHTML += `<div class="k">${k}</div><div class="v">${v}</div>`;
     $("attTiming").innerHTML = `done in <strong>${r.latency_ms} ms</strong>`;
     $("btnVerify").disabled = false;
   } catch (e) {
     $("attOut").textContent = "Error: " + e.message + "\n\n(start the server: python demo/server.py)";
-  } finally {
-    btn.innerHTML = "Attest";
-    btn.disabled = false;
-  }
+  } finally { btn.innerHTML = "⚡ Attest"; btn.disabled = false; }
 });
 
 $("btnVerify").addEventListener("click", async () => {
   if (!LAST_ATT) return;
   const btn = $("btnVerify");
-  btn.innerHTML = '<span class="spin"></span>Verifying…';
-  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span>Verifying…'; btn.disabled = true;
   try {
     const r = await api("/api/verify", { attestation: LAST_ATT });
-    const kv = $("attKv");
-    let html = "";
+    const kv = $("attKv"); let html = "";
     html += `<div class="k">verdict</div><div class="v ${r.valid ? 'good' : 'bad'}">${r.valid ? '✓ VALID' : '✗ INVALID'}</div>`;
     html += `<div class="k">checks passed</div><div class="v">${r.checks_passed.length}</div>`;
     for (const c of r.checks_passed) html += `<div class="k">&nbsp;&nbsp;✓</div><div class="v good">${c}</div>`;
@@ -906,25 +690,19 @@ $("btnVerify").addEventListener("click", async () => {
     }
     html += `<div class="k">latency</div><div class="v">${r.latency_ms} ms</div>`;
     kv.innerHTML = html;
-  } catch (e) {
-    $("attOut").textContent = "Verify error: " + e.message;
-  } finally {
-    btn.innerHTML = "Verify last attestation";
-    btn.disabled = false;
-  }
+  } catch (e) { $("attOut").textContent = "Verify error: " + e.message; }
+  finally { btn.innerHTML = "✓ Verify"; btn.disabled = false; }
 });
 
-// ---------- Canonical ----------
+// Canonical
 $("btnScramble").addEventListener("click", () => {
   try {
     const obj = JSON.parse($("canonIn").value);
     const keys = Object.keys(obj).sort(() => Math.random() - 0.5);
-    const re = {};
-    for (const k of keys) re[k] = obj[k];
+    const re = {}; for (const k of keys) re[k] = obj[k];
     $("canonIn").value = JSON.stringify(re, null, 2);
-  } catch (e) { /* noop */ }
+  } catch {}
 });
-
 $("btnCanon").addEventListener("click", async () => {
   const btn = $("btnCanon");
   btn.innerHTML = '<span class="spin"></span>Encoding…'; btn.disabled = true;
@@ -934,23 +712,79 @@ $("btnCanon").addEventListener("click", async () => {
     let html = "<div class='io-label' style='margin-bottom:8px'>as supplied</div>";
     html += syntax(r.deterministic_proof[0]?.canonical || r.canonical);
     if (r.deterministic_proof.length > 1) {
-      html += "<div class='io-label' style='margin: 14px 0 8px'>keys reversed (different insertion order)</div>";
+      html += "<div class='io-label' style='margin: 14px 0 8px'>keys reversed</div>";
       html += syntax(r.deterministic_proof[1].canonical);
       const same = r.deterministic_proof[0].canonical === r.deterministic_proof[1].canonical;
-      html += `<div style='margin-top: 14px; padding: 10px 14px; background: ${same ? 'rgba(109,240,194,0.12)' : 'rgba(255,107,138,0.12)'}; border-radius: 8px; color: ${same ? 'var(--good)' : 'var(--bad)'};'>`;
+      html += `<div style='margin-top:14px; padding:10px 14px; background:${same ? 'var(--pill-live)' : 'rgba(255,107,138,0.12)'}; border-radius:8px; color:${same ? 'var(--good)' : 'var(--bad)'};'>`;
       html += same ? "✓ Identical bytes — the signature is the same." : "✗ Bytes differ — encoder bug!";
       html += "</div>";
     }
     $("canonOut").innerHTML = html;
-    $("canonStats").innerHTML = `<strong>${r.bytes}</strong> bytes · sha256 <code>${r.sha256.slice(0, 24)}…</code>`;
-  } catch (e) {
-    $("canonOut").textContent = "Error: " + e.message;
-  } finally {
-    btn.innerHTML = "Canonicalise"; btn.disabled = false;
-  }
+    $("canonStats").innerHTML = `<strong>${r.bytes}</strong> bytes · sha256 <code style='color:var(--ink-dim)'>${r.sha256.slice(0, 24)}…</code>`;
+  } catch (e) { $("canonOut").textContent = "Error: " + e.message; }
+  finally { btn.innerHTML = "Canonicalise"; btn.disabled = false; }
 });
 
-// ---------- Genealogy ----------
+// Ollama side-by-side
+function _humanBytes(n) {
+  if (n < 1024) return `${n} B`;
+  for (const u of ["KB", "MB", "GB", "TB"]) { n /= 1024; if (n < 1024) return `${n.toFixed(1)} ${u}`; }
+  return `${n.toFixed(1)} PB`;
+}
+function renderOllamaPair(r) {
+  const a = r.model_a, b = r.model_b;
+  const aw = (r.verdict_winner === a.model.name) ? "winner" : "";
+  const bw = (r.verdict_winner === b.model.name) ? "winner" : "";
+  const rows = [
+    ["family", a.family || "—", b.family || "—"],
+    ["size", _humanBytes(a.model.size_bytes), _humanBytes(b.model.size_bytes)],
+    ["digest", a.model.digest.slice(0, 12), b.model.digest.slice(0, 12)],
+    ["score", `${a.score}/100`, `${b.score}/100`],
+    ["BOM components", String(a.cyclonedx_components), String(b.cyclonedx_components)],
+    ["input files", String(a.file_count), String(b.file_count)],
+    ["manifest sha-256", (a.input_manifest_sha256 || "").slice(0,16) + "…", (b.input_manifest_sha256 || "").slice(0,16) + "…"],
+    ["attest sha-256", a.canonical_sha256.slice(0,16) + "…", b.canonical_sha256.slice(0,16) + "…"],
+    ["issued_at", a.issued_at, b.issued_at],
+    ["latency", `${a.elapsed_ms.toFixed(1)} ms`, `${b.elapsed_ms.toFixed(1)} ms`],
+    ["findings", String(a.findings.length), String(b.findings.length)],
+  ];
+  let html = "<div class='compare'>";
+  html += `<div></div><div class='head ${aw}'>${a.model.name}</div><div class='head ${bw}'>${b.model.name}</div>`;
+  for (const [k, av, bv] of rows) html += `<div>${k}</div><div>${av}</div><div>${bv}</div>`;
+  html += "</div>";
+  $("ollPair").innerHTML = html;
+
+  let rh = `<div class="io-label">Top remediation actions for <strong>${a.model.name}</strong></div>`;
+  for (const r of a.remediations.slice(0, 4)) {
+    if (!r) continue;
+    rh += `<div class="remediation ${r.severity || 'warn'}">
+      <div class="rtitle"><span class="sev-dot ${r.severity}"></span><span>${r.title}</span></div>
+      <div class="rwhy"><strong>Why:</strong> ${r.why}</div>
+      <ol class="rsteps">${r.how_to_fix.map(s => `<li>${s}</li>`).join('')}</ol>
+      <div class="rcite">
+        <span><strong>${r.framework}</strong></span>
+        <span>${r.article}</span>
+        <a href="${r.citation_url}" target="_blank" rel="noreferrer">Cited source ↗</a>
+      </div>
+    </div>`;
+  }
+  $("ollRemediation").innerHTML = rh;
+}
+$("btnOllama").addEventListener("click", async () => {
+  const btn = $("btnOllama");
+  btn.innerHTML = '<span class="spin"></span>Scanning two random models…'; btn.disabled = true;
+  $("ollMeta").textContent = "";
+  try {
+    const r = await api("/api/ollama-scan", {});
+    renderOllamaPair(r);
+    $("ollMeta").innerHTML = r.available
+      ? `<span class="good">✓ Ollama detected</span> · winner: <strong>${r.verdict_winner}</strong>`
+      : `<span class="warn">⚠ Ollama not installed — synthetic registry</span> · winner: <strong>${r.verdict_winner}</strong>`;
+  } catch (e) { $("ollPair").innerHTML = `<div class="muted tiny">Error: ${e.message}</div>`; }
+  finally { btn.innerHTML = "🎲 Pick 2 random models &amp; scan"; btn.disabled = false; }
+});
+
+// Genealogy
 $("btnGen").addEventListener("click", async () => {
   const btn = $("btnGen");
   btn.innerHTML = '<span class="spin"></span>Tracing…'; btn.disabled = true;
@@ -965,14 +799,12 @@ $("btnGen").addEventListener("click", async () => {
     html += `<div class="k">chain depth</div><div class="v">${r.depth} step(s)</div>`;
     html += `<div class="k">contamination</div><div class="v"><span class="verdict-pill ${verdictCls}">${r.contamination_verdict || '—'}</span></div>`;
     html += `<div class="k">copyright risk</div><div class="v"><span class="verdict-pill ${riskCls}">${r.copyright_risk || '—'} (${r.copyright_score}/100)</span></div>`;
-    if (r.copyright_sources.length) {
-      html += `<div class="k">flagged sources</div><div class="v">${r.copyright_sources.slice(0,3).join(", ")}</div>`;
-    }
+    if (r.copyright_sources?.length) html += `<div class="k">flagged sources</div><div class="v">${r.copyright_sources.slice(0,3).join(", ")}</div>`;
     if (r.signature) html += `<div class="k">signature</div><div class="v mono">${r.signature}</div>`;
     kv.innerHTML = html;
 
     const donut = $("genDonut");
-    if (r.training_composition && r.training_composition.length) {
+    if (r.training_composition?.length) {
       const max = Math.max(...r.training_composition.map(c => c.weight));
       donut.innerHTML = r.training_composition.map(c => `
         <div class="donut-row">
@@ -983,24 +815,17 @@ $("btnGen").addEventListener("click", async () => {
     } else {
       donut.innerHTML = '<div class="muted tiny">No itemised dataset composition (proprietary or undisclosed).</div>';
     }
-
     $("genChain").innerHTML = syntax(r.nodes || []);
-  } catch (e) {
-    $("genChain").textContent = "Error: " + e.message;
-  } finally {
-    btn.innerHTML = "Trace genealogy"; btn.disabled = false;
-  }
+  } catch (e) { $("genChain").textContent = "Error: " + e.message; }
+  finally { btn.innerHTML = "Trace genealogy"; btn.disabled = false; }
 });
 
-// ---------- Copyright ----------
+// Copyright
 $("btnCpr").addEventListener("click", async () => {
   const btn = $("btnCpr");
   btn.innerHTML = '<span class="spin"></span>Checking…'; btn.disabled = true;
   try {
-    const r = await api("/api/copyright", {
-      licenses: [$("cprA").value, $("cprB").value],
-      deployment_use: $("cprUse").value,
-    });
+    const r = await api("/api/copyright", { licenses: [$("cprA").value, $("cprB").value], deployment_use: $("cprUse").value });
     const kv = $("cprKv");
     const compat = r.compatible === true ? "good" : r.compatible === false ? "bad" : "warn";
     const compatLabel = r.compatible === true ? "✓ Compatible" : r.compatible === false ? "✗ NOT compatible" : "⚠ Uncertain";
@@ -1011,32 +836,26 @@ $("btnCpr").addEventListener("click", async () => {
     html += `<div class="k">risk tier</div><div class="v"><span class="verdict-pill ${riskCls}">${r.risk_tier} (${r.risk_score}/100)</span></div>`;
     html += `<div class="k">model licence</div><div class="v mono">${r.model_license.spdx_id}</div>`;
     html += `<div class="k">commercial OK</div><div class="v">${r.model_license.commercial_ok === true ? '✓' : r.model_license.commercial_ok === false ? '✗' : '?'}</div>`;
-    if (r.training_data_licenses.length) {
-      html += `<div class="k">training licences</div><div class="v">${r.training_data_licenses.map(l => l.spdx_id).join(", ")}</div>`;
-    }
+    if (r.training_data_licenses?.length) html += `<div class="k">training licences</div><div class="v">${r.training_data_licenses.map(l => l.spdx_id).join(", ")}</div>`;
     if (r.signature) html += `<div class="k">signature</div><div class="v mono">${r.signature}</div>`;
     kv.innerHTML = html;
-
     let note = `<strong>${r.verdict}.</strong>`;
-    if (r.compatibility_issues.length) {
+    if (r.compatibility_issues?.length) {
       note += "<br><br><strong>Issues:</strong><ul>";
       for (const i of r.compatibility_issues.slice(0, 4)) note += `<li>${i.description}</li>`;
       note += "</ul>";
     }
-    if (r.recommendations.length) {
+    if (r.recommendations?.length) {
       note += "<strong>Recommendations:</strong><ul>";
       for (const rec of r.recommendations.slice(0, 4)) note += `<li>${rec}</li>`;
       note += "</ul>";
     }
     $("cprNote").innerHTML = note;
-  } catch (e) {
-    $("cprNote").textContent = "Error: " + e.message;
-  } finally {
-    btn.innerHTML = "Check compatibility"; btn.disabled = false;
-  }
+  } catch (e) { $("cprNote").textContent = "Error: " + e.message; }
+  finally { btn.innerHTML = "Check compatibility"; btn.disabled = false; }
 });
 
-// ---------- Self-verify ----------
+// Self-verify
 $("btnSelf").addEventListener("click", async () => {
   const btn = $("btnSelf");
   btn.innerHTML = '<span class="spin"></span>Walking chain…'; btn.disabled = true;
@@ -1049,40 +868,53 @@ $("btnSelf").addEventListener("click", async () => {
     for (const c of r.checks) {
       const item = document.createElement("div");
       item.className = "checklist-item";
-      item.style.animationDelay = `${i * 90}ms`;
+      item.style.animationDelay = `${i * 100}ms`;
       const icon = c.result === "pass" ? "pass" : "fail";
       item.innerHTML = `
         <div class="check-icon ${icon}">${icon === 'pass' ? '✓' : '✗'}</div>
-        <div>
-          <div class="check-name">${c.name.replace(/_/g, " ")}</div>
-          <div class="check-detail">${c.detail || ''}</div>
-        </div>
+        <div><div class="check-name">${c.name.replace(/_/g, " ")}</div><div class="check-detail">${c.detail || ''}</div></div>
         <div class="muted tiny">${c.result}</div>`;
       $("svList").appendChild(item);
       i++;
     }
     const summary = document.createElement("div");
     summary.className = "checklist-item";
-    summary.style.animationDelay = `${i * 90}ms`;
+    summary.style.animationDelay = `${i * 100}ms`;
     summary.innerHTML = `
       <div class="check-icon ${r.overall === 'pass' ? 'pass' : 'fail'}">${r.overall === 'pass' ? '✓' : '✗'}</div>
-      <div>
-        <div class="check-name"><strong>overall ${r.overall.toUpperCase()}</strong></div>
-        <div class="check-detail">${r.checks.length} checks completed</div>
-      </div>
+      <div><div class="check-name"><strong>overall ${r.overall.toUpperCase()}</strong></div>
+      <div class="check-detail">${r.checks.length} checks completed</div></div>
       <div></div>`;
     $("svList").appendChild(summary);
     $("svTiming").innerHTML = `walked in <strong>${(performance.now() - t0).toFixed(0)} ms</strong>`;
-  } catch (e) {
-    $("svList").innerHTML = `<div class="check-detail bad" style="color: var(--bad)">Error: ${e.message}</div>`;
-  } finally {
-    btn.innerHTML = "Run self-verify"; btn.disabled = false;
-  }
+  } catch (e) { $("svList").innerHTML = `<div class="check-detail" style="color: var(--bad)">Error: ${e.message}</div>`; }
+  finally { btn.innerHTML = "⚙ Run self-verify"; btn.disabled = false; }
 });
 
-// ---------- Boot ----------
+// PDF Report
+$("btnPdf").addEventListener("click", async () => {
+  const btn = $("btnPdf");
+  btn.innerHTML = '<span class="spin"></span>Rendering…'; btn.disabled = true;
+  $("pdfStatus").textContent = "";
+  try {
+    const r = await api("/api/pdf-report", { org_name: $("pdfOrg").value, system_name: $("pdfSys").value, accent_color: $("pdfColor").value });
+    if (!r.ok) throw new Error("renderer returned non-ok");
+    const bin = atob(r.content_b64);
+    const arr = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+    const blob = new Blob([arr], { type: r.content_type });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = r.filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
+    const sizeKb = (r.size_bytes / 1024).toFixed(1);
+    $("pdfStatus").innerHTML = `✓ <strong>${r.format.toUpperCase()}</strong> · ${sizeKb} KB · saved as <code style='color:var(--accent)'>${r.filename}</code>${r.note ? ' · ' + r.note : ''}`;
+  } catch (e) { $("pdfStatus").innerHTML = `<span style='color: var(--bad)'>Error: ${e.message}</span>`; }
+  finally { btn.innerHTML = "📄 Download PDF"; btn.disabled = false; }
+});
+
 probeServer();
-// counters fire on probe; if no server, kick at boot anyway.
 setTimeout(() => { if (!LIVE) kickCounters(); }, 350);
 </script>
 

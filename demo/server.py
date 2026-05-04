@@ -468,13 +468,118 @@ def _api_copyright(body: dict) -> dict:
 # ---------------------------------------------------------------------------
 
 
+def _api_ollama_scan(body: dict) -> dict:
+    """Real side-by-side Ollama model scan with full remediation."""
+    from demo.ollama_scan import scan_pair
+
+    seed = body.get("seed")
+    if seed is not None:
+        try:
+            seed = int(seed)
+        except (TypeError, ValueError):
+            seed = None
+    return scan_pair(seed=seed)
+
+
+def _api_pdf_report(body: dict) -> dict:
+    """Render a Squash-branded Annex-IV PDF and return it base64-encoded.
+
+    Calls the real :class:`squash.pdf_report.PDFReportBuilder` — the same
+    code path used by enterprise/premium subscriptions. Falls back to
+    HTML when ``weasyprint`` is unavailable.
+    """
+    import base64
+
+    from squash.annex_iv_generator import AnnexIVGenerator
+    from squash.artifact_extractor import ArtifactExtractionResult
+    from squash.pdf_report import BrandedPDFConfig, PDFReportBuilder
+
+    org_name = (body.get("org_name") or "Demo Org").strip()[:64]
+    system_name = (body.get("system_name") or "Squash Bulletproof Demo").strip()[:96]
+    accent = (body.get("accent_color") or "#3fc66d").strip()
+    deployment_use = (body.get("deployment_use") or "commercial").strip().lower()
+    if deployment_use not in ("commercial", "research", "internal"):
+        deployment_use = "commercial"
+
+    er = ArtifactExtractionResult()
+    doc = AnnexIVGenerator().generate(
+        er,
+        system_name=system_name,
+        version="3.0.0",
+        intended_purpose=(
+            "Demonstrate the Squash Bulletproof Edition attestation pipeline "
+            "against a synthetic AI system. Output: a signed, RFC-8785-canonical "
+            "Annex IV technical document."
+        ),
+        intended_users=["ML platform engineers", "AI compliance officers"],
+        prohibited_uses="High-risk decisioning without human oversight.",
+        deployment_context="Continuous Integration · containerised deployment.",
+        risk_level="limited",
+        risk_management=(
+            "All Phase G primitives applied: input manifest at ingest, RFC 8785 "
+            "canonical bytes for every signed payload, RFC 3161 trusted timestamp, "
+            "SLSA Build Level 3 provenance, full chain walker via squash self-verify."
+        ),
+        oversight_description=(
+            "Pre-deployment: signed attestation gates merge to main. "
+            "Post-deployment: hallucination-monitor + drift-certificate."
+        ),
+        human_oversight_mechanisms=[
+            "Required human review before production deploy.",
+            "Daily pip-audit + OSV-Scanner CVE sweeps.",
+            "Quarterly external audit (Trail of Bits / NCC Group / Cure53).",
+        ],
+        performance_metrics={
+            "accuracy": 0.93, "f1": 0.92, "wilson_ci_low": 0.89, "wilson_ci_high": 0.95,
+        },
+        robustness_testing=(
+            "Hypothesis property tests across 11 invariants. "
+            "Atheris fuzz: 100K iterations nightly against canon + input_manifest."
+        ),
+        adversarial_testing="OWASP LLM Top 10 baseline scan + prompt-injection probes.",
+        model_type="transformer",
+        architecture_description="Demo synthetic: 4 KB safetensors blob + config.",
+        lifecycle_plan="Annual review · quarterly drift certificate.",
+        monitoring_plan="squash hallucination-monitor + drift-certificate active.",
+    )
+
+    cfg = BrandedPDFConfig(
+        org_name=org_name, author="Squash Demo",
+        accent_color=accent,
+        confidentiality_label="DEMO · NOT FOR PRODUCTION USE",
+    )
+    builder = PDFReportBuilder(cfg)
+    fname_stem = f"squash-annex-iv-{system_name.replace(' ', '-').lower()}"
+    try:
+        pdf_bytes = builder.build_from_document(doc)
+        return {
+            "ok": True, "format": "pdf",
+            "filename": f"{fname_stem}.pdf",
+            "content_b64": base64.b64encode(pdf_bytes).decode("ascii"),
+            "content_type": "application/pdf",
+            "size_bytes": len(pdf_bytes),
+        }
+    except ImportError:
+        html = builder.build_html(doc)
+        return {
+            "ok": True, "format": "html",
+            "filename": f"{fname_stem}.html",
+            "content_b64": base64.b64encode(html.encode("utf-8")).decode("ascii"),
+            "content_type": "text/html",
+            "size_bytes": len(html),
+            "note": "weasyprint not installed — HTML preview returned (same source as the PDF).",
+        }
+
+
 _ROUTES_POST = {
-    "/api/canon":       _api_canon,
-    "/api/attest":      _api_attest,
-    "/api/verify":      _api_verify,
-    "/api/self-verify": _api_self_verify,
-    "/api/genealogy":   _api_genealogy,
-    "/api/copyright":   _api_copyright,
+    "/api/canon":        _api_canon,
+    "/api/attest":       _api_attest,
+    "/api/verify":       _api_verify,
+    "/api/self-verify":  _api_self_verify,
+    "/api/genealogy":    _api_genealogy,
+    "/api/copyright":    _api_copyright,
+    "/api/ollama-scan":  _api_ollama_scan,
+    "/api/pdf-report":   _api_pdf_report,
 }
 
 
