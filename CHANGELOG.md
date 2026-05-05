@@ -5,6 +5,47 @@ Format: [Conventional Commits](https://www.conventionalcommits.org/) · [Keep a 
 
 ---
 
+## [3.2.0] — 2026-05-05 — AI Insurance Risk Package (Track C / C6)
+
+### Added — Sprint 24 W235–W237
+
+- **`squash/insurance.py`** — AI Cyber Insurance Risk Package generator: `InsurancePackage`
+  builder, `ModelRiskProfile` per-model risk summary, `InsuranceBuilder` artefact scanner.
+  Aggregates attestation records, VEX CVEs, drift events, incidents, bias audit results, and
+  data lineage presence into a single quantified risk record per model. Stdlib-only; zero new
+  dependencies.
+- **`MunichReAdapter`** — Maps `InsurancePackage` to Munich Re's AI cyber underwriting schema:
+  5 control domains (`technical_security`, `operational_excellence`, `ai_governance`,
+  `data_quality_provenance`, `incident_resilience`) each rated A–D; overall AI Maturity Level
+  1–4; coverage recommendation (STANDARD / ENHANCED / SPECIALIST).
+- **`CoalitionAdapter`** — Maps to Coalition's AI Risk Assessment schema: 5 risk categories
+  (`ai_model_security`, `ai_operational_risk`, `ai_governance`, `ai_incident_history`,
+  `third_party_ai_risk`) each scored 0–100; weighted aggregate (30/25/20/15/10).
+- **`GenericAdapter`** — Generic JSON schema for underwriters without a published format;
+  designed as the fallback and for regulatory filing purposes.
+- **`InsurancePackage.save_zip()`** — Signed submission bundle: `insurance-package.json`,
+  `insurance-munich-re.json`, `insurance-coalition.json`, `insurance-generic.json`,
+  `insurance-executive-summary.md`, `integrity.sha256` (SHA-256 file-hash manifest).
+- **`squash insurance-package` CLI** — `squash insurance-package --models-dir ./models
+  --org 'Acme Corp' --underwriter munich-re --json --zip ./bundle.zip --quiet`.
+  Flags: `--underwriter {munich-re,coalition,generic}`, `--json`, `--zip PATH`,
+  `--output-dir`, `--org`, `--quiet`.
+- **`tests/test_squash_c6_insurance.py`** — 76 tests covering: `ModelRiskProfile.to_dict`,
+  `_compute_risk_tier` formula, `InsuranceBuilder` single/multi-model/empty/degraded paths,
+  all three adapters (A–D rating, maturity levels, risk interpretation bands),
+  `save_zip` integrity manifest verification, CLI integration (all 5 subcommand variants),
+  numerical correctness assertions, and no-external-deps import checks.
+- **`squash/__init__.py`** exports: `ModelRiskProfile`, `InsurancePackage`, `InsuranceBuilder`,
+  `MunichReAdapter`, `CoalitionAdapter`, `GenericAdapter`.
+
+### Opens a new buyer motion
+Chief Risk Officer + insurance procurement. AI cyber-insurance underwriters (Munich Re,
+Coalition, AIG, Beazley) are publicly demanding standardised evidence packages before
+quoting a policy. `squash insurance-package` generates the package automatically from
+existing squash artefacts — no new data collection required.
+
+---
+
 ## [3.0.2] — 2026-05-04 — Konjo Edition Demo v2: Real Models, Side-by-Side, Animated
 
 ### Added

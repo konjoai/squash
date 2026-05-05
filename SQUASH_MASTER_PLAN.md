@@ -51,12 +51,12 @@ That's the moat. Credo AI and OneTrust are form-filling tools. Squash is a pipel
 
 ---
 
-## ⚡ Situation Report (April 30, 2026) — Post Sprint 22 ✅ — Track C at 3/11
+## ⚡ Situation Report (May 5, 2026) — Post Sprint 24 ✅ — Track C at 8/11
 
 | Metric | Value |
 |--------|-------|
-| **EU AI Act enforcement deadline** | August 2, 2026 — **94 days** |
-| **Squash code maturity** | v1.14.0 · Sprint 22 C5 shipped · 4308 tests passing · **Tier 2 100% · Track B 5/6 · Track C 3/11** |
+| **EU AI Act enforcement deadline** | August 2, 2026 — **89 days** |
+| **Squash code maturity** | v3.2.0 · Sprint 24 C6 shipped · 4384 tests passing · **Tier 2 100% · Track B 5/6 · Track C 8/11** |
 | **Python modules** | 77 standalone modules + VS Code extension + templates/ dir · 100+ git commits |
 | **Annex IV coverage** | ✅ 100% — 12-section generator, completeness scoring, PDF export |
 | **ISO 42001 coverage** | ✅ — 38-control readiness assessment, gap analysis, remediation roadmap |
@@ -174,7 +174,7 @@ High-ROI items derived from market research. Each operationalises a specific anc
 | **C3** | **Approval Workflow** — `squash approve` (signed reviewer record) | 5 days | May 13–19 | B2, B3, B4 | EU AI Act Art. 9 human-oversight requirement | Sprint 23 (W232–W234) |
 | **C4** ✅ | **Regulatory Watch Daemon** — `squash watch-regulatory --interval 6h` | 7 days → **shipped** | ✅ 2026-04-30 | B4, D1 | `regulatory_watch.py` (NEW) — SEC/NIST/EUR-Lex + generic RSS, SQLite dedup, gap analysis, 10-flag CLI | Sprint 27 ✅ v1.13.0 |
 | **C5** ✅ | **Audit Simulation** — `squash simulate-audit --regulator EU-AI-Act` | 10 days → **shipped** | ✅ 2026-04-30 | D1, D2, B5 | `audit_sim.py` (NEW) — 4 regulator profiles, 110 questions, critical-gate scoring, 90-day roadmap | Sprint 22 ✅ v1.14.0 |
-| **C6** | **Insurance Risk Package** — Munich Re / Coalition format | 7 days | Jun 16–24 | D2, D3 | AI cyber-insurance market crystallising late 2026 | Sprint 24 (W235–W237) |
+| **C6** ✅ | **Insurance Risk Package** — Munich Re / Coalition format | 7 days → **shipped** | ✅ 2026-05-05 | D2, D3 | `insurance.py` — `InsuranceBuilder`, `MunichReAdapter`, `CoalitionAdapter`, `GenericAdapter`; signed ZIP bundle; 76 tests. | Sprint 24 ✅ v3.2.0 |
 | **C7 ★** ✅ | **Hallucination Rate Attestation** — `squash hallucination-attest` | shipped 2026-04-30 | C2, B2 | $67.4B · 47% · 200 domain probes · signed CI-bounded cert · 51 tests. | Sprint 30 (W251–W252) ✅ |
 | **C8** ✅ | **Model Deprecation Watch** — `squash deprecation-watch` cross-references registry vs provider sunsets | 4 days | Jun 25–30 | C6, D2 | OpenAI / Anthropic / Google sunsets break attested deployments quarterly | Sprint 35 (W265–W266) |
 | **C9** ✅ | **Carbon / Energy Attestation** — `squash attest-carbon --deployment-region us-east-1` | 6 days | Jul 1–9 | D3 | CSRD reporting (all large EU orgs from 2025) · OMB DOE AI data-centre rule | Sprint 36 (W259–W261) |
