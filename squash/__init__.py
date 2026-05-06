@@ -18,7 +18,7 @@ Frameworks covered: EU AI Act · NIST AI RMF · ISO 42001 · OWASP LLM Top 10 ·
 FedRAMP · CMMC · SOC 2-AI · HITRUST · GDPR-AI · DORA
 """
 
-__version__ = "3.2.0"
+__version__ = "3.3.0"
 
 from squash.sbom_builder import CompressRunMeta, CycloneDXBuilder, SbomDiff, SbomRegistry, EvalBinder
 from squash.oms_signer import OmsSigner, OmsVerifier
@@ -152,6 +152,12 @@ from squash.insurance import (  # noqa: F401 (Sprint 24 W235-W237 — Track C / 
     CoalitionAdapter,
     GenericAdapter,
 )
+from squash.freeze import (  # noqa: F401 (Sprint 19 W221-W222 — Track C / C1)
+    FreezeOrchestrator,
+    FreezeReceipt,
+    FreezeStep,
+    StepResult as FreezeStepResult,
+)
 
 __all__ = [
     # Core
@@ -280,7 +286,7 @@ __all__ = [
     "CodeScanner",
     "ImportRecord",
     "OptimizerCall",
-    # Wave 128–131: Annex IV artifact extraction
+    # Wave 128-131: Annex IV artifact extraction
     "ArtifactExtractor",
     "ArtifactExtractionResult",
     "DatasetProvenance",
@@ -294,4 +300,9 @@ __all__ = [
     "NistRmfPosture",
     "NistRmfReport",
     "NistRmfScanner",
+    # Sprint 19 C1: Emergency freeze orchestrator
+    "FreezeOrchestrator",
+    "FreezeReceipt",
+    "FreezeStep",
+    "FreezeStepResult",
 ]
