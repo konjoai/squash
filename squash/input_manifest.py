@@ -57,7 +57,7 @@ import hashlib
 import os
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Iterable
+from typing import Any, Iterable
 
 from .canon import canonical_bytes
 from .clock import Clock, SystemClock
@@ -130,7 +130,7 @@ class InputManifest:
     files: list[FileDigest] = field(default_factory=list)
     manifest_sha256: str = ""
 
-    def to_dict(self, include_self_hash: bool = True) -> dict:
+    def to_dict(self, include_self_hash: bool = True) -> dict[str, Any]:
         d = asdict(self)
         if not include_self_hash:
             d.pop("manifest_sha256", None)
@@ -168,7 +168,7 @@ def _walk_files(
 
 def _hash_file(path: Path, *, chunk: int = 1 << 16) -> tuple[str, int]:
     """Streaming SHA-256 + size."""
-    h = hashlib.sha256()
+    h = hashlib.sha256()  # nosec B324
     n = 0
     with path.open("rb") as fh:
         while True:
@@ -196,7 +196,7 @@ def manifest_hash(manifest: InputManifest) -> str:
     d = manifest.to_dict(include_self_hash=False)
     d.pop("root_path", None)
     d.pop("generated_at", None)
-    return hashlib.sha256(canonical_bytes(d)).hexdigest()
+    return hashlib.sha256(canonical_bytes(d)).hexdigest()  # nosec B324
 
 
 def build_input_manifest(
@@ -313,7 +313,7 @@ def verify_manifest(manifest: InputManifest, root: Path | str) -> tuple[bool, li
     return (not errors), errors
 
 
-def from_dict(d: dict) -> InputManifest:
+def from_dict(d: dict[str, Any]) -> InputManifest:
     """Reconstruct :class:`InputManifest` from a parsed JSON dict."""
     files = [FileDigest(**f) for f in d.get("files", [])]
     return InputManifest(

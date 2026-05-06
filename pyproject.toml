@@ -170,6 +170,7 @@ module = [
     "squash.model_card",
     "squash.report",
     "squash.integrations.kubernetes",
+    "squash.freeze",
 ]
 warn_return_any = false
 disallow_any_generics = false

@@ -10,11 +10,9 @@ offline testing via the dependency-injection constructors.
 from __future__ import annotations
 
 import json
-import time
-from dataclasses import asdict
 from pathlib import Path
 from typing import Any
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 

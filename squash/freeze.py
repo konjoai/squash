@@ -41,7 +41,7 @@ import uuid
 from dataclasses import dataclass, field, asdict
 from enum import Enum
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 log = logging.getLogger(__name__)
 
@@ -460,7 +460,7 @@ class FreezeOrchestrator:
                 "actor": receipt.actor,
             }
             line = json.dumps(entry, sort_keys=True, separators=(",", ":"))
-            entry_hash = hashlib.sha256(line.encode()).hexdigest()
+            entry_hash = hashlib.sha256(line.encode()).hexdigest()  # nosec B324
             entry["entry_hash"] = entry_hash
             with self._ledger_path.open("a", encoding="utf-8") as f:
                 f.write(json.dumps(entry, sort_keys=True) + "\n")
@@ -644,7 +644,7 @@ class FreezeOrchestrator:
     def _sign_and_log(self, receipt: FreezeReceipt) -> None:
         try:
             payload = receipt.canonical_payload_bytes()
-            receipt.payload_hash = hashlib.sha256(payload).hexdigest()
+            receipt.payload_hash = hashlib.sha256(payload).hexdigest()  # nosec B324
         except Exception:  # noqa: BLE001
             log.exception("freeze receipt canonicalisation failed")
 
@@ -827,7 +827,7 @@ def verify_receipt(receipt: FreezeReceipt | dict[str, Any]) -> tuple[bool, str]:
     except Exception as exc:  # noqa: BLE001
         return False, f"signature mismatch: {exc}"
 
-    expected = hashlib.sha256(r.canonical_payload_bytes()).hexdigest()
+    expected = hashlib.sha256(r.canonical_payload_bytes()).hexdigest()  # nosec B324
     if r.payload_hash and r.payload_hash != expected:
         return False, "payload_hash does not match canonical body"
 
