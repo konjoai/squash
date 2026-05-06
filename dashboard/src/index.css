@@ -1,0 +1,19 @@
+@import "@konjoai/ui/styles";
+
+/* Tailwind needs to see konjoai-ui's source files to generate the utility
+   classes used inside its components. The package is symlinked into
+   node_modules; @source follows symlinks. */
+@source "../node_modules/@konjoai/ui/src";
+
+/* squash-specific tokens — extending Konjo without breaking it */
+@theme {
+  --color-squash-shield: #b794ff;
+
+  --color-sev-info:     var(--color-konjo-cool);
+  --color-sev-warn:     var(--color-konjo-warm);
+  --color-sev-error:    var(--color-konjo-hot);
+  --color-sev-critical: #ff2d55;
+}
+
+:root { color-scheme: dark; }
+html, body, #root { height: 100%; margin: 0; }
