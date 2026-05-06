@@ -45,6 +45,9 @@ from typing import Any, Iterable
 
 log = logging.getLogger(__name__)
 
+# Sentinel event string used when the real webhook_delivery module is absent
+_ATTESTATION_FROZEN_EVENT = "attestation.frozen"
+
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Step model
@@ -119,7 +122,7 @@ class FreezeReceipt:
                 return s
         return None
 
-    # ── serialization ──────────────────────────────────────────────────────
+    # ── serialization ───────────────────────────────────────────────────────
     def to_dict(self) -> dict[str, Any]:
         return {
             "schema": self.schema,
@@ -144,7 +147,6 @@ class FreezeReceipt:
 
     def canonical_payload_bytes(self) -> bytes:
         body = self.to_dict()
-        # Signature/hash fields must be excluded from the canonical payload.
         body.pop("payload_hash", None)
         body.pop("signature_hex", None)
         body.pop("signing_pubkey_pem", None)
@@ -218,7 +220,7 @@ class FreezeOrchestrator:
         self._ledger_path = self._state_dir / "freeze_ledger.jsonl"
         self._priv_key_input = priv_key_pem
 
-    # ── public API ─────────────────────────────────────────────────────────
+    # ── public API ───────────────────────────────────────────────────────────
 
     def freeze(
         self,
@@ -254,7 +256,7 @@ class FreezeOrchestrator:
             actor=actor or _default_actor(),
         )
 
-        # ── Step 1: revoke in registry ─────────────────────────────────────
+        # ── Step 1: revoke in registry ────────────────────────────────────
         revoke_step = self._step_revoke(
             attestation_id=attestation_id,
             model_id=model_id,
@@ -263,23 +265,20 @@ class FreezeOrchestrator:
         receipt.steps.append(revoke_step)
 
         if not revoke_step.ok:
-            # If we cannot revoke, abort before any broadcast — emergency
-            # response that lies (claims a freeze that never landed) is
-            # worse than no response at all.
             receipt.completed_at = _utc_now()
             self._sign_and_log(receipt)
             return receipt
 
-        # ── Step 2: broadcast webhook ──────────────────────────────────────
+        # ── Step 2: broadcast webhook ──────────────────────────────────
         receipt.steps.append(self._step_webhook(receipt, webhook_timeout_s))
 
-        # ── Step 3: signed ledger entry ────────────────────────────────────
+        # ── Step 3: signed ledger entry ────────────────────────────────
         receipt.steps.append(self._step_ledger(receipt))
 
-        # ── Step 4: notification fanout ────────────────────────────────────
+        # ── Step 4: notification fanout ───────────────────────────────
         receipt.steps.append(self._step_notify(receipt))
 
-        # ── Step 5: incident package ───────────────────────────────────────
+        # ── Step 5: incident package ──────────────────────────────────
         receipt.steps.append(
             self._step_incident(
                 receipt,
@@ -295,7 +294,7 @@ class FreezeOrchestrator:
         self._sign_and_log(receipt)
         return receipt
 
-    # ── step implementations ───────────────────────────────────────────────
+    # ── step implementations ───────────────────────────────────────────
 
     def _step_revoke(
         self,
@@ -305,18 +304,21 @@ class FreezeOrchestrator:
         receipt: FreezeReceipt,
     ) -> StepResult:
         t0 = _now_ms()
-        try:
-            from squash.attestation_registry import AttestationRegistry
-        except Exception as exc:
-            return StepResult(
-                step=FreezeStep.REGISTRY_REVOKE,
-                ok=False,
-                detail="attestation_registry import failed",
-                duration_ms=_now_ms() - t0,
-                error=str(exc),
-            )
-
-        reg = self._registry if self._registry is not None else AttestationRegistry()
+        # Only import the real registry when no stub has been injected.
+        if self._registry is not None:
+            reg = self._registry
+        else:
+            try:
+                from squash.attestation_registry import AttestationRegistry
+            except Exception as exc:
+                return StepResult(
+                    step=FreezeStep.REGISTRY_REVOKE,
+                    ok=False,
+                    detail="attestation_registry import failed",
+                    duration_ms=_now_ms() - t0,
+                    error=str(exc),
+                )
+            reg = AttestationRegistry()
 
         try:
             entries: list[Any] = []
@@ -380,20 +382,25 @@ class FreezeOrchestrator:
         self, receipt: FreezeReceipt, timeout_s: float
     ) -> StepResult:
         t0 = _now_ms()
-        try:
-            from squash.webhook_delivery import WebhookDelivery, WebhookEvent
-        except Exception as exc:
-            return StepResult(
-                step=FreezeStep.WEBHOOK_BROADCAST,
-                ok=False,
-                detail="webhook_delivery import failed",
-                duration_ms=_now_ms() - t0,
-                error=str(exc),
+        # Only import real webhook machinery when no stub has been injected.
+        if self._webhook is not None:
+            wh = self._webhook
+            event: Any = _ATTESTATION_FROZEN_EVENT
+        else:
+            try:
+                from squash.webhook_delivery import WebhookDelivery, WebhookEvent
+            except Exception as exc:
+                return StepResult(
+                    step=FreezeStep.WEBHOOK_BROADCAST,
+                    ok=False,
+                    detail="webhook_delivery import failed",
+                    duration_ms=_now_ms() - t0,
+                    error=str(exc),
+                )
+            wh = WebhookDelivery(
+                db_path=str(self._state_dir / "webhooks.db")
             )
-
-        wh = self._webhook if self._webhook is not None else WebhookDelivery(
-            db_path=str(self._state_dir / "webhooks.db")
-        )
+            event = WebhookEvent.ATTESTATION_FROZEN
 
         payload = {
             "freeze_id": receipt.freeze_id,
@@ -407,7 +414,7 @@ class FreezeOrchestrator:
         }
 
         try:
-            results = wh.dispatch(WebhookEvent.ATTESTATION_FROZEN, payload, timeout_s=timeout_s)
+            results = wh.dispatch(event, payload, timeout_s=timeout_s)
         except Exception as exc:  # noqa: BLE001
             log.exception("freeze webhook step raised")
             return StepResult(
@@ -475,19 +482,6 @@ class FreezeOrchestrator:
 
     def _step_notify(self, receipt: FreezeReceipt) -> StepResult:
         t0 = _now_ms()
-        try:
-            from squash.notifications import ATTESTATION_FROZEN, notify
-        except Exception as exc:
-            return StepResult(
-                step=FreezeStep.NOTIFICATION,
-                ok=False,
-                detail="notifications import failed",
-                duration_ms=_now_ms() - t0,
-                error=str(exc),
-            )
-
-        receipt.notification_event = ATTESTATION_FROZEN
-
         details = {
             "freeze_id": receipt.freeze_id,
             "attestation_id": receipt.attestation_id,
@@ -495,31 +489,56 @@ class FreezeOrchestrator:
             "actor": receipt.actor,
             "reason": receipt.reason,
         }
+        title = f"EMERGENCY FREEZE — {receipt.model_id or receipt.attestation_id}"
 
-        try:
-            if self._notifier is not None:
+        # Only import real notification machinery when no stub has been injected.
+        if self._notifier is not None:
+            freeze_event = _ATTESTATION_FROZEN_EVENT
+            receipt.notification_event = freeze_event
+            try:
                 result = self._notifier.notify(
-                    ATTESTATION_FROZEN,
+                    freeze_event,
                     model_id=receipt.model_id,
                     details=details,
-                    title=f"EMERGENCY FREEZE — {receipt.model_id or receipt.attestation_id}",
+                    title=title,
                 )
-            else:
+            except Exception as exc:  # noqa: BLE001
+                log.exception("freeze notify step raised")
+                return StepResult(
+                    step=FreezeStep.NOTIFICATION,
+                    ok=False,
+                    detail="notifier raised",
+                    duration_ms=_now_ms() - t0,
+                    error=f"{type(exc).__name__}: {exc}",
+                )
+        else:
+            try:
+                from squash.notifications import ATTESTATION_FROZEN, notify
+            except Exception as exc:
+                return StepResult(
+                    step=FreezeStep.NOTIFICATION,
+                    ok=False,
+                    detail="notifications import failed",
+                    duration_ms=_now_ms() - t0,
+                    error=str(exc),
+                )
+            receipt.notification_event = ATTESTATION_FROZEN
+            try:
                 result = notify(
                     ATTESTATION_FROZEN,
                     model_id=receipt.model_id,
                     details=details,
-                    title=f"EMERGENCY FREEZE — {receipt.model_id or receipt.attestation_id}",
+                    title=title,
                 )
-        except Exception as exc:  # noqa: BLE001
-            log.exception("freeze notify step raised")
-            return StepResult(
-                step=FreezeStep.NOTIFICATION,
-                ok=False,
-                detail="notifier raised",
-                duration_ms=_now_ms() - t0,
-                error=f"{type(exc).__name__}: {exc}",
-            )
+            except Exception as exc:  # noqa: BLE001
+                log.exception("freeze notify step raised")
+                return StepResult(
+                    step=FreezeStep.NOTIFICATION,
+                    ok=False,
+                    detail="notifier raised",
+                    duration_ms=_now_ms() - t0,
+                    error=f"{type(exc).__name__}: {exc}",
+                )
 
         delivered = _result_delivered(result)
         return StepResult(
@@ -545,20 +564,23 @@ class FreezeOrchestrator:
         write: bool,
     ) -> StepResult:
         t0 = _now_ms()
-        try:
-            from squash.incident import IncidentResponder
-        except Exception as exc:
-            return StepResult(
-                step=FreezeStep.INCIDENT_PACKAGE,
-                ok=False,
-                detail="incident import failed",
-                duration_ms=_now_ms() - t0,
-                error=str(exc),
-            )
+        # Only import real incident machinery when no factory stub injected.
+        if self._incident_factory is not None:
+            factory = self._incident_factory
+        else:
+            try:
+                from squash.incident import IncidentResponder
+            except Exception as exc:
+                return StepResult(
+                    step=FreezeStep.INCIDENT_PACKAGE,
+                    ok=False,
+                    detail="incident import failed",
+                    duration_ms=_now_ms() - t0,
+                    error=str(exc),
+                )
+            factory = IncidentResponder.respond
 
         if not receipt.model_path:
-            # incident builder requires a model path; fall back to a synthetic
-            # placeholder so the package still records the freeze metadata.
             receipt.model_path = str(self._state_dir / f"{receipt.freeze_id}.placeholder")
             try:
                 Path(receipt.model_path).touch(exist_ok=True)
@@ -566,7 +588,6 @@ class FreezeOrchestrator:
                 pass
 
         try:
-            factory = self._incident_factory or IncidentResponder.respond
             description = (
                 receipt.reason
                 or f"squash freeze invoked at {receipt.initiated_at} by {receipt.actor}"
@@ -618,11 +639,9 @@ class FreezeOrchestrator:
             duration_ms=_now_ms() - t0,
         )
 
-    # ── signing & audit ────────────────────────────────────────────────────
+    # ── signing & audit ──────────────────────────────────────────────
 
     def _sign_and_log(self, receipt: FreezeReceipt) -> None:
-        # Always compute the SHA-256 hash even if no key is available — it
-        # makes the receipt comparable across copies even when unsigned.
         try:
             payload = receipt.canonical_payload_bytes()
             receipt.payload_hash = hashlib.sha256(payload).hexdigest()
@@ -756,7 +775,6 @@ def verify_receipt(receipt: FreezeReceipt | dict[str, Any]) -> tuple[bool, str]:
     """
 
     if isinstance(receipt, dict):
-        # Re-hydrate a minimal receipt purely for canonicalisation.
         steps_raw = receipt.get("steps", [])
         steps = [
             StepResult(
@@ -857,7 +875,7 @@ def _coerce_dict(obj: Any) -> dict[str, Any]:
 
 def _result_delivered(result: Any) -> bool:
     if result is None:
-        return True  # no-op dispatcher counts as success
+        return True
     if isinstance(result, bool):
         return result
     if isinstance(result, dict):
