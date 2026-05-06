@@ -229,7 +229,7 @@ def post_request(
                 raise TSAError(
                     f"unexpected content-type from TSA: {ct!r} (want {TSA_RESPONSE_CONTENT_TYPE})"
                 )
-            return resp.read()
+            return bytes(resp.read())
     except urllib.error.URLError as exc:
         raise TSAError(f"TSA POST failed: {exc}") from exc
 
