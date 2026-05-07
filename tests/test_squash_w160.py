@@ -814,7 +814,7 @@ class TestDemoCommand(unittest.TestCase):
 
     def test_demo_tagline_in_output(self):
         rc, out = self._run_demo(["demo"])
-        self.assertIn("velocity", out.lower())
+        self.assertIn("trustworthy", out.lower())
 
 
 class TestDemoCommandUnit(unittest.TestCase):

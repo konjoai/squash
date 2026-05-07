@@ -21,7 +21,7 @@ class TestSquashVersion:
         # squash demo CLI, and resolved version drift between
         # squash/__init__.py and pyproject.toml.
         version = _read_version()
-        assert version == "3.0.0", f"Expected version 3.0.0, got {version}"
+        assert version == "3.3.0", f"Expected version 3.3.0, got {version}"
 
     def test_version_follows_semver(self):
         version = _read_version()

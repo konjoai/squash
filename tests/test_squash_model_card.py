@@ -660,9 +660,9 @@ class TestModuleCountGate(unittest.TestCase):
         # · Phase G.2 (Bulletproof Edition): canon.py, clock.py, ids.py (+3) = 106.
         self.assertEqual(
             count,
-            106,
-            msg=f"squash/ has {count} Python files (expected 106 after Phase G.2 "
-                "canon/clock/ids primitives). If you added a file, update this gate.",
+            107,
+            msg=f"squash/ has {count} Python files (expected 107 after C1/freeze.py). "
+                "If you added a file, update this gate.",
         )
 
 

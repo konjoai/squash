@@ -684,7 +684,6 @@ class TestInsuranceCLI(unittest.TestCase):
         return subprocess.run(
             [sys.executable, "-m", "squash.cli", *args],
             capture_output=True, text=True,
-            cwd="/Users/wesleyscholl/squash",
         )
 
     def test_cli_help_exits_0(self):

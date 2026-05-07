@@ -26,7 +26,6 @@ _STUB_MODULES = [
     "mlx", "mlx.core", "mlx.nn", "mlx.utils",
     "mlx_lm", "mlx_lm.utils", "mlx_lm.tuner", "mlx_lm.tuner.utils",
     "transformers", "huggingface_hub",
-    "numpy",
     "cyclonedx", "cyclonedx.model", "cyclonedx.model.bom",
     "cyclonedx.model.component", "cyclonedx.output", "cyclonedx.output.json",
     "cyclonedx.schema",
