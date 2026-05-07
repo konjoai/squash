@@ -1,6 +1,6 @@
 ## From Zero to $10M ARR: EU AI Act Compliance Platform
 
-> **Last updated:** 2026-05-06 — Sprint 19 C1 shipped (`squash freeze`)
+> **Last updated:** 2026-05-07 — Sprint 27 C4 shipped (`squash watch-regulatory`)
 > **Status:** Living document — updated on every commit
 > **Horizon:** April 2026 → October 2027
 
@@ -96,7 +96,7 @@ Launch anchors (unchanged):
 | **C1** ✅ | **`squash freeze`** — emergency response orchestrator | shipped 2026-05-06 | A3, B1 | 20% have a tested AI incident-response plan. `freeze.py`: FreezeOrchestrator, 5-step atomicity, Ed25519 signing, ledger. 38 tests. | Sprint 19 (W221–W222) ✅ |
 | **C2** ✅ | **AI Washing Detection** — `squash detect-washing` | shipped 2026-04-30 | B1, B2 | SEC #1 AI exam priority 2026. `washing_detector.py`: 28 patterns, 9 claim types, 12 divergence rules, 95.7% recall. 38 tests. | Sprint 20 (W223–W225) ✅ |
 | **C3** ✅ | **Approval Workflow** — `squash approve` (signed reviewer record) | 5 days | May 13–19 | B2, B3, B4 | EU AI Act Art. 9 human-oversight requirement | Sprint 23 (W232–W234) |
-| **C4** | **Regulatory Watch Daemon** — primary-source polling + gap analysis | 7 days | May 20–28 | B4, D1 | Daily-touch product = retention | Sprint 27 (W243–W245) |
+| **C4** ✅ | **Regulatory Watch Daemon** — primary-source polling + gap analysis | shipped 2026-05-07 | B4, D1 | Daily-touch product = retention | Sprint 27 (W243–W245) ✅ |
 | **C5** | **Audit Simulation** — `squash simulate-audit --regulator EU-AI-Act` | 10 days | Jun 2–13 | D1, D2, B5 | 78% can't pass audit in 90 days | Sprint 22 (W229–W231) |
 | **C2** | **AI Washing Detection** — `squash detect-washing` | 5 days | May 7–12 | B1, B2 | SEC #1 AI exam priority 2026 | Sprint 20 (W223–W225) |
 | **C3** | **Approval Workflow** — `squash approve` | 5 days | May 13–19 | B2, B3 | EU AI Act Art. 9 | Sprint 23 |
@@ -453,7 +453,7 @@ Design partner ask: 30-min monthly call + testimonial for launch.
 - **Minor (X.Y.0):** New features, new CLI commands
 - **Patch (X.Y.Z):** Bug fixes, test additions, docs
 
-Current: **v3.3.0** (Sprint 19 C1 — `squash freeze`)
+Current: **v3.4.0** (Sprint 27 C4 — `squash watch-regulatory`)
 
 ### Release Checklist
 
