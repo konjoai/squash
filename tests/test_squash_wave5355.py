@@ -677,8 +677,8 @@ class TestModuleCount:
         import subprocess, pathlib
         root = pathlib.Path(__file__).parent.parent / "squash"
         count = len(list(root.rglob("*.py")))
-        assert count == 106, (
-            f"Module count should be 94, got {count}. "
-            "D2/W226-228 added identity_governor.py + 3 adapter files. "
+        assert count == 107, (
+            f"Module count should be 107, got {count}. "
+            "C1 Sprint 19 added freeze.py (FreezeOrchestrator). "
             "New modules require deletion or written justification."
         )
