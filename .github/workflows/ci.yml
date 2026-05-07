@@ -60,6 +60,7 @@ jobs:
       - name: Run coverage
         run: |
           python -m coverage run -m pytest tests/ --timeout=120 -q || true
+          python -m coverage combine || true
           python -m coverage xml -o coverage.xml
           python -m coverage report --skip-covered=false --precision=2
       - name: Tier-0 coverage gate
