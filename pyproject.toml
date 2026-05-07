@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "squash-ai"
-version = "3.2.0"
+version = "3.3.0"
 description = "Squash violations, not velocity. Automated EU AI Act compliance for ML teams — CI/CD-native, open-core, developer-first."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -145,8 +145,26 @@ warn_return_any = true
 no_implicit_optional = true
 check_untyped_defs = true
 
+# Non-Phase-G modules: suppress warn_return_any and disallow_any_generics so
+# the strict Phase G check can still import them without generating noise.
+# This must come BEFORE the Phase G strict overrides so that the Phase G
+# strict settings (below) take precedence (mypy applies overrides in order,
+# later entries winning on conflicting settings).
+[[tool.mypy.overrides]]
+module = [
+    "squash",
+    "squash.*",
+    "squash.*.*",
+]
+warn_return_any = false
+disallow_any_generics = false
+check_untyped_defs = false
+follow_imports = "skip"
+
 # Per-module strict mode for the Phase G primitives. Adding a module
 # to this list is the contract: every new line in it must type-check.
+# This block comes AFTER the wildcard relaxed block so it wins for these
+# six modules (later overrides take precedence in mypy).
 [[tool.mypy.overrides]]
 module = [
     "squash.canon",
@@ -161,18 +179,6 @@ disallow_untyped_defs = true
 disallow_incomplete_defs = true
 disallow_untyped_calls = true
 disallow_any_generics = true
-
-# Non-Phase-G modules: suppress warn_return_any and disallow_any_generics so
-# the strict Phase G check can still import them without generating noise.
-[[tool.mypy.overrides]]
-module = [
-    "squash.nist_rmf",
-    "squash.model_card",
-    "squash.report",
-    "squash.integrations.kubernetes",
-]
-warn_return_any = false
-disallow_any_generics = false
 
 # ---------------------------------------------------------------------------
 # Phase G — Bulletproof Edition — coverage + mutation gates

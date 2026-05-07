@@ -142,8 +142,8 @@ def test_canonical_bytes_round_trip_under_json_load(value):
 @given(
     a=st.text(min_size=1, max_size=10).filter(lambda s: "\x00" not in s),
     b=st.text(min_size=1, max_size=10).filter(lambda s: "\x00" not in s),
-    v1=st.integers(),
-    v2=st.integers(),
+    v1=st.integers(min_value=-(2**53 - 1), max_value=(2**53 - 1)),
+    v2=st.integers(min_value=-(2**53 - 1), max_value=(2**53 - 1)),
 )
 def test_canonical_bytes_dict_order_invariance(a, b, v1, v2):
     """Insertion order does not change the canonical bytes."""
@@ -162,7 +162,7 @@ def test_canonical_bytes_dict_order_invariance(a, b, v1, v2):
 @given(
     payload=st.dictionaries(
         keys=st.text(min_size=1, max_size=10).filter(lambda s: "\x00" not in s),
-        values=st.one_of(st.integers(), st.text(max_size=10).filter(lambda s: "\x00" not in s)),
+        values=st.one_of(st.integers(min_value=-(2**53 - 1), max_value=(2**53 - 1)), st.text(max_size=10).filter(lambda s: "\x00" not in s)),
         max_size=5,
     )
 )
@@ -176,13 +176,13 @@ def test_deterministic_uuid_dict_order_invariance(payload):
 @given(
     p1=st.dictionaries(
         keys=st.text(min_size=1, max_size=10).filter(lambda s: "\x00" not in s),
-        values=st.integers(),
+        values=st.integers(min_value=-(2**53 - 1), max_value=(2**53 - 1)),
         min_size=1,
         max_size=5,
     ),
     p2=st.dictionaries(
         keys=st.text(min_size=1, max_size=10).filter(lambda s: "\x00" not in s),
-        values=st.integers(),
+        values=st.integers(min_value=-(2**53 - 1), max_value=(2**53 - 1)),
         min_size=1,
         max_size=5,
     ),

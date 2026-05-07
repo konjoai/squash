@@ -444,8 +444,8 @@ class TestModuleCount:
             p for p in squash_dir.rglob("*.py")
             if "__pycache__" not in str(p)
         ]
-        assert len(py_files) <= 106, (
-            f"Module count {len(py_files)} exceeds 106. "
+        assert len(py_files) <= 107, (
+            f"Module count {len(py_files)} exceeds 107. "
             "Every new file requires CHANGELOG justification."
         )
 

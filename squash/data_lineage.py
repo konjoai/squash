@@ -107,8 +107,8 @@ class LineageCertificate:
             lines.append("Datasets:")
             for ds in self.datasets:
                 lic_ok = "✅" if ds.commercial_use_allowed else "⚠" if ds.commercial_use_allowed is False else "?"
-                pii_icon = "🔴" if ds.pii_risk in (PIIRiskLevel.HIGH, PIIRiskLevel.CRITICAL) else \
-                           "🟡" if ds.pii_risk == PIIRiskLevel.MEDIUM else "✅"
+                pii_icon = "\U0001f534" if ds.pii_risk in (PIIRiskLevel.HIGH, PIIRiskLevel.CRITICAL) else \
+                           "\U0001f7e1" if ds.pii_risk == PIIRiskLevel.MEDIUM else "✅"
                 lines.append(f"  {lic_ok} {pii_icon} {ds.dataset_name}")
                 lines.append(f"     License: {ds.license_spdx} ({ds.license_category.value}) | PII: {ds.pii_risk.value}")
                 if ds.pii_indicators:
@@ -452,7 +452,7 @@ def _scan_mlflow_run(model_path: Path) -> list[str]:
 def _assess_dataset(ds_name: str) -> DatasetProvenance:
     """Assess a single dataset by name against the knowledge base."""
     import hashlib as _h
-    ds_id = _h.md5(ds_name.encode()).hexdigest()[:8]
+    ds_id = _h.md5(ds_name.encode(), usedforsecurity=False).hexdigest()[:8]  # nosec B324
 
     # Normalize name for lookup (collapse hyphens, slashes, spaces to underscore)
     def _norm(s: str) -> str:

@@ -635,9 +635,9 @@ class TestModuleCount:
             if "experimental" not in str(p)
             and "__pycache__" not in str(p)
         ]
-        # Hard limit: 106 (as documented in CHANGELOG for waves 1–28)
-        assert len(py_files) <= 106, (
-            f"Module count exceeded 106: {len(py_files)} files found. "
+        # Hard limit: 107 (as documented in CHANGELOG for waves 1–28 + C1 freeze.py)
+        assert len(py_files) <= 107, (
+            f"Module count exceeded 107: {len(py_files)} files found. "
             "Add justification to CHANGELOG before adding new modules."
         )
 

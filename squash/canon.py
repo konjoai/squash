@@ -93,7 +93,7 @@ try:  # pragma: no cover - optional dependency presence is environmental
     import rfc8785 as _rfc8785
 
     def _encode_with_rfc8785(value: Any) -> bytes:
-        return _rfc8785.dumps(value)
+        return bytes(_rfc8785.dumps(value))
 except ImportError:  # pragma: no cover - only one branch runs per environment
     _rfc8785 = None  # type: ignore[assignment]  # noqa: F841 — intentional None sentinel
 
