@@ -16,12 +16,12 @@ def _read_version() -> str:
 
 class TestSquashVersion:
     def test_version_is_3_0_0(self):
-        # v3.0.0 — Bulletproof Edition release (Phase G complete).
-        # Bumped from 2.7.0 with the closure sprint that landed CHANGELOG,
-        # squash demo CLI, and resolved version drift between
-        # squash/__init__.py and pyproject.toml.
+        # v3.4.0 — Sprint 27 C4: Regulatory Watch Daemon shipped.
+        # Bumped from 3.3.0 with test coverage for regulatory_watch.py
+        # (RegulatoryWatcher, SecAdapter, NistAdapter, EurLexAdapter,
+        # GenericRssAdapter, gap_analysis, parse_interval). 122 new tests.
         version = _read_version()
-        assert version == "3.3.0", f"Expected version 3.3.0, got {version}"
+        assert version == "3.4.0", f"Expected version 3.4.0, got {version}"
 
     def test_version_follows_semver(self):
         version = _read_version()
