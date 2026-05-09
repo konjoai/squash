@@ -1,0 +1,78 @@
+PRIVACY POLICY
+
+Last updated: 2026-01-15
+
+1. WHO WE ARE
+
+Acme Analytics GmbH ("we", "us", "our") is the data controller for the
+personal information we process about you. You can contact our Data
+Protection Officer at privacy@acme-analytics.example, or by post at
+Acme Analytics GmbH, 12 Friedrichstrasse, 10117 Berlin, Germany.
+
+2. INFORMATION WE COLLECT
+
+We collect the following categories of personal information:
+  - Account data: name, email address, hashed password.
+  - Usage data: IP address, browser type, pages visited, session duration.
+  - Billing data: company name, billing address, VAT number, payment token.
+  - Support data: any message you send us via support@acme-analytics.example.
+
+3. PURPOSE OF PROCESSING AND LAWFUL BASIS
+
+We process your personal data for the following purposes, each with a
+documented lawful basis under Article 6 of the GDPR:
+
+  (a) To provide the service you requested — performance of contract.
+  (b) To bill you and collect payment — performance of contract.
+  (c) To prevent fraud and abuse — legitimate interest.
+  (d) To send service announcements — legitimate interest.
+  (e) To send marketing emails — consent (opt-in, withdrawable any time).
+  (f) To comply with tax, accounting and audit obligations — legal obligation.
+
+4. RETENTION PERIOD
+
+We retain personal data only for as long as necessary for the purpose for
+which it was collected:
+  - Account data: for the duration of the account, then 90 days after closure.
+  - Billing data: 10 years (statutory tax-records retention period).
+  - Usage logs: 13 months from the date of collection.
+  - Support tickets: 2 years from the last message in the ticket.
+
+5. YOUR DATA SUBJECT RIGHTS
+
+Under Articles 15 to 22 of the GDPR you have the right of access to your
+data, the right to rectification, the right to erasure (also known as
+the right to be forgotten), the right to data portability, the right to
+restrict processing, and the right to object. You also have the right
+to lodge a complaint with your local supervisory authority. You may
+exercise any of these rights by emailing dpo@acme-analytics.example.
+
+6. INTERNATIONAL TRANSFERS
+
+When we transfer personal data outside the European Economic Area, we
+rely on the Standard Contractual Clauses (SCCs) approved by the European
+Commission, supplemented by transfer impact assessments. A list of the
+third countries to which we transfer data is available on request.
+
+7. DATA BREACH NOTIFICATION
+
+In the unlikely event of a personal data breach that is likely to result
+in a risk to your rights and freedoms, we will notify the competent
+supervisory authority within 72 hours of becoming aware of the breach,
+in accordance with Article 33 of the GDPR. Affected individuals will
+also be notified without undue delay.
+
+8. THIRD-PARTY PROCESSORS
+
+We share personal data with the following processors, each bound by a
+written data processing agreement: Stripe (payments), AWS Frankfurt
+(hosting), Postmark (transactional email), and Sentry (error logging).
+
+9. COOKIES
+
+We use cookies and similar tracking technologies. See our Cookie Policy
+for details and how to opt out.
+
+10. CHANGES TO THIS POLICY
+
+We will notify you of material changes 30 days before they take effect.

@@ -18,7 +18,7 @@ Frameworks covered: EU AI Act · NIST AI RMF · ISO 42001 · OWASP LLM Top 10 ·
 FedRAMP · CMMC · SOC 2-AI · HITRUST · GDPR-AI · DORA
 """
 
-__version__ = "3.4.0"
+__version__ = "3.5.0"
 
 from squash.sbom_builder import CompressRunMeta, CycloneDXBuilder, SbomDiff, SbomRegistry, EvalBinder
 from squash.oms_signer import OmsSigner, OmsVerifier
@@ -152,6 +152,15 @@ from squash.insurance import (  # noqa: F401 (Sprint 24 W235-W237 — Track C / 
     CoalitionAdapter,
     GenericAdapter,
 )
+from squash.quick_check import (  # noqa: F401 (Sprint 28 — Demo polish & viral)
+    AVAILABLE_FRAMEWORKS as QUICK_CHECK_FRAMEWORKS,
+    QuickCheckResult,
+    ResultStore as QuickCheckStore,
+    is_valid_share_hash as is_valid_quick_check_hash,
+    make_share_hash as make_quick_check_hash,
+    run_quick_check,
+)
+
 from squash.freeze import (  # noqa: F401 (Sprint 19 W221-W222 — Track C / C1)
     FreezeOrchestrator,
     FreezeReceipt,
@@ -305,4 +314,11 @@ __all__ = [
     "FreezeReceipt",
     "FreezeStep",
     "FreezeStepResult",
+    # Sprint 28: Demo polish & viral (quick-check + shareable permalinks)
+    "QUICK_CHECK_FRAMEWORKS",
+    "QuickCheckResult",
+    "QuickCheckStore",
+    "is_valid_quick_check_hash",
+    "make_quick_check_hash",
+    "run_quick_check",
 ]

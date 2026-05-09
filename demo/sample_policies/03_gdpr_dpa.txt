@@ -1,0 +1,91 @@
+DATA PROCESSING AGREEMENT
+
+This Data Processing Agreement ("DPA") forms part of the master service
+agreement between the Customer (the "Controller") and Acme Analytics
+GmbH (the "Processor"). It is entered into pursuant to Article 28 of
+Regulation (EU) 2016/679 (the "GDPR").
+
+1. DEFINITIONS
+
+Terms used but not defined here have the meaning given to them in the
+GDPR. The Data Controller, Data Processor, Data Subject, Personal Data,
+and Processing roles are as defined in the GDPR.
+
+2. SCOPE AND PURPOSE OF PROCESSING
+
+The Processor will process personal data only on the documented
+instructions of the Controller, including with regard to international
+transfers. The categories of data subjects, categories of personal
+data, the nature and purpose of processing, and the duration of
+processing are described in Annex A.
+
+3. LAWFUL BASIS
+
+The Controller represents that it has identified an appropriate lawful
+basis under Article 6 (and where applicable, Article 9) of the GDPR
+for each processing activity described in Annex A.
+
+4. SUB-PROCESSORS
+
+The Controller authorises the Processor to engage the sub-processors
+listed in Annex B. The Processor will give the Controller 30 days'
+notice of any intended addition or replacement of a sub-processor and
+will impose the same data-protection obligations on every
+sub-processor by written contract.
+
+5. DATA SUBJECT RIGHTS
+
+The Processor will assist the Controller, by appropriate technical and
+organisational measures, in fulfilling the Controller's obligation to
+respond to requests by data subjects exercising their rights under
+Articles 15 to 22 of the GDPR (right of access, right to rectification,
+right to erasure, right to data portability, right to restrict
+processing, right to object).
+
+6. SECURITY OF PROCESSING
+
+The Processor will implement the technical and organisational measures
+described in Annex C, including encryption in transit and at rest,
+access control, network segmentation, key management, and continuous
+monitoring. Annex C will be updated at least annually.
+
+7. PERSONAL DATA BREACH NOTIFICATION
+
+The Processor will notify the Controller of any personal data breach
+without undue delay and in any event within 24 hours of becoming aware
+of it, providing all information reasonably available to support the
+Controller's notification to the supervisory authority within the 72
+hours required by Article 33 of the GDPR.
+
+8. INTERNATIONAL TRANSFERS
+
+Where the Processor transfers personal data to a third country or
+international organisation, it will rely on the Standard Contractual
+Clauses (Module Two: Controller to Processor) approved by Commission
+Implementing Decision (EU) 2021/914, supplemented by a documented
+transfer impact assessment and any additional safeguards required.
+
+9. AUDIT
+
+The Controller (or an independent auditor mandated by the Controller)
+may, on reasonable notice, audit the Processor's compliance with this
+DPA, no more than once per calendar year except in the event of a
+personal data breach.
+
+10. RETENTION AND DELETION
+
+On termination of the master service agreement, the Processor will,
+at the Controller's choice, delete or return all personal data processed
+on the Controller's behalf, and delete all existing copies, unless
+storage is required by EU or member-state law.
+
+11. DATA PROTECTION OFFICER
+
+Both parties have appointed a Data Protection Officer reachable at
+dpo@acme-analytics.example and at the contact named in Annex A
+respectively.
+
+12. GOVERNING LAW
+
+This DPA is governed by the laws of Germany. The competent courts of
+Berlin have exclusive jurisdiction.

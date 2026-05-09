@@ -1,0 +1,73 @@
+TERMS OF SERVICE
+
+Effective: 2026-01-15
+
+1. ACCEPTANCE
+
+By creating an account or using the Acme Analytics service ("Service"),
+you agree to these Terms of Service. If you do not agree, do not use
+the Service.
+
+2. THE SERVICE
+
+The Service provides web analytics dashboards, exportable reports, and
+optional anomaly-detection alerts. We may change, suspend or
+discontinue any feature at any time, with reasonable notice.
+
+3. ACCOUNTS
+
+You are responsible for keeping your credentials secret and for any
+activity that occurs under your account. You must promptly notify us
+of any unauthorized use of your account.
+
+4. ACCEPTABLE USE
+
+You agree not to: (a) reverse-engineer the Service; (b) use the Service
+to transmit unlawful content; (c) probe or test the vulnerability of
+the Service without our prior written consent; (d) interfere with the
+Service's normal operation; (e) resell access without a written
+reseller agreement.
+
+5. FEES AND PAYMENT
+
+Paid plans are billed monthly in advance. Fees are non-refundable
+except as required by law. We will notify you 30 days before any
+price change.
+
+6. INTELLECTUAL PROPERTY
+
+We retain all rights, title and interest in the Service. You retain
+all rights in the data you upload. You grant us a limited licence to
+process your data solely to provide the Service to you.
+
+7. CONFIDENTIALITY
+
+Each party agrees to keep the other party's non-public information
+confidential and to use it only to perform under these Terms.
+
+8. WARRANTY DISCLAIMER
+
+THE SERVICE IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND. TO THE
+MAXIMUM EXTENT PERMITTED BY LAW, WE DISCLAIM ALL IMPLIED WARRANTIES,
+INCLUDING MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+
+9. LIMITATION OF LIABILITY
+
+OUR TOTAL LIABILITY IS LIMITED TO THE FEES YOU PAID IN THE 12 MONTHS
+BEFORE THE EVENT GIVING RISE TO LIABILITY. WE ARE NOT LIABLE FOR ANY
+INDIRECT, CONSEQUENTIAL OR PUNITIVE DAMAGES.
+
+10. TERMINATION
+
+You may terminate at any time by closing your account. We may
+terminate for material breach of these Terms upon 30 days' written
+notice and an opportunity to cure.
+
+11. GOVERNING LAW
+
+These Terms are governed by the laws of Germany. The competent courts
+of Berlin have exclusive jurisdiction.
+
+12. CONTACT
+
+Questions: legal@acme-analytics.example.

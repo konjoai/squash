@@ -1,0 +1,72 @@
+NOTICE AT COLLECTION FOR CALIFORNIA RESIDENTS
+
+Effective: 2026-01-15
+
+This notice describes the personal information that Acme Analytics
+GmbH ("we", "us", "our") collects from California residents and the
+purposes for which we collect it. It is provided in accordance with
+the California Consumer Privacy Act of 2018 (CCPA), as amended by the
+California Privacy Rights Act of 2020 (CPRA).
+
+1. CATEGORIES OF PERSONAL INFORMATION WE COLLECT
+
+  - Identifiers: name, email address, account ID, IP address.
+  - Commercial information: subscription plan, billing history.
+  - Internet or electronic network activity: pages visited, referrers,
+    session timestamps, search queries within the dashboard.
+  - Geolocation data: approximate location derived from IP address.
+  - Inferences: usage patterns and engagement scores.
+
+We do not collect biometric information, sensitive personal information
+as defined by the CPRA, or precise geolocation.
+
+2. PURPOSES FOR COLLECTION
+
+We collect the categories listed above to: (a) provide and operate
+the Service; (b) bill you and prevent fraud; (c) improve our Service
+through aggregated analytics; (d) comply with legal obligations.
+
+3. SALE AND SHARING OF PERSONAL INFORMATION
+
+We do not sell personal information for monetary consideration. We do
+not share personal information with third parties for cross-context
+behavioural advertising. You have the right to opt out of any future
+sale or sharing — to exercise it, follow the "Do Not Sell or Share My
+Personal Information" link in the footer of our website.
+
+4. YOUR CALIFORNIA PRIVACY RIGHTS
+
+As a California resident, you have the following rights:
+
+  - Right to know what personal information we have collected about
+    you, including categories and specific pieces.
+  - Right to delete personal information we have collected from you,
+    subject to certain statutory exceptions.
+  - Right to correct inaccurate personal information we hold.
+  - Right to opt out of the sale or sharing of personal information.
+  - Right to limit the use of sensitive personal information.
+
+5. HOW TO EXERCISE YOUR RIGHTS
+
+You may submit a verifiable request by emailing privacy@acme-analytics.example
+or by calling 1-800-555-0199. We will verify your identity using the
+information already on file before responding. We will respond within
+the 45-day period required by the CCPA (extendable once by 45 days
+when reasonably necessary).
+
+6. NON-DISCRIMINATION
+
+We will not discriminate against you for exercising any of your CCPA
+rights. We will not deny you the Service, charge you a different
+price, or provide a different level or quality of service because you
+exercised your rights.
+
+7. AUTHORIZED AGENTS
+
+You may designate an authorized agent to make a request on your behalf.
+We may require proof of the agent's authority and may verify your
+identity directly.
+
+8. CONTACT
+
+Questions about this notice or our privacy practices: privacy@acme-analytics.example.
