@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Squash · Compliance Verdict</title>
+<meta name="description" content="Shareable compliance verdict from Squash — pass/warn/fail with per-dimension scores." />
+<meta name="color-scheme" content="dark" />
+<style>
+:root {
+  --bg: #0a121e;
+  --bg-elev: #11192a;
+  --bg-elev-2: #161f31;
+  --line: #1d2538;
+  --line-strong: #2a3346;
+  --ink: #e4e8ee;
+  --ink-dim: #7a8294;
+  --ink-faint: #4d5567;
+  --accent: #3fc66d;
+  --accent-2: #5dd9ff;
+  --warn: #f7b955;
+  --bad: #ff6b8a;
+  --good: #3fc66d;
+  --code-bg: #06101e;
+  --pill-live: rgba(63, 198, 109, 0.18);
+  --pill-est: rgba(247, 185, 85, 0.18);
+  --grad: linear-gradient(135deg, #3fc66d 0%, #5dd9ff 100%);
+  --shadow: 0 30px 80px -28px rgba(63,198,109,0.18), 0 18px 50px -22px rgba(0,0,0,0.45);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  background-image:
+    radial-gradient(60% 40% at 50% 0%, rgba(63,198,109,0.07) 0%, transparent 60%),
+    radial-gradient(40% 30% at 80% 30%, rgba(93,217,255,0.05) 0%, transparent 70%);
+  color: var(--ink);
+  font: 15px/1.55 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Inter, Roboto, "Helvetica Neue", Arial;
+  letter-spacing: -0.005em;
+}
+a { color: var(--accent-2); text-decoration: none; }
+a:hover { color: var(--accent); }
+code, pre, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; }
+button {
+  font: inherit; cursor: pointer;
+  border: 1px solid var(--line-strong);
+  background: var(--bg-elev-2); color: var(--ink);
+  padding: 9px 18px; border-radius: 9px;
+  transition: border-color .15s, background .15s, transform .08s;
+}
+button:hover { border-color: var(--accent); }
+button.primary {
+  background: var(--accent); color: #0a121e;
+  border: 1px solid var(--accent); font-weight: 700;
+}
+
+header.nav {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 36px; background: rgba(10, 18, 30, 0.78); backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--line);
+}
+.brand { display: flex; align-items: center; gap: 12px; font-weight: 800; letter-spacing: -0.02em; font-size: 17px; }
+.brand .squas { color: var(--ink); }
+.brand .h { color: var(--accent); position: relative; }
+.brand .h::after { content: ""; position: absolute; left: -2px; right: -22px; bottom: -3px; height: 2px; background: var(--accent); }
+.nav-links { display: flex; gap: 22px; font-size: 14px; color: var(--ink-dim); }
+.nav-links a { color: var(--ink-dim); }
+.nav-links a:hover { color: var(--ink); }
+
+main { max-width: 880px; margin: 0 auto; padding: 56px 28px 80px; }
+h1 {
+  margin: 0 0 12px; font-size: clamp(34px, 4.4vw, 44px); letter-spacing: -0.025em; font-weight: 800;
+  background: linear-gradient(135deg, #ffffff 0%, #d8dde8 100%);
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+}
+.permalink-id {
+  font-family: ui-monospace, monospace; color: var(--ink-dim); font-size: 13px;
+  background: var(--bg-elev-2); padding: 4px 10px; border-radius: 6px; border: 1px solid var(--line);
+  display: inline-block;
+}
+.card {
+  margin-top: 28px; background: var(--bg-elev); border: 1px solid var(--line);
+  border-radius: 16px; padding: 28px 30px; box-shadow: var(--shadow);
+}
+.head-row { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
+.qc-pill {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 8px 18px; border-radius: 999px;
+  font-weight: 800; font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase;
+  font-family: ui-monospace, monospace;
+}
+.qc-pill.pass { background: var(--pill-live); color: var(--accent); border: 1px solid rgba(63,198,109,0.4); }
+.qc-pill.warn { background: var(--pill-est); color: var(--warn); border: 1px solid rgba(247,185,85,0.4); }
+.qc-pill.fail { background: rgba(255,107,138,0.16); color: var(--bad); border: 1px solid rgba(255,107,138,0.4); }
+.score { font-size: 38px; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.score-label { color: var(--ink-dim); font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; margin-left: 6px; }
+.summary { color: var(--ink); margin: 6px 0 18px; font-size: 16px; line-height: 1.55; }
+.dims { display: grid; grid-template-columns: max-content 1fr max-content; gap: 10px 14px; align-items: center; font-size: 14px; }
+.dims .name { color: var(--ink); font-weight: 600; }
+.dims .bar { background: var(--code-bg); height: 10px; border-radius: 5px; overflow: hidden; }
+.dims .fill { height: 100%; background: var(--grad); border-radius: 5px; }
+.dims .fill.warn { background: linear-gradient(135deg, #f7b955, #ffd479); }
+.dims .fill.fail { background: linear-gradient(135deg, #ff6b8a, #ff97ad); }
+.dims .pct { color: var(--ink-dim); font-variant-numeric: tabular-nums; min-width: 42px; text-align: right; font-size: 13px; }
+
+.snippet {
+  margin-top: 22px; background: var(--code-bg); border: 1px solid var(--line);
+  border-radius: 10px; padding: 16px 18px;
+  font-family: ui-monospace, monospace; font-size: 12.5px;
+  white-space: pre-wrap; word-break: break-word; color: var(--ink-dim); max-height: 240px; overflow: auto;
+}
+.snippet-label { font-size: 11px; color: var(--ink-dim); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; margin-top: 22px; }
+
+.meta { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); display: flex; gap: 22px; flex-wrap: wrap; font-size: 13px; color: var(--ink-dim); }
+.meta code { background: var(--code-bg); padding: 2px 8px; border-radius: 4px; color: var(--accent); }
+
+.actions { margin-top: 22px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+
+.redflags { margin-top: 12px; padding: 12px 16px; background: rgba(255,107,138,0.08); border-left: 3px solid var(--bad); border-radius: 8px; color: var(--bad); font-size: 13.5px; }
+.redflags strong { font-weight: 700; }
+
+.empty {
+  text-align: center; padding: 60px 30px; color: var(--ink-dim);
+  background: var(--bg-elev); border: 1px solid var(--line); border-radius: 16px;
+}
+.empty .ec-num { font-size: 60px; font-weight: 800; color: var(--ink-faint); letter-spacing: -0.04em; }
+.empty h2 { color: var(--ink); margin: 12px 0 8px; }
+.empty a { color: var(--accent); }
+
+.spin { display: inline-block; width: 12px; height: 12px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: rot 0.7s linear infinite; vertical-align: -2px; margin-right: 6px; }
+@keyframes rot { to { transform: rotate(360deg); } }
+.tiny { font-size: 12px; }
+.muted { color: var(--ink-dim); }
+footer { margin-top: 60px; padding: 24px 0 14px; border-top: 1px solid var(--line); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 14px; color: var(--ink-faint); font-size: 13px; }
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <a href="/" class="brand"><span class="squas">squas</span><span class="h">h</span></a>
+  <div class="nav-links">
+    <a href="/">← New check</a>
+    <a href="https://github.com/konjoai/squash" target="_blank" rel="noreferrer">GitHub</a>
+  </div>
+</header>
+
+<main id="root">
+  <div class="muted tiny" id="loading"><span class="spin"></span>Loading verdict…</div>
+</main>
+
+<footer>
+  <div>© 2026 Konjo AI · Apache 2.0 · <a href="https://github.com/konjoai/squash">github.com/konjoai/squash</a></div>
+  <div class="tiny">Make it Konjo. Build · Ship · Repeat.</div>
+</footer>
+
+<script>
+const API_BASE = (() => {
+  if (window.location.hostname && window.location.port) return window.location.origin;
+  return "http://localhost:8002";
+})();
+
+function escapeHtml(s) {
+  return String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+
+function getHashFromPath() {
+  // /r/{hash} → hash; also accepts ?id=hash for static hosting.
+  const m = window.location.pathname.match(/\/r\/([A-Fa-f0-9]+)/);
+  if (m) return m[1];
+  const params = new URLSearchParams(window.location.search);
+  return params.get("id") || "";
+}
+
+function renderEmpty(reason) {
+  document.getElementById("root").innerHTML = `
+    <div class="empty">
+      <div class="ec-num">404</div>
+      <h2>Verdict not found</h2>
+      <p>${escapeHtml(reason || "This permalink may have expired or never existed.")}</p>
+      <p class="tiny">Demo permalinks are kept in memory and rotate as new checks come in.</p>
+      <p style="margin-top:24px"><a href="/">Run a fresh check →</a></p>
+    </div>`;
+}
+
+function renderResult(data, hash) {
+  const v = (data.verdict || "fail").toLowerCase();
+  const label = v === "pass" ? "PASS" : v === "warn" ? "REVIEW" : "FAIL";
+  const emoji = v === "pass" ? "✓" : v === "warn" ? "⚠" : "✗";
+  let dims = "";
+  for (const d of (data.dimensions || [])) {
+    const pct = Math.round((d.score || 0) * 100);
+    const cls = pct >= 60 ? "" : pct >= 30 ? "warn" : "fail";
+    dims += `<div class="name">${escapeHtml(d.label)}</div>
+      <div class="bar"><div class="fill ${cls}" style="width:${pct}%"></div></div>
+      <div class="pct">${pct}%</div>`;
+  }
+  const redflags = (data.red_flags && data.red_flags.length)
+    ? `<div class="redflags"><strong>⚑ Red flags:</strong> ${data.red_flags.map(escapeHtml).join(" · ")}</div>` : "";
+
+  const html = `
+    <h1>Compliance verdict</h1>
+    <div><span class="permalink-id">/r/${escapeHtml(hash)}</span></div>
+    <section class="card">
+      <div class="head-row">
+        <span class="qc-pill ${v}">${emoji} ${label}</span>
+        <span class="score">${data.score}<span class="score-label">/100</span></span>
+        <span class="muted tiny">${data.word_count} words · evaluated in ${data.elapsed_ms} ms · ${escapeHtml(data.timestamp || "")}</span>
+      </div>
+      <div class="summary">${escapeHtml(data.summary || "")}</div>
+      <div class="dims">${dims}</div>
+      ${redflags}
+      <div class="snippet-label">Policy snippet</div>
+      <div class="snippet">${escapeHtml(data.snippet || "(no snippet)")}</div>
+      <div class="meta">
+        <span>sha-256 <code>${escapeHtml((data.sha256 || "").slice(0, 24))}…</code></span>
+        <span>permalink <code>${escapeHtml(window.location.origin + "/r/" + hash)}</code></span>
+      </div>
+      <div class="actions">
+        <button class="primary" id="btnCopy">📋 Copy link</button>
+        <a href="/"><button>← Run another check</button></a>
+      </div>
+    </section>`;
+  document.getElementById("root").innerHTML = html;
+
+  document.getElementById("btnCopy").addEventListener("click", () => {
+    const url = window.location.origin + "/r/" + hash;
+    navigator.clipboard?.writeText(url).then(() => {
+      const b = document.getElementById("btnCopy");
+      b.textContent = "✓ Copied"; setTimeout(() => { b.innerHTML = "📋 Copy link"; }, 1500);
+    });
+  });
+}
+
+(async () => {
+  const hash = getHashFromPath();
+  if (!hash) { renderEmpty("No permalink id in URL."); return; }
+  try {
+    const r = await fetch(API_BASE + "/api/result/" + encodeURIComponent(hash));
+    if (!r.ok) {
+      let msg = "This permalink is unknown.";
+      try { msg = (await r.json()).error || msg; } catch {}
+      renderEmpty(msg);
+      return;
+    }
+    const data = await r.json();
+    renderResult(data, hash);
+  } catch (e) {
+    renderEmpty("Could not reach the demo server. " + (e.message || ""));
+  }
+})();
+</script>
+
+</body>
+</html>

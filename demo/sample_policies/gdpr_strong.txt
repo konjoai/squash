@@ -1,0 +1,29 @@
+Acme AI — Data Protection Policy (GDPR-aligned)
+
+1. Lawful basis. We process personal data only where we have a lawful basis under
+Article 6 of the EU General Data Protection Regulation: consent, contract,
+legitimate interest, or legal obligation. The basis for each processing activity
+is recorded in our Article 30 Record of Processing Activities.
+
+2. User rights. Data subjects have the right to access, rectify, erase, restrict,
+port, and object to the processing of their personal data. Requests are
+acknowledged within 72 hours and fulfilled within 30 days at no cost. A Data
+Protection Officer is appointed and reachable at dpo@acme.example.
+
+3. Data minimisation. We collect only the personal data strictly necessary for
+the purpose disclosed at collection. Pseudonymisation is applied to identifiers
+in analytics pipelines. Raw event logs are retained for 90 days, then deleted.
+
+4. Security. All personal data is encrypted at rest with AES-256 and in transit
+with TLS 1.3. Access is governed by role-based access control with quarterly
+audits. Multi-factor authentication is mandatory for all administrative access.
+
+5. Breach notification. Personal data breaches are reported to the supervisory
+authority within 72 hours and to affected data subjects without undue delay
+where the breach is likely to result in high risk to their rights and freedoms.
+
+6. International transfers. Transfers outside the EEA are made only under
+Standard Contractual Clauses or to jurisdictions with an adequacy decision.
+
+7. Retention. Personal data is retained only for as long as necessary for the
+disclosed purpose. The retention schedule is reviewed annually.

@@ -1,0 +1,31 @@
+Acme AI — California Consumer Privacy Act (CCPA / CPRA) Notice
+
+Categories of personal information collected. In the past 12 months we have
+collected the following categories of personal information about California
+residents: identifiers (name, email, IP address), commercial information
+(purchase history), internet activity (cookies, log data), and inference data
+derived from your use of our services.
+
+Sources. We collect this information directly from you, from your device when
+you use our services, and from third-party advertising and analytics partners.
+
+Purposes. We use personal information to provide and improve our services,
+secure our infrastructure, comply with legal obligations, and — with your
+consent — to serve targeted advertising. We do not sell personal information
+to third parties for monetary consideration.
+
+Your rights. California residents have the right to know what personal
+information we collect, the right to delete personal information we hold, the
+right to correct inaccurate information, the right to opt out of the sharing of
+personal information for cross-context behavioural advertising, and the right
+to limit the use of sensitive personal information. To exercise any right, use
+the "Do Not Sell or Share My Personal Information" link in the footer or email
+privacy@acme.example. We will not discriminate against you for exercising these
+rights.
+
+Retention. We retain personal information for the period necessary to fulfill
+the purposes outlined in this notice unless a longer retention period is
+required by law.
+
+Authorised agents. You may designate an authorised agent to make a request on
+your behalf. We will require verification of identity and a signed permission.

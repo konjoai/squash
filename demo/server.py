@@ -88,6 +88,28 @@ def _collect_test_count() -> int:
 _TEST_COUNT_CACHE: dict[str, int] = {"value": 0}
 
 
+# In-memory permalink store for /quick-check results, keyed by sha256 prefix.
+# Bounded to the most recent 256 entries — this is a demo, not durable storage.
+_QUICK_CHECK_CACHE: dict[str, dict] = {}
+_QUICK_CHECK_CACHE_ORDER: list[str] = []
+_QUICK_CHECK_CACHE_LOCK = threading.Lock()
+_QUICK_CHECK_CACHE_MAX = 256
+
+
+def _quick_check_remember(result: dict) -> str:
+    """Store a quick-check result under its sha256 prefix; return the prefix."""
+    prefix = result["sha256"][:12]
+    with _QUICK_CHECK_CACHE_LOCK:
+        if prefix in _QUICK_CHECK_CACHE:
+            return prefix
+        if len(_QUICK_CHECK_CACHE_ORDER) >= _QUICK_CHECK_CACHE_MAX:
+            evict = _QUICK_CHECK_CACHE_ORDER.pop(0)
+            _QUICK_CHECK_CACHE.pop(evict, None)
+        _QUICK_CHECK_CACHE[prefix] = result
+        _QUICK_CHECK_CACHE_ORDER.append(prefix)
+    return prefix
+
+
 # ---------------------------------------------------------------------------
 # Endpoint implementations — every one calls real squash code.
 # ---------------------------------------------------------------------------
@@ -571,6 +593,71 @@ def _api_pdf_report(body: dict) -> dict:
         }
 
 
+def _api_quick_check(body: dict) -> dict:
+    """Run the lightweight free-text policy heuristic.
+
+    Cap input at 64 KiB so a single POST cannot blow up the demo. Cache the
+    result under its sha-256 prefix so the client can render a /r/{hash}
+    permalink without hitting the server again.
+    """
+    from demo.quick_check import quick_check_policy
+
+    text = body.get("text") or body.get("policy") or ""
+    if not isinstance(text, str):
+        return {"error": "text must be a string"}
+    text = text[:65536]
+
+    result = quick_check_policy(text).to_dict()
+    prefix = _quick_check_remember(result)
+    result["permalink_id"] = prefix
+    result["permalink"] = f"/r/{prefix}"
+    return result
+
+
+def _api_quick_check_lookup(prefix: str) -> dict | None:
+    with _QUICK_CHECK_CACHE_LOCK:
+        return _QUICK_CHECK_CACHE.get(prefix)
+
+
+_SAMPLE_DIR = _HERE / "sample_policies"
+_SAMPLE_LABELS = {
+    "gdpr_strong.txt": "GDPR — strong",
+    "ccpa_basic.txt": "CCPA — basic",
+    "ai_acceptable_use.txt": "AI Acceptable Use",
+    "soc2_summary.md": "SOC 2 — summary",
+    "weak_policy.txt": "Vague boilerplate",
+}
+
+
+def _api_list_samples() -> dict:
+    if not _SAMPLE_DIR.is_dir():
+        return {"samples": []}
+    out = []
+    for p in sorted(_SAMPLE_DIR.iterdir()):
+        if p.is_file() and not p.name.startswith("."):
+            out.append({
+                "name": p.name,
+                "label": _SAMPLE_LABELS.get(p.name, p.stem),
+                "size_bytes": p.stat().st_size,
+            })
+    return {"samples": out}
+
+
+def _api_get_sample(name: str) -> tuple[int, dict]:
+    """Return a sample policy file by basename. Path traversal is rejected."""
+    safe = Path(name).name  # strip directory components
+    if safe != name or not safe:
+        return HTTPStatus.BAD_REQUEST, {"error": "invalid sample name"}
+    target = _SAMPLE_DIR / safe
+    if not target.is_file():
+        return HTTPStatus.NOT_FOUND, {"error": "sample not found"}
+    return HTTPStatus.OK, {
+        "name": safe,
+        "label": _SAMPLE_LABELS.get(safe, target.stem),
+        "text": target.read_text(encoding="utf-8"),
+    }
+
+
 _ROUTES_POST = {
     "/api/canon":        _api_canon,
     "/api/attest":       _api_attest,
@@ -580,6 +667,7 @@ _ROUTES_POST = {
     "/api/copyright":    _api_copyright,
     "/api/ollama-scan":  _api_ollama_scan,
     "/api/pdf-report":   _api_pdf_report,
+    "/quick-check":      _api_quick_check,
 }
 
 
@@ -623,6 +711,25 @@ class DemoHandler(BaseHTTPRequestHandler):
         if path in ("/", "/index.html"):
             html = (_HERE / "index.html").read_bytes()
             self._write_file(HTTPStatus.OK, html, "text/html; charset=utf-8")
+            return
+        if path == "/result.html" or path.startswith("/r/"):
+            html = (_HERE / "result.html").read_bytes()
+            self._write_file(HTTPStatus.OK, html, "text/html; charset=utf-8")
+            return
+        if path.startswith("/api/result/"):
+            prefix = path[len("/api/result/"):].strip("/")
+            cached = _api_quick_check_lookup(prefix)
+            if cached is None:
+                self._write_json(HTTPStatus.NOT_FOUND, {"error": "result expired or unknown"})
+                return
+            self._write_json(HTTPStatus.OK, cached)
+            return
+        if path == "/api/sample-policies":
+            self._write_json(HTTPStatus.OK, _api_list_samples())
+            return
+        if path.startswith("/api/sample-policies/"):
+            name = path[len("/api/sample-policies/"):].strip("/")
+            self._write_json(*_api_get_sample(name))
             return
         if path == "/api/health":
             self._write_json(HTTPStatus.OK, _api_health())
