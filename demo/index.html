@@ -396,9 +396,197 @@ footer { margin-top: 80px; padding: 32px 0 14px; border-top: 1px solid var(--lin
 
 .reveal { opacity: 0; transform: translateY(20px); transition: opacity .6s ease, transform .6s ease; }
 .reveal.visible { opacity: 1; transform: translateY(0); }
+/* ──────────────────────────────────────────────────────────────────────
+   Konjo visual layer — particles, tilt, scan beam, flashlight, tension.
+   Pure additive. No existing rule overridden.
+   Easings:
+     --ease-exit:  cubic-bezier(0.23, 1, 0.32, 1)
+     --ease-enter: cubic-bezier(0.34, 1.56, 0.64, 1)
+   ────────────────────────────────────────────────────────────────────── */
+:root {
+  --ease-exit:  cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-enter: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --tension: 0;
+}
+canvas#sqParticles {
+  position: fixed; inset: 0; width: 100vw; height: 100vh;
+  pointer-events: none; z-index: 0;
+  will-change: transform;
+}
+body { position: relative; }
+header.nav, main, footer { position: relative; z-index: 2; }
+
+/* cursor flashlight — radial gradient that follows the pointer */
+#sqFlashlight {
+  position: fixed; left: 0; top: 0;
+  width: 240px; height: 240px;
+  margin-left: -120px; margin-top: -120px;
+  pointer-events: none; z-index: 3;
+  background: radial-gradient(circle 120px at center,
+              rgba(124,58,237,0.06) 0%,
+              rgba(124,58,237,0.03) 35%,
+              transparent 70%);
+  transform: translate3d(-9999px, -9999px, 0);
+  will-change: transform;
+  mix-blend-mode: screen;
+}
+@media (prefers-reduced-motion: reduce) {
+  #sqFlashlight { display: none; }
+  canvas#sqParticles { display: none; }
+}
+
+/* perspective stage wrapping the quick-check panel */
+#quick.tilt-stage {
+  perspective: 1200px;
+  perspective-origin: 50% 50%;
+  transform-style: preserve-3d;
+  position: relative;
+  z-index: 4;
+}
+#quick.tilt-stage .tilt-card {
+  transform-style: preserve-3d;
+  transform: rotateX(0deg) rotateY(0deg);
+  transition: transform 500ms var(--ease-exit);
+  position: relative;
+  will-change: transform;
+}
+#quick.tilt-stage .tilt-card.tracking {
+  transition: none;
+}
+#quick.tilt-stage .specular {
+  position: absolute; pointer-events: none;
+  width: 220px; height: 220px;
+  margin-left: -110px; margin-top: -110px;
+  background: radial-gradient(circle at center,
+              rgba(255,255,255,0.30) 0%,
+              rgba(255,255,255,0.10) 30%,
+              transparent 65%);
+  border-radius: 50%;
+  opacity: 0;
+  transition: opacity 220ms var(--ease-exit);
+  mix-blend-mode: screen;
+  z-index: 6;
+  will-change: transform, opacity;
+}
+#quick.tilt-stage .tilt-card:hover .specular { opacity: 1; }
+
+/* textarea tension meter — driven by --tension (0..1) on the textarea */
+#qcText {
+  /*
+   * Border interpolates: cool purple → bright purple → amber.
+   *  0.0  rgba(124,58,237,0.25)
+   *  0.5  rgba(124,58,237,0.65)
+   *  1.0  rgba(251,191,36,0.60)
+   */
+  border-color: rgba(124, 58, 237, calc(0.25 + 0.40 * var(--tension))) !important;
+  box-shadow:
+    0 0 0 0 rgba(124,58,237,0),
+    0 0 calc(8px + 22px * var(--tension)) calc(-2px + 4px * var(--tension))
+        rgba(124, 58, 237, calc(0.10 + 0.45 * var(--tension)));
+  transition: border-color 220ms var(--ease-exit),
+              box-shadow 220ms var(--ease-exit);
+}
+#qcText.tension-amber {
+  border-color: rgba(251, 191, 36, 0.60) !important;
+  animation: sqTensionPulse 1.6s ease-in-out infinite;
+}
+@keyframes sqTensionPulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(251,191,36,0.55),
+                0 0 24px -2px rgba(251,191,36,0.45);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(251,191,36,0.0),
+                0 0 38px 2px rgba(251,191,36,0.65);
+  }
+}
+
+/* scan-beam overlay — appears in front of the textarea during scan */
+.qc-textarea-wrap { position: relative; }
+#sqScanOverlay {
+  position: absolute; inset: 0; border-radius: 9px;
+  background: rgba(6, 16, 30, 0.96);
+  border: 1px solid rgba(124,58,237,0.30);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px; line-height: 1.5;
+  padding: 14px;
+  overflow: hidden;
+  display: none;
+  z-index: 5;
+  pointer-events: none;
+}
+#sqScanOverlay.scanning { display: block; animation: sqScanFade 240ms var(--ease-enter); }
+@keyframes sqScanFade { from { opacity: 0; } to { opacity: 1; } }
+#sqScanOverlay .scan-line {
+  display: block;
+  color: var(--ink-dim);
+  padding: 1px 4px;
+  border-radius: 3px;
+  white-space: pre-wrap;
+  transition: background-color 120ms ease, color 120ms ease;
+  position: relative;
+}
+#sqScanOverlay .scan-line.lit {
+  background: rgba(124, 58, 237, 0.15);
+  color: #c4b5fd;
+}
+#sqScanOverlay .scan-line.passed {
+  color: rgba(228, 232, 238, 0.55);
+}
+#sqScanOverlay .scan-beam {
+  position: absolute; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg,
+      rgba(124,58,237,0) 0%,
+      rgba(124,58,237,0.85) 18%,
+      rgba(196,181,253,1) 50%,
+      rgba(124,58,237,0.85) 82%,
+      rgba(124,58,237,0) 100%);
+  box-shadow: 0 0 20px rgba(124,58,237,0.6),
+              0 0 38px rgba(124,58,237,0.35);
+  transform: translateY(-4px);
+  pointer-events: none;
+}
+#sqScanOverlay .glyph {
+  position: absolute;
+  font-family: inherit; font-size: 12px;
+  color: #c4b5fd;
+  text-shadow: 0 0 6px rgba(124,58,237,0.85);
+  pointer-events: none;
+  will-change: transform, opacity;
+  animation: sqGlyphFloat 900ms var(--ease-exit) forwards;
+}
+@keyframes sqGlyphFloat {
+  0%   { transform: translate(0, 0); opacity: 1; }
+  60%  { opacity: 0.6; }
+  100% { transform: translate(var(--gx, 0), -42px); opacity: 0; }
+}
+
+/* typewriter caret */
+.sq-typing::after {
+  content: "▍"; color: #c4b5fd;
+  margin-left: 2px;
+  animation: sqCaret 0.85s steps(2) infinite;
+}
+@keyframes sqCaret { 50% { opacity: 0; } }
+
+/* score counter pop */
+#qcScore.sq-counting {
+  text-shadow: 0 0 22px rgba(124,58,237,0.55);
+  transition: text-shadow 600ms var(--ease-exit);
+}
+
+/* prevent the particles canvas from intercepting under-layer interaction */
+section.panel { z-index: 2; }
 </style>
 </head>
 <body>
+
+<!-- Konjo visual layer — particle canvas (idle drift / pass spiral / fail ash) -->
+<canvas id="sqParticles" aria-hidden="true"></canvas>
+
+<!-- cursor flashlight (radial gradient that follows the pointer) -->
+<div id="sqFlashlight" aria-hidden="true"></div>
 
 <header class="nav">
   <div class="brand"><span class="squas">squas</span><span class="h">h</span></div>
@@ -448,7 +636,9 @@ footer { margin-top: 80px; padding: 32px 0 14px; border-top: 1px solid var(--lin
   </div>
 </section>
 
-<section class="panel reveal hilite" id="quick">
+<section class="panel reveal hilite tilt-stage" id="quick">
+<div class="tilt-card">
+<div class="specular" aria-hidden="true"></div>
   <div class="panel-head"><div>
     <h2><span class="accent">00.</span> Quick compliance check <span class="badge" id="quickLive">EST</span></h2>
     <p class="subt">Paste a privacy policy, terms of service, DPA, or cookie banner. Pick a framework. Get a pass / warn / fail verdict with score and clause coverage in under 1.5&nbsp;seconds. No login. No upload. Shareable permalink for every result.</p>
@@ -475,7 +665,10 @@ footer { margin-top: 80px; padding: 32px 0 14px; border-top: 1px solid var(--lin
       </select>
     </div>
   </div>
-  <textarea id="qcText" class="qc-textarea" spellcheck="false" placeholder="Paste any policy text here…">Loading sample policy…</textarea>
+  <div class="qc-textarea-wrap">
+    <textarea id="qcText" class="qc-textarea" spellcheck="false" placeholder="Paste any policy text here…">Loading sample policy…</textarea>
+    <div id="sqScanOverlay" aria-hidden="true"></div>
+  </div>
   <div class="qc-runbar">
     <button class="primary" id="btnQuickCheck">▶ Run Compliance Check</button>
     <button id="btnQcReset" type="button">↺ Reload sample</button>
@@ -508,6 +701,7 @@ footer { margin-top: 80px; padding: 32px 0 14px; border-top: 1px solid var(--lin
     </div>
   </div>
   <div class="qc-error" id="qcError" style="display:none"></div>
+</div><!-- /.tilt-card -->
 </section>
 
 <section class="panel reveal" id="attest">
@@ -1228,6 +1422,433 @@ qcLoadSample("01_privacy_policy.txt");
 
 probeServer();
 setTimeout(() => { if (!LIVE) kickCounters(); }, 350);
+</script>
+
+<script>
+/* ──────────────────────────────────────────────────────────────────────
+   Konjo visual layer — vanilla JS, no deps.
+   Modules: particle system · tilt · flashlight · tension · scan beam ·
+            typewriter · counter
+   Mounts when the DOM is ready and respects prefers-reduced-motion.
+   ────────────────────────────────────────────────────────────────────── */
+(() => {
+  if (typeof window === "undefined") return;
+  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  /* ── 1. Particle system ─────────────────────────────────────────── */
+  const canvas = document.getElementById("sqParticles");
+  const ctx = canvas && canvas.getContext("2d");
+  let particles = [];
+  let mode = "idle";              // "idle" | "pass" | "fail"
+  let modeStartedAt = 0;
+  let dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+  const PARTICLE_COUNT = 200;
+  let cw = 0, ch = 0;
+
+  function resizeCanvas() {
+    if (!canvas) return;
+    cw = window.innerWidth;
+    ch = window.innerHeight;
+    canvas.width = Math.floor(cw * dpr);
+    canvas.height = Math.floor(ch * dpr);
+    canvas.style.width = cw + "px";
+    canvas.style.height = ch + "px";
+    if (ctx) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  function rng(min, max) { return min + Math.random() * (max - min); }
+
+  function spawnIdleParticle(p) {
+    p.x = rng(0, cw);
+    p.y = rng(0, ch);
+    p.vx = rng(-0.18, 0.18);
+    p.vy = rng(-0.10, 0.10);
+    p.size = rng(0.6, 1.8);
+    p.hue = rng(258, 282);        // dark purple range
+    p.sat = rng(40, 70);
+    p.light = rng(15, 28);
+    p.alpha = rng(0.04, 0.07);    // ~5% per spec
+    p.life = 1;
+    p.kind = "idle";
+    p.theta = rng(0, Math.PI * 2);
+    p.r = 0;
+  }
+
+  function initParticles() {
+    particles = new Array(PARTICLE_COUNT);
+    for (let i = 0; i < PARTICLE_COUNT; i++) {
+      particles[i] = {};
+      spawnIdleParticle(particles[i]);
+    }
+  }
+
+  function setMode(next) {
+    mode = next;
+    modeStartedAt = performance.now();
+    if (mode === "pass") {
+      const cx = cw / 2, cy = ch / 2;
+      for (const p of particles) {
+        const dx = p.x - cx, dy = p.y - cy;
+        p.r = Math.hypot(dx, dy);
+        p.theta = Math.atan2(dy, dx);
+        p.kind = "pass";
+        p.alpha = rng(0.55, 0.95);
+        p.size = rng(1.2, 2.6);
+        p.hue = 140;                // green per spec
+        p.sat = 80;
+        p.light = 60;
+        p.life = 1;
+      }
+    } else if (mode === "fail") {
+      for (const p of particles) {
+        const ang = rng(0, Math.PI * 2);
+        const speed = rng(2.5, 6.5);
+        p.vx = Math.cos(ang) * speed;
+        p.vy = Math.sin(ang) * speed - rng(0.5, 2.0);
+        p.kind = "fail";
+        p.alpha = rng(0.7, 1.0);
+        p.size = rng(1.0, 2.4);
+        p.hue = 0;                  // red per spec
+        p.sat = 70;
+        p.light = 50;
+        p.life = 1;
+      }
+    }
+  }
+
+  function step(now) {
+    if (!ctx) return;
+    ctx.clearRect(0, 0, cw, ch);
+    const elapsed = (now - modeStartedAt) / 1000;
+    const cx = cw / 2, cy = ch / 2;
+
+    for (const p of particles) {
+      if (p.kind === "idle") {
+        p.x += p.vx;
+        p.y += p.vy;
+        // wrap
+        if (p.x < -4) p.x = cw + 4;
+        if (p.x > cw + 4) p.x = -4;
+        if (p.y < -4) p.y = ch + 4;
+        if (p.y > ch + 4) p.y = -4;
+      } else if (p.kind === "pass") {
+        // inward spiral over 1.5s; radius decreases, angle accelerates
+        const t = Math.min(1, elapsed / 1.5);
+        p.r = Math.max(0, p.r * (1 - 0.022) - 0.7);
+        p.theta += 0.06 + t * 0.10;
+        p.x = cx + Math.cos(p.theta) * p.r;
+        p.y = cy + Math.sin(p.theta) * p.r;
+        if (t >= 1) {
+          // dissolve back to idle
+          spawnIdleParticle(p);
+        }
+      } else if (p.kind === "fail") {
+        // gravity-driven tumble
+        p.vy += 0.30;                // per spec
+        p.vx *= 0.992;
+        p.x += p.vx;
+        p.y += p.vy;
+        p.life -= 0.012;
+        p.alpha = Math.max(0, p.life);
+        if (p.life <= 0 || p.y > ch + 30) {
+          spawnIdleParticle(p);
+        }
+      }
+
+      ctx.globalAlpha = p.alpha;
+      ctx.fillStyle = `hsl(${p.hue}, ${p.sat}%, ${p.light}%)`;
+      if (p.kind !== "idle") {
+        ctx.shadowBlur = 8;
+        ctx.shadowColor = `hsl(${p.hue}, ${p.sat}%, ${p.light}%)`;
+      } else {
+        ctx.shadowBlur = 0;
+      }
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    ctx.shadowBlur = 0;
+
+    // auto-revert to idle after 2.5s of pass/fail
+    if (mode !== "idle" && elapsed > 2.5) {
+      mode = "idle";
+    }
+
+    if (!reduceMotion) requestAnimationFrame(step);
+  }
+
+  if (canvas && ctx && !reduceMotion) {
+    resizeCanvas();
+    initParticles();
+    requestAnimationFrame(step);
+    window.addEventListener("resize", () => { resizeCanvas(); }, { passive: true });
+  }
+
+  /* ── 2. 3D perspective tilt + specular highlight ─────────────────── */
+  const tiltStage = document.getElementById("quick");
+  const tiltCard = tiltStage && tiltStage.querySelector(".tilt-card");
+  const specular = tiltStage && tiltStage.querySelector(".specular");
+
+  if (tiltStage && tiltCard && !reduceMotion) {
+    let raf = 0;
+    let mx = 0, my = 0, hovering = false;
+
+    function applyTilt() {
+      const rect = tiltStage.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) return;
+      const cxT = rect.left + rect.width / 2;
+      const cyT = rect.top + rect.height / 2;
+      const tiltX = (my - cyT) / rect.height * 8;        // per spec
+      const tiltY = (cxT - mx) / rect.width * 8;
+      tiltCard.style.transform =
+        `rotateX(${tiltX.toFixed(2)}deg) rotateY(${tiltY.toFixed(2)}deg)`;
+      if (specular) {
+        const lx = mx - rect.left;
+        const ly = my - rect.top;
+        specular.style.transform = `translate3d(${lx}px, ${ly}px, 0)`;
+      }
+    }
+
+    tiltStage.addEventListener("mouseenter", () => {
+      hovering = true;
+      tiltCard.classList.add("tracking");
+    });
+    tiltStage.addEventListener("mousemove", (e) => {
+      mx = e.clientX; my = e.clientY;
+      if (!raf && hovering) {
+        raf = requestAnimationFrame(() => { raf = 0; applyTilt(); });
+      }
+    });
+    tiltStage.addEventListener("mouseleave", () => {
+      hovering = false;
+      tiltCard.classList.remove("tracking");
+      tiltCard.style.transform = "rotateX(0deg) rotateY(0deg)";
+    });
+  }
+
+  /* ── 3. Cursor flashlight ─────────────────────────────────────────── */
+  const flashlight = document.getElementById("sqFlashlight");
+  if (flashlight && !reduceMotion) {
+    let fx = 0, fy = 0, fraf = 0;
+    function moveFlash() {
+      fraf = 0;
+      flashlight.style.transform = `translate3d(${fx}px, ${fy}px, 0)`;
+    }
+    window.addEventListener("mousemove", (e) => {
+      fx = e.clientX; fy = e.clientY;
+      if (!fraf) fraf = requestAnimationFrame(moveFlash);
+    }, { passive: true });
+  }
+
+  /* ── 4. Textarea tension meter ───────────────────────────────────── */
+  const ta = document.getElementById("qcText");
+  function updateTension() {
+    if (!ta) return;
+    const len = ta.value.length;
+    let t;
+    if (len < 100) t = 0.10 + (len / 100) * 0.20;          // subtle
+    else if (len < 500) t = 0.30 + ((len - 100) / 400) * 0.50;  // brightens
+    else t = Math.min(1, 0.80 + ((len - 500) / 1500) * 0.20);  // amber
+    ta.style.setProperty("--tension", t.toFixed(3));
+    ta.classList.toggle("tension-amber", len >= 500);
+  }
+  if (ta) {
+    ta.addEventListener("input", updateTension);
+    // initial pass after sample loads
+    setTimeout(updateTension, 200);
+    setTimeout(updateTension, 1200);
+  }
+
+  /* ── 5. Scan-beam overlay with clause highlighting + dissolving glyphs */
+  const overlay = document.getElementById("sqScanOverlay");
+  let scanRunning = false;
+
+  function tearDownScan() {
+    if (!overlay) return;
+    overlay.classList.remove("scanning");
+    overlay.innerHTML = "";
+    scanRunning = false;
+  }
+
+  async function runScan(text) {
+    if (!overlay || !ta || reduceMotion) return Promise.resolve();
+    scanRunning = true;
+    overlay.innerHTML = "";
+    overlay.classList.add("scanning");
+
+    // mirror textarea bounds onto overlay
+    const tarect = ta.getBoundingClientRect();
+    const wrapRect = overlay.parentElement.getBoundingClientRect();
+    overlay.style.top = (tarect.top - wrapRect.top) + "px";
+    overlay.style.left = (tarect.left - wrapRect.left) + "px";
+    overlay.style.width = tarect.width + "px";
+    overlay.style.height = tarect.height + "px";
+
+    const lines = text.split("\n");
+    const lineEls = lines.map((ln) => {
+      const el = document.createElement("span");
+      el.className = "scan-line";
+      el.textContent = ln.length ? ln : " ";
+      overlay.appendChild(el);
+      return el;
+    });
+
+    const beam = document.createElement("div");
+    beam.className = "scan-beam";
+    overlay.appendChild(beam);
+
+    const overlayHeight = overlay.clientHeight;
+    const lineRects = lineEls.map((el) => ({
+      el,
+      top: el.offsetTop,
+      bottom: el.offsetTop + el.offsetHeight,
+    }));
+
+    const totalDuration = Math.max(900, Math.min(2200, lines.length * 60));
+    const start = performance.now();
+
+    return new Promise((resolve) => {
+      function tick(now) {
+        if (!scanRunning) return resolve();
+        const t = Math.min(1, (now - start) / totalDuration);
+        const y = t * (overlayHeight + 6);
+        beam.style.transform = `translateY(${y - 4}px)`;
+
+        for (const lr of lineRects) {
+          const inBeam = y >= lr.top && y <= lr.bottom + 4;
+          if (inBeam && !lr.el.classList.contains("lit")) {
+            lr.el.classList.add("lit");
+            spawnGlyphsFor(lr.el);
+          } else if (!inBeam && lr.el.classList.contains("lit") && y > lr.bottom + 4) {
+            lr.el.classList.remove("lit");
+            lr.el.classList.add("passed");
+          }
+        }
+
+        if (t < 1) {
+          requestAnimationFrame(tick);
+        } else {
+          // hold a moment so the verdict reveal lands on a settled overlay
+          setTimeout(() => { tearDownScan(); resolve(); }, 320);
+        }
+      }
+      requestAnimationFrame(tick);
+    });
+  }
+
+  function spawnGlyphsFor(lineEl) {
+    if (!overlay) return;
+    const txt = lineEl.textContent;
+    if (!txt || !txt.trim()) return;
+    // pick up to 4 random non-whitespace chars to dissolve
+    const indices = [];
+    for (let i = 0; i < txt.length; i++) {
+      if (txt[i].trim()) indices.push(i);
+    }
+    const n = Math.min(4, Math.max(1, Math.floor(indices.length / 18)));
+    const baseTop = lineEl.offsetTop;
+    const baseLeft = lineEl.offsetLeft + 4;
+    for (let k = 0; k < n; k++) {
+      const idx = indices[Math.floor(Math.random() * indices.length)];
+      const ch = txt[idx];
+      if (!ch || !ch.trim()) continue;
+      const g = document.createElement("span");
+      g.className = "glyph";
+      g.textContent = ch;
+      // approximate character width — monospace at 13px ≈ 7.8px wide
+      g.style.left = (baseLeft + idx * 7.8) + "px";
+      g.style.top = baseTop + "px";
+      g.style.setProperty("--gx", (rng(-22, 22)).toFixed(1) + "px");
+      overlay.appendChild(g);
+      setTimeout(() => { g.remove(); }, 950);
+    }
+  }
+
+  /* ── 6. Verdict observer — typewriter, counter, particles ────────── */
+  const badge = document.getElementById("qcBadge");
+  const summary = document.getElementById("qcSummary");
+  const score = document.getElementById("qcScore");
+  let lastVerdictKey = "";
+
+  function typewriter(el, text, speed = 40) {
+    if (!el) return;
+    el.classList.add("sq-typing");
+    el.textContent = "";
+    let i = 0;
+    const id = setInterval(() => {
+      if (i >= text.length) {
+        clearInterval(id);
+        el.classList.remove("sq-typing");
+        return;
+      }
+      el.textContent += text[i++];
+    }, speed);
+  }
+
+  function animateCounter(el, target, duration = 600) {
+    if (!el) return;
+    const final = parseInt(target, 10);
+    if (!Number.isFinite(final)) { el.textContent = String(target); return; }
+    const start = performance.now();
+    el.classList.add("sq-counting");
+    function frame(now) {
+      const t = Math.min(1, (now - start) / duration);
+      // ease-out cubic
+      const eased = 1 - Math.pow(1 - t, 3);
+      el.textContent = String(Math.round(final * eased));
+      if (t < 1) requestAnimationFrame(frame);
+      else {
+        el.textContent = String(final);
+        setTimeout(() => el.classList.remove("sq-counting"), 400);
+      }
+    }
+    requestAnimationFrame(frame);
+  }
+
+  function reactToVerdict(verdict) {
+    if (verdict === "pass") setMode("pass");
+    else if (verdict === "fail" || verdict === "blocked") setMode("fail");
+    else setMode("fail");                  // warn → muted ash
+
+    // typewriter the summary, animate the score
+    if (summary) {
+      const text = summary.textContent || "";
+      if (text) {
+        // capture, clear, retype
+        setTimeout(() => typewriter(summary, text, 40), 80);
+      }
+    }
+    if (score) {
+      const target = score.textContent;
+      score.textContent = "0";
+      setTimeout(() => animateCounter(score, target, 600), 280);   // 200ms delay per spec, plus a hair
+    }
+  }
+
+  if (badge) {
+    const obs = new MutationObserver(() => {
+      const cls = badge.className || "";
+      const m = cls.match(/(?:^|\s)(pass|fail|warn|blocked|low|medium|high|uncertain)(?:\s|$)/);
+      const key = (m ? m[1] : "") + "|" + (badge.textContent || "");
+      if (!m || key === lastVerdictKey) return;
+      lastVerdictKey = key;
+      reactToVerdict(m[1]);
+    });
+    obs.observe(badge, { attributes: true, attributeFilter: ["class"], childList: true });
+  }
+
+  /* ── 7. Hook the scan button so the beam plays in parallel with fetch ── */
+  const btn = document.getElementById("btnQuickCheck");
+  if (btn && ta && !reduceMotion) {
+    btn.addEventListener("click", () => {
+      const text = ta.value;
+      if (!text || !text.trim()) return;
+      // run scan animation in parallel; do not await on the click handler
+      runScan(text).catch(() => tearDownScan());
+    }, { passive: true });
+  }
+})();
 </script>
 
 </body>
