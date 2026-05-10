@@ -71,6 +71,12 @@ from squash.rate_limiter import get_rate_limiter
 from squash.quota import QuotaEnforcer
 from squash.monitoring import build_health_report, setup_sentry, _squash_version
 from squash.metrics import get_collector as _get_metrics
+from squash.quick_check import (
+    AVAILABLE_FRAMEWORKS as _QC_FRAMEWORKS,
+    ResultStore as _QCResultStore,
+    is_valid_share_hash as _qc_is_valid_share_hash,
+    run_quick_check as _qc_run,
+)
 
 log = logging.getLogger(__name__)
 
@@ -93,11 +99,13 @@ _UNAUTHED_PATHS = frozenset({
     "/health", "/health/ping", "/health/detailed",
     "/docs", "/redoc", "/openapi.json", "/metrics",
     "/billing/webhook",  # Stripe verifies its own signature
+    "/quick-check",      # W246: viral demo entry point — public by design
 })
 
 # Badge + public score paths are dynamic — checked via prefix in middleware
 _BADGE_PATH_PREFIX = "/badge/"
 _SCORE_PATH_PREFIX = "/v1/score/"   # public procurement score endpoints
+_SHARE_PATH_PREFIX = "/r/"          # W247: shareable result permalinks
 
 # ── Rate limiter ──────────────────────────────────────────────────────────────
 # W138: Per-key plan-based rate limiter (replaces per-IP env-var limiter).
@@ -189,6 +197,14 @@ try:
     _db: "_CloudDB | None" = _make_cloud_db()
 except Exception:  # pragma: no cover
     _db = None  # type: ignore[assignment]
+
+# ── Quick-check share store (W247) ────────────────────────────────────────────
+# Hash-keyed store for shareable /quick-check results. Backed by a JSON file
+# when SQUASH_QUICKCHECK_STORE=/path/to/file.json is set; in-memory otherwise.
+_quick_check_store = _QCResultStore(
+    path=os.environ.get("SQUASH_QUICKCHECK_STORE") or None,
+    capacity=int(os.environ.get("SQUASH_QUICKCHECK_CAPACITY", "10000")),
+)
 
 
 def _db_write_tenant(tenant_id: str, record: dict) -> None:
@@ -709,7 +725,12 @@ async def _security_middleware(request: Request, call_next):  # noqa: C901
     path = request.url.path
 
     # ── Unauthed paths: IP-level backstop only ────────────────────────────────
-    if path in _UNAUTHED_PATHS or path.startswith(_BADGE_PATH_PREFIX) or path.startswith(_SCORE_PATH_PREFIX):
+    if (
+        path in _UNAUTHED_PATHS
+        or path.startswith(_BADGE_PATH_PREFIX)
+        or path.startswith(_SCORE_PATH_PREFIX)
+        or path.startswith(_SHARE_PATH_PREFIX)
+    ):
         client_ip = request.client.host if request.client else "unknown"
         now = time.monotonic()
         window = _rate_window[client_ip]
@@ -1283,6 +1304,105 @@ async def compliance_badge(framework: str, status: str = "unknown") -> Response:
 async def list_policies() -> dict[str, list[str]]:
     """Return the names of all built-in policy templates."""
     return {"policies": sorted(AVAILABLE_POLICIES)}
+
+
+# ── Sprint 28 W246/W247: Quick-check + shareable permalinks ──────────────────
+
+
+class _QuickCheckRequest(BaseModel):
+    """JSON body for ``POST /quick-check``.
+
+    The endpoint also accepts ``Content-Type: text/plain`` — in that case the
+    raw body is treated as ``text`` and ``framework`` defaults to ``general``.
+    """
+
+    text: str = Field(..., description="Policy / ToS / DPA / cookie notice text to score.")
+    framework: str = Field(
+        "general",
+        description="Clause library: gdpr | ccpa | eu-ai-act | general | auto",
+    )
+    share: bool = Field(
+        True,
+        description="If true, store the result and return a /r/{hash} share permalink.",
+    )
+
+
+def _quick_check_response(text: str, framework: str, share: bool, base_url: str) -> dict[str, Any]:
+    result = _qc_run(text, framework=framework)
+    payload = result.to_dict()
+    response: dict[str, Any] = {"result": payload}
+    if share:
+        share_hash = _quick_check_store.put(payload)
+        response["share_hash"] = share_hash
+        response["share_url"] = f"{base_url.rstrip('/')}/r/{share_hash}"
+    return response
+
+
+@app.post("/quick-check")
+async def quick_check(request: Request) -> JSONResponse:
+    """One-click compliance scan for pasted policy text — no auth required.
+
+    Accepts either ``application/json`` (``{text, framework?, share?}``) or
+    ``text/plain`` (raw body is the text). Returns a pass / warn / fail
+    verdict with score and clause breakdown in <2 seconds. When ``share`` is
+    true (default), the response includes a ``share_url`` permalink that
+    anyone can visit at ``GET /r/{hash}``.
+
+    Available frameworks: ``gdpr``, ``ccpa``, ``eu-ai-act``, ``general``, ``auto``.
+    """
+    content_type = (request.headers.get("content-type") or "").split(";")[0].strip().lower()
+    base_url = str(request.base_url)
+    if content_type == "text/plain":
+        raw = await request.body()
+        try:
+            text = raw.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            raise HTTPException(status_code=400, detail="text body must be UTF-8") from exc
+        framework = request.query_params.get("framework", "general")
+        share_param = request.query_params.get("share", "true").lower()
+        share = share_param not in {"false", "0", "no"}
+        try:
+            return JSONResponse(_quick_check_response(text, framework, share, base_url))
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    # default path: JSON body
+    try:
+        body = await request.json()
+    except (json.JSONDecodeError, ValueError) as exc:
+        raise HTTPException(status_code=400, detail="invalid JSON body") from exc
+    if not isinstance(body, dict):
+        raise HTTPException(status_code=400, detail="JSON body must be an object")
+    try:
+        req = _QuickCheckRequest(**body)
+    except Exception as exc:  # pydantic.ValidationError
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    try:
+        return JSONResponse(_quick_check_response(req.text, req.framework, req.share, base_url))
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@app.get("/quick-check/frameworks")
+async def quick_check_frameworks() -> dict[str, list[str]]:
+    """Return the list of frameworks accepted by ``POST /quick-check``."""
+    return {"frameworks": sorted(_QC_FRAMEWORKS) + ["auto"]}
+
+
+@app.get("/r/{share_hash}")
+async def quick_check_share(share_hash: str) -> JSONResponse:
+    """Resolve a shareable permalink to its stored quick-check payload.
+
+    Returns the same ``result`` dict produced by :pyfunc:`run_quick_check`,
+    plus the ``share_hash``. 404 if the hash has been evicted, was never
+    stored, or is malformed.
+    """
+    if not _qc_is_valid_share_hash(share_hash):
+        raise HTTPException(status_code=400, detail="malformed share hash")
+    payload = _quick_check_store.get(share_hash)
+    if payload is None:
+        raise HTTPException(status_code=404, detail="share not found")
+    return JSONResponse({"share_hash": share_hash, "result": payload})
 
 
 @app.post("/attest")

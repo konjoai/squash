@@ -5,6 +5,64 @@ Format: [Conventional Commits](https://www.conventionalcommits.org/) · [Keep a 
 
 ---
 
+## [3.5.0] — 2026-05-09 — Demo polish + viral features (Sprint 28)
+
+### Added — Sprint 28 W246–W248
+
+- **`squash/quick_check.py`** — One-click compliance heuristic for pasted
+  policy text. Stdlib-only. Public surface: `run_quick_check`, `QuickCheckResult`,
+  `ResultStore`, `make_share_hash`, `is_valid_share_hash`, `AVAILABLE_FRAMEWORKS`.
+  Built-in clause libraries: `gdpr` (6 clauses), `ccpa` (5), `eu-ai-act` (5),
+  `general` (5). `framework="auto"` runs every library and returns the best
+  match. Score 0–100 → verdict pass (≥80) / warn (50–79) / fail (<50).
+  Deterministic — identical input yields byte-identical result dict.
+- **`POST /quick-check`** — Public, auth-free FastAPI endpoint. Accepts
+  `application/json` (`{text, framework?, share?}`) or `text/plain` (raw
+  body is the text; `?framework=` and `?share=` query params). Returns
+  pass/warn/fail verdict, score, matched/missing clause lists, summary,
+  and (when `share=true`) a `share_hash` + `share_url` permalink.
+  Sub-2-second response on realistic policy snippets up to 200 KB.
+- **`GET /r/{share_hash}`** — Anonymous, auth-free permalink resolver.
+  Shareable hash-keyed permalinks for quick-check results. Backed by an
+  in-memory FIFO store (capacity 10,000) that mirrors writes to a JSON
+  file when `SQUASH_QUICKCHECK_STORE` is set. 16-hex-char hashes derived
+  from the canonical RFC-8785-ordered result payload — identical inputs
+  produce identical hashes (idempotent, viral-link friendly).
+- **`GET /quick-check/frameworks`** — List of accepted frameworks.
+- **`demo/sample_policies/`** — 5 realistic synthetic policy snippets
+  (privacy policy, terms of service, GDPR Art. 28 DPA, CCPA notice,
+  cookie policy) for demo visitors to paste immediately.
+- **README** — "Try it live" badge → `getsquash.dev/demo`, live
+  Compliance Score badge wired to `/badge/eu-ai-act/compliant`, and a
+  one-click compliance check section at the top of the README with a
+  curl example and JSON response shape.
+- **`tests/test_squash_sprint28.py`** — 63 new tests covering
+  `run_quick_check` semantics + thresholds + determinism + validation,
+  every framework against the sample-policy corpus, `ResultStore`
+  put/get/eviction/persistence, hash-helper validation, all four new
+  endpoints (auth-free, JSON + text/plain, 404/400/422 paths), README
+  badge presence, and the CI workflow contract.
+- **`squash/__init__.py`** exports: `run_quick_check`, `QuickCheckResult`,
+  `QuickCheckStore`, `QUICK_CHECK_FRAMEWORKS`, `make_quick_check_hash`,
+  `is_valid_quick_check_hash`.
+
+### Changed
+- Bumped `pyproject.toml` and `squash/__init__.py` to **3.5.0**.
+- Module-count gates updated 107 → 108 (new file: `quick_check.py`).
+- Auth bypass list extended: `/quick-check` and `/r/*` are now public by
+  design — same posture as `/badge/*` and `/health`.
+
+### Why this matters — viral on-ramp to the squash CLI
+The single biggest barrier to first-time-user adoption is the gap between
+"I have a privacy policy" and "I have a model artefact ready for `squash
+attest`." `/quick-check` collapses that gap to a single curl. Anyone can
+paste their privacy policy into the demo, get a verdict in two seconds,
+and share the result with a single anonymous URL. The output explicitly
+points the visitor at `pip install squash-ai && squash attest` for the
+real run.
+
+---
+
 ## [3.2.0] — 2026-05-05 — AI Insurance Risk Package (Track C / C6)
 
 ### Added — Sprint 24 W235–W237

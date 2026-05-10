@@ -1,0 +1,41 @@
+COOKIE POLICY
+
+Last reviewed: 2026-01-15
+
+This page explains how Acme Analytics uses cookies and similar tracking
+technologies on our website.
+
+1. WHAT IS A COOKIE?
+
+A cookie is a small text file that a website saves to your device when
+you visit. We also use local storage and web beacons; these are
+covered by this policy alongside cookies.
+
+2. COOKIES WE USE
+
+  Strictly necessary
+    - session       Keeps you signed in.                       (1 hour)
+    - csrf          Cross-site request forgery defence.        (session)
+    - eu_consent    Records your cookie preference.            (12 months)
+
+  Functional
+    - theme         Remembers light or dark mode.              (12 months)
+    - locale        Remembers your language preference.        (12 months)
+
+  Analytics
+    - _sq_aid       First-party analytics, anonymised.         (90 days)
+    - _sq_path      Records the page you came from.            (session)
+
+We do not use any advertising or third-party tracking cookies.
+
+3. HOW TO MANAGE YOUR COOKIE PREFERENCES
+
+You can accept or reject non-essential cookies via the consent banner
+shown the first time you visit, or at any time via the "Cookie
+Settings" link in the footer of our website. You can also block or
+delete cookies through your browser settings; doing so may affect
+your ability to use parts of our service.
+
+4. CONTACT
+
+privacy@acme-analytics.example
