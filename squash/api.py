@@ -55,7 +55,7 @@ from typing import Any
 
 try:
     from fastapi import FastAPI, HTTPException, Request, Response
-    from fastapi.responses import JSONResponse, PlainTextResponse
+    from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse
     from pydantic import BaseModel, Field
 except ImportError as _e:
     raise ImportError(
@@ -100,12 +100,16 @@ _UNAUTHED_PATHS = frozenset({
     "/docs", "/redoc", "/openapi.json", "/metrics",
     "/billing/webhook",  # Stripe verifies its own signature
     "/quick-check",      # W246: viral demo entry point — public by design
+    "/demo",             # W258 (Sprint 29): static demo landing page
+    "/quick-check/frameworks",
 })
 
 # Badge + public score paths are dynamic — checked via prefix in middleware
 _BADGE_PATH_PREFIX = "/badge/"
 _SCORE_PATH_PREFIX = "/v1/score/"   # public procurement score endpoints
 _SHARE_PATH_PREFIX = "/r/"          # W247: shareable result permalinks
+_DEMO_PATH_PREFIX = "/demo/"        # W258 (Sprint 29): static demo assets
+_FRIENDLY_SHARE_PREFIX = "/share/"  # W259 (Sprint 29): HTML result page
 
 # ── Rate limiter ──────────────────────────────────────────────────────────────
 # W138: Per-key plan-based rate limiter (replaces per-IP env-var limiter).
@@ -730,6 +734,8 @@ async def _security_middleware(request: Request, call_next):  # noqa: C901
         or path.startswith(_BADGE_PATH_PREFIX)
         or path.startswith(_SCORE_PATH_PREFIX)
         or path.startswith(_SHARE_PATH_PREFIX)
+        or path.startswith(_DEMO_PATH_PREFIX)
+        or path.startswith(_FRIENDLY_SHARE_PREFIX)
     ):
         client_ip = request.client.host if request.client else "unknown"
         now = time.monotonic()
@@ -1403,6 +1409,80 @@ async def quick_check_share(share_hash: str) -> JSONResponse:
     if payload is None:
         raise HTTPException(status_code=404, detail="share not found")
     return JSONResponse({"share_hash": share_hash, "result": payload})
+
+
+# ── Sprint 29 W258/W259: Static demo page + sample policies + HTML share view ─
+
+# All static demo files live under demo/ at the repo root, sibling to squash/.
+_DEMO_ROOT = (Path(__file__).resolve().parent.parent / "demo").resolve()
+_SAMPLE_POLICIES_DIR = (_DEMO_ROOT / "sample_policies").resolve()
+# Allowlist of sample policy filenames — pinned to prevent path traversal even
+# if symlinks are added to the directory later. Must match files on disk.
+_SAMPLE_POLICY_ALLOWLIST = frozenset({
+    "01_privacy_policy.txt",
+    "02_terms_of_service.txt",
+    "03_gdpr_dpa.txt",
+    "04_ccpa_notice.txt",
+    "05_cookie_policy.txt",
+    "README.md",
+})
+
+
+def _serve_demo_html(filename: str) -> HTMLResponse:
+    """Serve a demo HTML file with no-cache headers — the demo iterates fast."""
+    target = (_DEMO_ROOT / filename).resolve()
+    # Path traversal guard — resolved target must remain inside _DEMO_ROOT.
+    if not str(target).startswith(str(_DEMO_ROOT) + os.sep) and target != _DEMO_ROOT:
+        raise HTTPException(status_code=404, detail="not found")
+    if not target.is_file():
+        raise HTTPException(status_code=404, detail="not found")
+    return HTMLResponse(
+        content=target.read_text(encoding="utf-8"),
+        headers={"Cache-Control": "no-cache, max-age=0"},
+    )
+
+
+@app.get("/demo")
+@app.get("/demo/")
+async def demo_index() -> HTMLResponse:
+    """Serve the interactive demo landing page (Sprint 29)."""
+    return _serve_demo_html("index.html")
+
+
+@app.get("/demo/sample_policies/{name}")
+async def demo_sample_policy(name: str) -> PlainTextResponse:
+    """Serve one of the curated sample policies bundled with the demo.
+
+    The set is allowlisted (no glob, no path traversal). Returns 404 for
+    anything that isn't on the explicit list. Plain text content type so
+    the textarea on /demo can drop it in untouched.
+    """
+    if name not in _SAMPLE_POLICY_ALLOWLIST:
+        raise HTTPException(status_code=404, detail="unknown sample")
+    target = (_SAMPLE_POLICIES_DIR / name).resolve()
+    if not str(target).startswith(str(_SAMPLE_POLICIES_DIR) + os.sep):
+        raise HTTPException(status_code=404, detail="not found")
+    if not target.is_file():
+        raise HTTPException(status_code=404, detail="not found")
+    return PlainTextResponse(
+        content=target.read_text(encoding="utf-8"),
+        headers={"Cache-Control": "public, max-age=300"},
+    )
+
+
+@app.get("/share/{share_hash}")
+async def share_html(share_hash: str) -> HTMLResponse:
+    """Browser-friendly HTML view of a shared quick-check result.
+
+    The page is a thin shell — it loads result.html and the client-side
+    script fetches the JSON from /r/{hash}. We validate the hash here so
+    bad URLs surface 404 instantly without a wasted client roundtrip.
+    """
+    if not _qc_is_valid_share_hash(share_hash):
+        raise HTTPException(status_code=400, detail="malformed share hash")
+    if _quick_check_store.get(share_hash) is None:
+        raise HTTPException(status_code=404, detail="share not found")
+    return _serve_demo_html("result.html")
 
 
 @app.post("/attest")

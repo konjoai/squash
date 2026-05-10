@@ -16,11 +16,11 @@ def _read_version() -> str:
 
 class TestSquashVersion:
     def test_version_is_3_0_0(self):
-        # v3.5.0 — Sprint 28: Demo polish + viral features (one-click
-        # /quick-check endpoint, shareable /r/{hash} permalinks,
-        # demo/sample_policies/, README badges). Bumped from 3.4.0.
+        # v3.6.0 — Sprint 29: Demo polish (interactive /demo page with
+        # one-click /quick-check, /share/{hash} HTML view, demo/result.html,
+        # bundled sample-policy serving, <1500ms perf gate). Bumped from 3.5.0.
         version = _read_version()
-        assert version == "3.5.0", f"Expected version 3.5.0, got {version}"
+        assert version == "3.6.0", f"Expected version 3.6.0, got {version}"
 
     def test_version_follows_semver(self):
         version = _read_version()

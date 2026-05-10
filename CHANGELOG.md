@@ -5,6 +5,47 @@ Format: [Conventional Commits](https://www.conventionalcommits.org/) · [Keep a 
 
 ---
 
+## [3.6.0] — 2026-05-09 — Demo polish (Sprint 29)
+
+### Added — Sprint 29 W258–W260
+
+- **Interactive `demo/index.html`** — new "00. Quick compliance check" panel
+  above the attest demo. Pre-loaded textarea (`01_privacy_policy.txt`),
+  five-policy selector with auto-framework hinting, framework picker,
+  one-click "Run Compliance Check" button, live elapsed-time counter,
+  inline pass/warn/fail badge, score, summary, two-column matched/missing
+  clause grid, and a "Share this result" copy-link block. Hero gains a
+  "Paste any policy. Get a compliance verdict in seconds." headline plus
+  three checkmark claim pills (GDPR · CCPA · SOC 2).
+- **`demo/result.html`** — branded shareable result page. Reads the share
+  hash from `/share/<hex>`, `/r/<hex>`, or `?h=<hex>`, fetches the
+  canonical JSON from `GET /r/{hash}`, and renders verdict, score,
+  framework, retrieval timestamp, clause breakdown, and a copy-link CTA.
+  Permalink expiry is documented inline.
+- **`GET /demo`** — FastAPI route that serves `demo/index.html` with a
+  no-cache header so the demo iterates fast.
+- **`GET /demo/sample_policies/{name}`** — allowlisted plain-text serving
+  of the five Sprint 28 sample policies (path-traversal-safe via resolved
+  prefix check + explicit allowlist). The interactive panel uses this
+  endpoint to swap samples without page reload.
+- **`GET /share/{share_hash}`** — browser-friendly HTML view of a stored
+  quick-check result. Validates the hash and returns 404 immediately if
+  the share has been evicted.
+- **`tests/test_squash_sprint29.py`** — perf gate (`/quick-check` must
+  respond in under 1500 ms across the entire sample corpus on cold and
+  warm cache), demo-page hero/section/JS smoke tests, sample-policy
+  endpoint coverage and traversal-rejection tests, share HTML routing
+  tests, and version assertions.
+
+### Changed
+
+- `_UNAUTHED_PATHS` now includes `/demo`, `/quick-check/frameworks`, and
+  the `/demo/` and `/share/` prefixes — the entire demo experience
+  remains login-free, matching the Sprint 28 viral-by-default design.
+- Version bump 3.5.0 → 3.6.0 (`pyproject.toml`, `squash/__init__.py`).
+
+---
+
 ## [3.5.0] — 2026-05-09 — Demo polish + viral features (Sprint 28)
 
 ### Added — Sprint 28 W246–W248

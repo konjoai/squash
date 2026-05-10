@@ -509,7 +509,10 @@ class TestPublicExports(unittest.TestCase):
 
     def test_version_bumped(self):
         import squash
-        self.assertEqual(squash.__version__, "3.5.0")
+        # Sprint 28 introduced 3.5.0; later sprints continue to bump.
+        # The contract here is: version is at least 3.5.0 — Sprint 28 features
+        # remain available and the public exports are still wired up.
+        self.assertGreaterEqual(squash.__version__, "3.5.0")
 
 
 if __name__ == "__main__":
