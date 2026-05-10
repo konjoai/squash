@@ -18,7 +18,7 @@ Frameworks covered: EU AI Act · NIST AI RMF · ISO 42001 · OWASP LLM Top 10 ·
 FedRAMP · CMMC · SOC 2-AI · HITRUST · GDPR-AI · DORA
 """
 
-__version__ = "3.6.0"
+__version__ = "3.7.0"
 
 from squash.sbom_builder import CompressRunMeta, CycloneDXBuilder, SbomDiff, SbomRegistry, EvalBinder
 from squash.oms_signer import OmsSigner, OmsVerifier
@@ -152,13 +152,18 @@ from squash.insurance import (  # noqa: F401 (Sprint 24 W235-W237 — Track C / 
     CoalitionAdapter,
     GenericAdapter,
 )
-from squash.quick_check import (  # noqa: F401 (Sprint 28 — Demo polish & viral)
+from squash.quick_check import (  # noqa: F401 (Sprint 28/30 — Demo polish & viral)
     AVAILABLE_FRAMEWORKS as QUICK_CHECK_FRAMEWORKS,
+    POLICY_TYPES as QUICK_CHECK_POLICY_TYPES,
     QuickCheckResult,
     ResultStore as QuickCheckStore,
+    StatsTracker as QuickCheckStatsTracker,
+    detect_policy_type as detect_quick_check_policy_type,
+    get_global_stats as get_quick_check_stats,
     is_valid_share_hash as is_valid_quick_check_hash,
     make_share_hash as make_quick_check_hash,
     run_quick_check,
+    score_all_frameworks as score_quick_check_all_frameworks,
 )
 
 from squash.freeze import (  # noqa: F401 (Sprint 19 W221-W222 — Track C / C1)
@@ -321,4 +326,10 @@ __all__ = [
     "is_valid_quick_check_hash",
     "make_quick_check_hash",
     "run_quick_check",
+    # Sprint 30: viral SVG card + trending feed
+    "QUICK_CHECK_POLICY_TYPES",
+    "QuickCheckStatsTracker",
+    "detect_quick_check_policy_type",
+    "get_quick_check_stats",
+    "score_quick_check_all_frameworks",
 ]

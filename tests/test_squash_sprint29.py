@@ -16,6 +16,7 @@ Covers:
 
 from __future__ import annotations
 
+import re
 import time
 import unittest
 from pathlib import Path
@@ -314,11 +315,17 @@ class TestQuickCheckPerformance(unittest.TestCase):
 class TestVersionBumpedToSprint29(unittest.TestCase):
 
     def test_dunder_version_is_3_6_0(self):
-        self.assertEqual(squash.__version__, "3.6.0")
+        # Sprint 29 shipped 3.6.0; Sprint 30+ may bump further. Assert at-least.
+        version_tuple = tuple(int(x) for x in squash.__version__.split("."))
+        self.assertGreaterEqual(version_tuple, (3, 6, 0))
 
     def test_pyproject_version_is_3_6_0(self):
+        # Sprint 29 shipped 3.6.0; Sprint 30+ may bump further. Assert at-least.
         py = (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
-        self.assertIn('version = "3.6.0"', py)
+        m = re.search(r'^version\s*=\s*"([^"]+)"', py, re.MULTILINE)
+        self.assertIsNotNone(m, "version field not found")
+        version_tuple = tuple(int(x) for x in m.group(1).split("."))
+        self.assertGreaterEqual(version_tuple, (3, 6, 0))
 
     def test_changelog_has_sprint_29_section(self):
         cl = (REPO_ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
