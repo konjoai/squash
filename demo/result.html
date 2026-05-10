@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Squash — Compliance result</title>
+<meta name="description" content="Shareable squash quick-check result: pass/warn/fail verdict with clause coverage." />
+<meta name="color-scheme" content="dark" />
+<meta name="robots" content="noindex" />
+<style>
+:root {
+  --bg: #0a121e;
+  --bg-elev: #11192a;
+  --bg-elev-2: #161f31;
+  --line: #1d2538;
+  --line-strong: #2a3346;
+  --ink: #e4e8ee;
+  --ink-dim: #7a8294;
+  --ink-faint: #4d5567;
+  --accent: #3fc66d;
+  --accent-2: #5dd9ff;
+  --warn: #f7b955;
+  --bad: #ff6b8a;
+  --good: #3fc66d;
+  --code-bg: #06101e;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  background-image:
+    radial-gradient(60% 40% at 50% 0%, rgba(63,198,109,0.07) 0%, transparent 60%);
+  color: var(--ink);
+  font: 15px/1.55 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Inter, Roboto, "Helvetica Neue", Arial;
+  letter-spacing: -0.005em;
+  min-height: 100vh;
+}
+a { color: var(--accent); text-decoration: none; }
+a:hover { color: var(--accent-2); }
+button {
+  font: inherit; cursor: pointer;
+  border: 1px solid var(--line-strong);
+  background: var(--bg-elev-2); color: var(--ink);
+  padding: 9px 18px; border-radius: 9px;
+  transition: border-color .15s, background .15s, transform .08s;
+}
+button:hover { border-color: var(--accent); }
+button.primary {
+  background: var(--accent); color: #0a121e;
+  border: 1px solid var(--accent); font-weight: 700;
+}
+input { font: inherit; background: var(--bg-elev-2); border: 1px solid var(--line); color: var(--ink); padding: 9px 12px; border-radius: 8px; outline: none; }
+.wrap { max-width: 960px; margin: 0 auto; padding: 32px 22px 96px; }
+header.nav {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 18px 22px; border-bottom: 1px solid var(--line);
+}
+.brand { font-weight: 800; letter-spacing: -0.02em; font-size: 22px; }
+.brand .squas { color: var(--accent); }
+.brand .h { color: var(--ink); }
+h1 { font-size: 28px; margin: 18px 0 6px; letter-spacing: -0.01em; }
+.subt { color: var(--ink-dim); margin: 0 0 28px; }
+.card {
+  background: var(--bg-elev); border: 1px solid var(--line);
+  border-radius: 14px; padding: 24px; margin-top: 20px;
+}
+.verdict-row { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; }
+.verdict-badge {
+  display: inline-flex; align-items: center; gap: 10px;
+  padding: 12px 22px; border-radius: 999px;
+  font-weight: 800; font-size: 16px; letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.verdict-badge.pass { background: rgba(63,198,109,0.18); color: var(--good); border: 1px solid rgba(63,198,109,0.45); }
+.verdict-badge.warn { background: rgba(247,185,85,0.16); color: var(--warn); border: 1px solid rgba(247,185,85,0.4); }
+.verdict-badge.fail { background: rgba(255,107,138,0.16); color: var(--bad); border: 1px solid rgba(255,107,138,0.4); }
+.score { font-size: 48px; font-weight: 800; line-height: 1; }
+.score-suffix { color: var(--ink-faint); font-size: 18px; }
+.kvline { color: var(--ink-dim); font-size: 13px; margin-top: 4px; }
+.kvline strong { color: var(--ink); font-weight: 600; }
+.summary { margin-top: 14px; font-size: 15px; }
+.snippet {
+  margin-top: 18px;
+  background: var(--code-bg); border: 1px solid var(--line);
+  border-radius: 9px; padding: 14px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px; line-height: 1.5; color: var(--ink-dim);
+  max-height: 220px; overflow: auto; white-space: pre-wrap; word-break: break-word;
+}
+.clause-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 16px; }
+@media (max-width: 760px) { .clause-grid { grid-template-columns: 1fr; } }
+.clause-block { background: var(--bg-elev-2); border: 1px solid var(--line); border-radius: 9px; padding: 14px; }
+.clause-block h4 { margin: 0 0 10px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-dim); }
+.clause-list { list-style: none; padding: 0; margin: 0; }
+.clause-list li { padding: 8px 0; border-bottom: 1px dashed var(--line); display: flex; gap: 10px; align-items: flex-start; font-size: 13px; }
+.clause-list li:last-child { border-bottom: 0; }
+.clause-list .icon { font-weight: 800; }
+.clause-list .matched .icon { color: var(--good); }
+.clause-list .missing-error .icon { color: var(--bad); }
+.clause-list .missing-warning .icon { color: var(--warn); }
+.clause-list .id { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--accent-2); font-size: 12px; }
+.clause-list .rationale { color: var(--ink-dim); font-size: 12px; display: block; margin-top: 2px; }
+.share-row {
+  margin-top: 18px; padding: 14px;
+  background: var(--bg-elev-2); border: 1px solid var(--line); border-radius: 9px;
+  display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+}
+.share-row input { flex: 1; min-width: 240px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
+.cta-row { margin-top: 30px; display: flex; gap: 10px; flex-wrap: wrap; }
+.error {
+  margin-top: 30px; padding: 18px;
+  background: rgba(255,107,138,0.08); border: 1px solid rgba(255,107,138,0.3);
+  border-radius: 9px; color: var(--bad); font-size: 14px;
+}
+.muted { color: var(--ink-dim); }
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <a href="/demo" class="brand"><span class="squas">squas</span><span class="h">h</span></a>
+  <a href="/demo">← Run another check</a>
+</header>
+
+<main class="wrap">
+  <h1 id="pageTitle">Compliance result</h1>
+  <p class="subt" id="subTitle">Shared squash quick-check verdict — clause-coverage heuristic, not legal advice.</p>
+
+  <div id="loading" class="card">
+    <p class="muted">Loading shared result…</p>
+  </div>
+
+  <div id="result" style="display:none">
+    <div class="card">
+      <div class="verdict-row">
+        <span class="verdict-badge" id="verdictBadge">—</span>
+        <div>
+          <span class="score" id="score">0</span><span class="score-suffix">/100</span>
+        </div>
+        <div>
+          <div class="kvline">framework <strong id="framework">—</strong></div>
+          <div class="kvline">policy length <strong id="length">—</strong> chars</div>
+          <div class="kvline">retrieved <strong id="timestamp">—</strong></div>
+        </div>
+      </div>
+      <p class="summary" id="summary"></p>
+    </div>
+
+    <div class="card">
+      <h3 style="margin:0 0 10px;font-size:14px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-dim)">Clause coverage</h3>
+      <div class="clause-grid">
+        <div class="clause-block">
+          <h4>✓ Clauses present</h4>
+          <ul class="clause-list" id="matched"></ul>
+        </div>
+        <div class="clause-block">
+          <h4>✗ Clauses missing</h4>
+          <ul class="clause-list" id="missing"></ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin:0 0 6px;font-size:14px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-dim)">Share this result</h3>
+      <div class="share-row">
+        <input id="shareUrl" readonly value="" />
+        <button class="primary" id="copyBtn" type="button">📋 Copy link</button>
+      </div>
+      <p class="muted" style="margin:10px 0 0;font-size:12px">Permalink stays valid until the FIFO share store evicts it (default capacity 10,000 entries).</p>
+    </div>
+
+    <div class="cta-row">
+      <a href="/demo"><button class="primary">▶ Run a new compliance check</button></a>
+      <a href="https://github.com/konjoai/squash" target="_blank" rel="noreferrer"><button>GitHub</button></a>
+    </div>
+  </div>
+
+  <div id="errorBox" class="error" style="display:none"></div>
+</main>
+
+<script>
+function getShareHash() {
+  const path = window.location.pathname;
+  const m = path.match(/\/(?:share|r)\/([0-9a-f]{16})\/?$/);
+  if (m) return m[1];
+  const q = new URLSearchParams(window.location.search).get("h");
+  if (q && /^[0-9a-f]{16}$/.test(q)) return q;
+  return null;
+}
+
+function showError(msg) {
+  document.getElementById("loading").style.display = "none";
+  document.getElementById("result").style.display = "none";
+  const e = document.getElementById("errorBox");
+  e.style.display = "block";
+  e.textContent = msg;
+}
+
+function renderClauses(matchedIds, missing) {
+  const matchedList = document.getElementById("matched");
+  const missingList = document.getElementById("missing");
+  matchedList.innerHTML = "";
+  missingList.innerHTML = "";
+  if (matchedIds.length === 0) {
+    matchedList.innerHTML = '<li class="muted"><span class="icon">·</span><span>None detected</span></li>';
+  }
+  for (const id of matchedIds) {
+    matchedList.innerHTML += `<li class="matched"><span class="icon">✓</span><span><span class="id">${id}</span></span></li>`;
+  }
+  if (missing.length === 0) {
+    missingList.innerHTML = '<li class="matched"><span class="icon">✓</span><span>All clauses present — full coverage.</span></li>';
+  }
+  for (const m of missing) {
+    const cls = m.severity === "error" ? "missing-error" : "missing-warning";
+    const icon = m.severity === "error" ? "✗" : "!";
+    missingList.innerHTML +=
+      `<li class="${cls}"><span class="icon">${icon}</span>` +
+      `<span><span class="id">${m.id}</span> — ${m.label}` +
+      `<span class="rationale">${m.rationale}</span></span></li>`;
+  }
+}
+
+async function load() {
+  const hash = getShareHash();
+  if (!hash) { showError("No share hash in the URL. Expected /share/<16-hex> or /r/<16-hex>."); return; }
+  try {
+    const res = await fetch(`/r/${hash}`, { headers: { "Accept": "application/json" } });
+    if (res.status === 404) { showError("This shared result has expired or never existed."); return; }
+    if (!res.ok) { showError(`Server returned HTTP ${res.status}.`); return; }
+    const body = await res.json();
+    const r = body.result;
+    document.getElementById("loading").style.display = "none";
+    document.getElementById("result").style.display = "block";
+    const badge = document.getElementById("verdictBadge");
+    badge.className = "verdict-badge " + r.verdict;
+    badge.textContent = r.verdict.toUpperCase();
+    document.getElementById("score").textContent = String(r.score);
+    document.getElementById("framework").textContent = r.framework;
+    document.getElementById("length").textContent = r.text_length.toLocaleString();
+    document.getElementById("timestamp").textContent = new Date().toISOString();
+    document.getElementById("summary").textContent = r.summary;
+    document.title = `${r.verdict.toUpperCase()} ${r.score}/100 · ${r.framework} · squash`;
+    document.getElementById("pageTitle").textContent = `${r.verdict.toUpperCase()} · ${r.framework}`;
+    renderClauses(r.matched || [], r.missing || []);
+    const friendly = `${window.location.origin}/share/${body.share_hash || hash}`;
+    document.getElementById("shareUrl").value = friendly;
+  } catch (e) {
+    showError("Could not load shared result: " + e.message);
+  }
+}
+
+document.getElementById("copyBtn").addEventListener("click", async () => {
+  const url = document.getElementById("shareUrl").value;
+  try {
+    await navigator.clipboard.writeText(url);
+    const btn = document.getElementById("copyBtn");
+    const orig = btn.textContent;
+    btn.textContent = "✓ Copied";
+    setTimeout(() => { btn.textContent = orig; }, 1400);
+  } catch {
+    document.getElementById("shareUrl").select();
+  }
+});
+
+load();
+</script>
+</body>
+</html>

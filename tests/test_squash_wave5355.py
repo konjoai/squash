@@ -677,8 +677,8 @@ class TestModuleCount:
         import subprocess, pathlib
         root = pathlib.Path(__file__).parent.parent / "squash"
         count = len(list(root.rglob("*.py")))
-        assert count == 107, (
-            f"Module count should be 107, got {count}. "
-            "C1 Sprint 19 added freeze.py (FreezeOrchestrator). "
+        assert count == 108, (
+            f"Module count should be 108, got {count}. "
+            "Sprint 28 added quick_check.py (one-click compliance scanner + share store). "
             "New modules require deletion or written justification."
         )

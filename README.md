@@ -6,6 +6,8 @@
 [![CI](https://github.com/konjoai/squash/actions/workflows/ci.yml/badge.svg)](https://github.com/konjoai/squash/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-Apache_2.0-blue)](LICENSE)
 [![Python](https://img.shields.io/pypi/pyversions/squash-ai)](https://pypi.org/project/squash-ai/)
+[![Try it live](https://img.shields.io/badge/Try%20it%20live-getsquash.dev%2Fdemo-ff69b4)](https://getsquash.dev/demo)
+[![Compliance Score](https://api.getsquash.dev/badge/eu-ai-act/compliant)](https://getsquash.dev)
 [![EU AI Act](https://img.shields.io/badge/EU%20AI%20Act-Annex%20IV%20ready-green)](https://getsquash.dev)
 [![Reproducibility](https://img.shields.io/badge/Bulletproof%20Edition-byte--identical-purple)](AUDIT_BASELINE.md)
 [![SLSA](https://img.shields.io/badge/SLSA-Build_L3-success)](https://slsa.dev/spec/v1.0/levels)
@@ -38,6 +40,37 @@ squash self-verify -d ./out   # walk the chain on any attestation
 
 See [CHANGELOG.md §3.0.0](CHANGELOG.md), [AUDIT_BASELINE.md](AUDIT_BASELINE.md),
 [TIER_MAP.md](TIER_MAP.md), and [demo/](demo/) for the full surface.
+
+---
+
+## Try it live — paste a policy, get a verdict in under 2 seconds
+
+```bash
+curl -X POST https://api.getsquash.dev/quick-check \
+  -H "Content-Type: application/json" \
+  -d '{"text": "<paste your privacy policy here>", "framework": "gdpr"}'
+```
+
+```json
+{
+  "result": {
+    "framework": "gdpr",
+    "score": 90,
+    "verdict": "pass",
+    "matched": ["GDPR-LAWFUL-BASIS", "GDPR-DATA-SUBJECT-RIGHTS", ...],
+    "missing": [],
+    "summary": "PASS — gdpr clause coverage 90/100, 1 clauses missing"
+  },
+  "share_hash": "8f4a2c1d6b9e0a3f",
+  "share_url": "https://api.getsquash.dev/r/8f4a2c1d6b9e0a3f"
+}
+```
+
+No auth required — anyone can hit `POST /quick-check` with plain text or
+JSON, and the returned `share_url` is a permanent, anonymous permalink.
+Five sample policies live in [`demo/sample_policies/`](demo/sample_policies/)
+to paste into the demo immediately. Frameworks: `gdpr`, `ccpa`, `eu-ai-act`,
+`general`, or `auto`.
 
 ---
 

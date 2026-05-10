@@ -77,6 +77,81 @@ input, select, textarea {
   color: var(--ink); padding: 9px 12px; border-radius: 8px; outline: none;
 }
 input:focus, select:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(63,198,109,0.15); }
+.qc-toolbar {
+  display: flex; gap: 14px; flex-wrap: wrap; align-items: center; margin-bottom: 14px;
+}
+.qc-toolbar label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-dim); }
+.qc-textarea {
+  width: 100%; min-height: 220px; resize: vertical;
+  background: var(--code-bg); color: var(--ink);
+  border: 1px solid var(--line); border-radius: 9px; padding: 14px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px; line-height: 1.5;
+}
+.qc-runbar {
+  display: flex; gap: 14px; align-items: center; flex-wrap: wrap;
+  margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--line);
+}
+.qc-timer {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px; color: var(--ink-dim);
+  min-width: 140px;
+}
+.qc-timer.running { color: var(--accent-2); }
+.qc-timer.done { color: var(--accent); }
+.qc-result { margin-top: 22px; display: none; }
+.qc-result.visible { display: block; animation: qcFade .25s ease; }
+@keyframes qcFade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+.verdict-badge {
+  display: inline-flex; align-items: center; gap: 10px;
+  padding: 10px 18px; border-radius: 999px;
+  font-weight: 800; font-size: 14px; letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.verdict-badge.pass { background: rgba(63,198,109,0.18); color: var(--good); border: 1px solid rgba(63,198,109,0.45); }
+.verdict-badge.warn { background: rgba(247,185,85,0.16); color: var(--warn); border: 1px solid rgba(247,185,85,0.4); }
+.verdict-badge.fail { background: rgba(255,107,138,0.16); color: var(--bad); border: 1px solid rgba(255,107,138,0.4); }
+.qc-summary { margin-top: 14px; color: var(--ink); font-size: 15px; }
+.qc-score { font-size: 38px; font-weight: 800; color: var(--ink); margin-left: 4px; }
+.qc-score-suffix { color: var(--ink-faint); font-size: 16px; }
+.qc-clauses {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 18px;
+}
+@media (max-width: 760px) { .qc-clauses { grid-template-columns: 1fr; } }
+.qc-clause-block {
+  background: var(--bg-elev-2); border: 1px solid var(--line);
+  border-radius: 9px; padding: 14px;
+}
+.qc-clause-block h4 { margin: 0 0 10px 0; font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-dim); }
+.qc-clause-list { list-style: none; padding: 0; margin: 0; }
+.qc-clause-list li {
+  padding: 8px 0; border-bottom: 1px dashed var(--line);
+  display: flex; gap: 10px; align-items: flex-start;
+  font-size: 13px;
+}
+.qc-clause-list li:last-child { border-bottom: 0; }
+.qc-clause-list .icon { flex: 0 0 auto; font-weight: 800; }
+.qc-clause-list .matched .icon { color: var(--good); }
+.qc-clause-list .missing-error .icon { color: var(--bad); }
+.qc-clause-list .missing-warning .icon { color: var(--warn); }
+.qc-clause-list .id { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--accent-2); font-size: 12px; }
+.qc-clause-list .label { color: var(--ink); }
+.qc-clause-list .rationale { color: var(--ink-dim); font-size: 12px; display: block; margin-top: 2px; }
+.qc-share {
+  margin-top: 18px; padding: 14px;
+  background: var(--bg-elev-2); border: 1px solid var(--line); border-radius: 9px;
+  display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+}
+.qc-share input {
+  flex: 1; min-width: 240px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+}
+.qc-error {
+  margin-top: 14px; padding: 12px;
+  background: rgba(255,107,138,0.08); border: 1px solid rgba(255,107,138,0.3);
+  border-radius: 9px; color: var(--bad); font-size: 13px;
+}
 
 header.nav {
   position: sticky; top: 0; z-index: 50;
@@ -124,6 +199,19 @@ h1.title {
 .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; box-shadow: 0 0 14px currentColor; animation: pulse 1.6s ease-in-out infinite; }
 @keyframes pulse { 50% { opacity: 0.45; transform: scale(1.18); } }
 
+.hero-claims {
+  list-style: none; padding: 0; margin: 22px 0 0 0;
+  display: flex; flex-wrap: wrap; gap: 18px;
+  font-size: 14px; color: var(--ink-dim);
+}
+.hero-claims li {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 8px 14px; border-radius: 999px;
+  background: rgba(63,198,109,0.08);
+  border: 1px solid rgba(63,198,109,0.25);
+}
+.hero-claims .check { color: var(--accent); font-weight: 800; }
+.hero-claims strong { color: var(--ink); font-weight: 700; }
 .hero-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-top: 56px; }
 @media (max-width: 760px) { .hero-stats { grid-template-columns: repeat(2, 1fr); } }
 .stat-card {
@@ -315,6 +403,7 @@ footer { margin-top: 80px; padding: 32px 0 14px; border-top: 1px solid var(--lin
 <header class="nav">
   <div class="brand"><span class="squas">squas</span><span class="h">h</span></div>
   <div class="nav-links">
+    <a href="#quick">Quick Check</a>
     <a href="#attest">Attest</a>
     <a href="#canon">Canonical</a>
     <a href="#ollama">Ollama</a>
@@ -332,12 +421,19 @@ footer { margin-top: 80px; padding: 32px 0 14px; border-top: 1px solid var(--lin
   <h1 class="title"><span class="squas">squas</span><span class="h">h</span></h1>
   <p class="tagline">Squash violations, not velocity.</p>
   <p class="subline">
+    <strong>Paste any policy. Get a compliance verdict in seconds.</strong>
     Every model gets a tamper-proof certificate. Identical bytes on every host.
     RFC 8785 canonical JSON, RFC 3161 trusted timestamps, SLSA Build Level 3
     provenance. Open source. Apache 2.0. Real cryptography, real receipts.
   </p>
+  <ul class="hero-claims" aria-label="Compliance frameworks supported">
+    <li><span class="check">✓</span> <strong>GDPR</strong> Art. 6, 13–22, 28, 33</li>
+    <li><span class="check">✓</span> <strong>CCPA</strong> §1798.105–.130</li>
+    <li><span class="check">✓</span> <strong>SOC 2</strong> Trust Services Criteria</li>
+  </ul>
   <div class="hero-cta">
-    <a href="#attest"><button class="primary">Run a real attestation →</button></a>
+    <a href="#quick"><button class="primary">Try a compliance check →</button></a>
+    <a href="#attest"><button>Run a real attestation</button></a>
     <a href="https://github.com/konjoai/squash" target="_blank" rel="noreferrer"><button>GitHub</button></a>
     <span class="server-pill" id="serverPill" data-state="checking">
       <span class="dot"></span>
@@ -350,6 +446,68 @@ footer { margin-top: 80px; padding: 32px 0 14px; border-top: 1px solid var(--lin
     <div class="stat-card"><div class="stat-num">RFC&nbsp;3161</div><div class="stat-label">Trusted timestamps</div></div>
     <div class="stat-card"><div class="stat-num">SLSA&nbsp;L3</div><div class="stat-label">Build provenance</div></div>
   </div>
+</section>
+
+<section class="panel reveal hilite" id="quick">
+  <div class="panel-head"><div>
+    <h2><span class="accent">00.</span> Quick compliance check <span class="badge" id="quickLive">EST</span></h2>
+    <p class="subt">Paste a privacy policy, terms of service, DPA, or cookie banner. Pick a framework. Get a pass / warn / fail verdict with score and clause coverage in under 1.5&nbsp;seconds. No login. No upload. Shareable permalink for every result.</p>
+  </div></div>
+  <div class="qc-toolbar">
+    <div style="display:flex; gap:8px; align-items:center">
+      <label for="qcSample">Sample policy</label>
+      <select id="qcSample">
+        <option value="01_privacy_policy.txt" data-framework="gdpr">01 — Privacy Policy (GDPR)</option>
+        <option value="02_terms_of_service.txt" data-framework="general">02 — Terms of Service (general)</option>
+        <option value="03_gdpr_dpa.txt" data-framework="gdpr">03 — GDPR DPA (Art. 28)</option>
+        <option value="04_ccpa_notice.txt" data-framework="ccpa">04 — CCPA Notice (California)</option>
+        <option value="05_cookie_policy.txt" data-framework="general">05 — Cookie Policy</option>
+      </select>
+    </div>
+    <div style="display:flex; gap:8px; align-items:center">
+      <label for="qcFramework">Framework</label>
+      <select id="qcFramework">
+        <option value="auto">auto (best-fit)</option>
+        <option value="gdpr" selected>gdpr</option>
+        <option value="ccpa">ccpa</option>
+        <option value="eu-ai-act">eu-ai-act</option>
+        <option value="general">general</option>
+      </select>
+    </div>
+  </div>
+  <textarea id="qcText" class="qc-textarea" spellcheck="false" placeholder="Paste any policy text here…">Loading sample policy…</textarea>
+  <div class="qc-runbar">
+    <button class="primary" id="btnQuickCheck">▶ Run Compliance Check</button>
+    <button id="btnQcReset" type="button">↺ Reload sample</button>
+    <span class="qc-timer" id="qcTimer">ready</span>
+    <span class="tiny muted" id="qcMeta"></span>
+  </div>
+  <div class="qc-result" id="qcResult" aria-live="polite">
+    <div style="display:flex; align-items:center; gap:18px; flex-wrap:wrap">
+      <span class="verdict-badge" id="qcBadge">—</span>
+      <div>
+        <span class="qc-score" id="qcScore">0</span><span class="qc-score-suffix">/100</span>
+      </div>
+      <div class="qc-summary" id="qcSummary"></div>
+    </div>
+    <div class="qc-clauses">
+      <div class="qc-clause-block">
+        <h4>✓ Clauses present</h4>
+        <ul class="qc-clause-list" id="qcMatched"></ul>
+      </div>
+      <div class="qc-clause-block">
+        <h4>✗ Clauses missing</h4>
+        <ul class="qc-clause-list" id="qcMissing"></ul>
+      </div>
+    </div>
+    <div class="qc-share" id="qcShareBlock" style="display:none">
+      <strong style="color:var(--ink)">Share this result:</strong>
+      <input id="qcShareUrl" readonly value="" />
+      <button id="btnQcCopy" type="button">📋 Copy link</button>
+      <a id="qcShareOpen" href="#" target="_blank" rel="noreferrer"><button type="button">↗ Open</button></a>
+    </div>
+  </div>
+  <div class="qc-error" id="qcError" style="display:none"></div>
 </section>
 
 <section class="panel reveal" id="attest">
@@ -913,6 +1071,160 @@ $("btnPdf").addEventListener("click", async () => {
   } catch (e) { $("pdfStatus").innerHTML = `<span style='color: var(--bad)'>Error: ${e.message}</span>`; }
   finally { btn.innerHTML = "📄 Download PDF"; btn.disabled = false; }
 });
+
+// ── Quick compliance check (Sprint 29) ────────────────────────────────────
+// Resolves a sample-policy URL relative to this page so it works whether
+// served from FastAPI (/demo), the demo server (/), or directly via file://.
+const QC_SAMPLE_BASE = (() => {
+  // index.html might be served from /demo (FastAPI), / (demo/server.py), or file://.
+  // Sample policies live at demo/sample_policies/<name>. Resolve relative to this page.
+  const here = window.location.pathname;
+  if (here.endsWith("/demo") || here.endsWith("/demo/")) return "/demo/sample_policies/";
+  if (here.endsWith("/") || here.endsWith("/index.html")) return "sample_policies/";
+  return "sample_policies/";
+})();
+
+async function qcLoadSample(name) {
+  $("qcMeta").textContent = "loading sample…";
+  try {
+    const res = await fetch(QC_SAMPLE_BASE + name, { cache: "no-store" });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const text = await res.text();
+    $("qcText").value = text;
+    $("qcMeta").textContent = `${name} · ${text.length.toLocaleString()} chars`;
+  } catch (e) {
+    $("qcText").value = "";
+    $("qcText").placeholder = `Could not load ${name} (${e.message}). Paste any policy text here.`;
+    $("qcMeta").textContent = "";
+  }
+}
+
+function qcRenderClauses(matchedIds, missing) {
+  const matchedList = $("qcMatched");
+  const missingList = $("qcMissing");
+  matchedList.innerHTML = "";
+  missingList.innerHTML = "";
+  if (matchedIds.length === 0) {
+    matchedList.innerHTML = '<li class="muted"><span class="icon">·</span><span>None detected</span></li>';
+  }
+  for (const id of matchedIds) {
+    matchedList.innerHTML += `<li class="matched"><span class="icon">✓</span><span><span class="id">${id}</span></span></li>`;
+  }
+  if (missing.length === 0) {
+    missingList.innerHTML = '<li class="matched"><span class="icon">✓</span><span>All clauses present — full coverage.</span></li>';
+  }
+  for (const m of missing) {
+    const cls = m.severity === "error" ? "missing-error" : "missing-warning";
+    const icon = m.severity === "error" ? "✗" : "!";
+    missingList.innerHTML +=
+      `<li class="${cls}"><span class="icon">${icon}</span>` +
+      `<span><span class="id">${m.id}</span> — <span class="label">${m.label}</span>` +
+      `<span class="rationale">${m.rationale}</span></span></li>`;
+  }
+}
+
+function qcShowError(msg) {
+  const el = $("qcError");
+  el.style.display = "block";
+  el.textContent = "Error: " + msg + (LIVE ? "" : " — start the API: uvicorn squash.api:app --reload");
+}
+
+let qcTimerHandle = null;
+function qcStartTimer() {
+  const t0 = performance.now();
+  const el = $("qcTimer");
+  el.classList.remove("done"); el.classList.add("running");
+  el.textContent = "elapsed 0 ms";
+  if (qcTimerHandle) cancelAnimationFrame(qcTimerHandle);
+  function tick() {
+    const dt = Math.round(performance.now() - t0);
+    el.textContent = `elapsed ${dt} ms`;
+    qcTimerHandle = requestAnimationFrame(tick);
+  }
+  qcTimerHandle = requestAnimationFrame(tick);
+  return () => {
+    cancelAnimationFrame(qcTimerHandle); qcTimerHandle = null;
+    const dt = Math.round(performance.now() - t0);
+    el.classList.remove("running"); el.classList.add("done");
+    el.textContent = `done in ${dt} ms`;
+    return dt;
+  };
+}
+
+async function qcRun() {
+  const text = $("qcText").value.trim();
+  if (!text) { qcShowError("paste some policy text first"); return; }
+  $("qcError").style.display = "none";
+  $("qcResult").classList.remove("visible");
+  const btn = $("btnQuickCheck");
+  btn.disabled = true; btn.innerHTML = '<span class="spin"></span>Checking…';
+  const stopTimer = qcStartTimer();
+  try {
+    const res = await fetch(API_BASE + "/quick-check", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        text: text,
+        framework: $("qcFramework").value,
+        share: true,
+      }),
+    });
+    if (!res.ok) {
+      let detail = `HTTP ${res.status}`;
+      try { const j = await res.json(); detail = j.detail || j.error || detail; } catch {}
+      throw new Error(detail);
+    }
+    const body = await res.json();
+    const r = body.result;
+    const dt = stopTimer();
+    const badge = $("qcBadge");
+    badge.className = "verdict-badge " + r.verdict;
+    badge.textContent = r.verdict.toUpperCase();
+    $("qcScore").textContent = String(r.score);
+    $("qcSummary").textContent = r.summary;
+    qcRenderClauses(r.matched || [], r.missing || []);
+    $("qcResult").classList.add("visible");
+    if (body.share_url) {
+      $("qcShareBlock").style.display = "flex";
+      const shareHash = body.share_hash;
+      const friendly = `${window.location.origin}/share/${shareHash}`;
+      $("qcShareUrl").value = friendly;
+      $("qcShareOpen").href = friendly;
+    } else {
+      $("qcShareBlock").style.display = "none";
+    }
+    $("qcMeta").textContent = `framework ${r.framework} · ${r.text_length.toLocaleString()} chars · ${dt} ms`;
+  } catch (e) {
+    stopTimer();
+    qcShowError(e.message);
+  } finally {
+    btn.disabled = false; btn.innerHTML = "▶ Run Compliance Check";
+  }
+}
+
+$("qcSample").addEventListener("change", (e) => {
+  const opt = e.target.selectedOptions[0];
+  const fw = opt && opt.dataset && opt.dataset.framework;
+  if (fw) $("qcFramework").value = fw;
+  qcLoadSample(e.target.value);
+});
+$("btnQuickCheck").addEventListener("click", qcRun);
+$("btnQcReset").addEventListener("click", () => qcLoadSample($("qcSample").value));
+$("btnQcCopy").addEventListener("click", async () => {
+  const url = $("qcShareUrl").value;
+  if (!url) return;
+  try {
+    await navigator.clipboard.writeText(url);
+    const btn = $("btnQcCopy");
+    const orig = btn.textContent;
+    btn.textContent = "✓ Copied";
+    setTimeout(() => { btn.textContent = orig; }, 1400);
+  } catch {
+    $("qcShareUrl").select();
+  }
+});
+
+qcLoadSample("01_privacy_policy.txt");
 
 probeServer();
 setTimeout(() => { if (!LIVE) kickCounters(); }, 350);
