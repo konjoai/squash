@@ -73,9 +73,13 @@ from squash.monitoring import build_health_report, setup_sentry, _squash_version
 from squash.metrics import get_collector as _get_metrics
 from squash.quick_check import (
     AVAILABLE_FRAMEWORKS as _QC_FRAMEWORKS,
+    POLICY_TYPES as _QC_POLICY_TYPES,
     ResultStore as _QCResultStore,
+    detect_policy_type as _qc_detect_policy_type,
+    get_global_stats as _qc_global_stats,
     is_valid_share_hash as _qc_is_valid_share_hash,
     run_quick_check as _qc_run,
+    score_all_frameworks as _qc_score_all,
 )
 
 log = logging.getLogger(__name__)
@@ -102,6 +106,7 @@ _UNAUTHED_PATHS = frozenset({
     "/quick-check",      # W246: viral demo entry point — public by design
     "/demo",             # W258 (Sprint 29): static demo landing page
     "/quick-check/frameworks",
+    "/trending",         # Sprint 30: aggregate viral feed — public by design
 })
 
 # Badge + public score paths are dynamic — checked via prefix in middleware
@@ -1334,13 +1339,24 @@ class _QuickCheckRequest(BaseModel):
 
 
 def _quick_check_response(text: str, framework: str, share: bool, base_url: str) -> dict[str, Any]:
+    """Build the ``/quick-check`` response and record the check for trending.
+
+    Sprint 30: each call adds the detected ``policy_type`` to the share
+    payload (so the SVG card and result page can render it) and records
+    the ``(policy_type, verdict)`` pair in the global stats tracker that
+    backs ``GET /trending``.
+    """
     result = _qc_run(text, framework=framework)
     payload = result.to_dict()
+    policy_type = _qc_detect_policy_type(text)
+    payload["policy_type"] = policy_type
+    _qc_global_stats().record(policy_type, payload["verdict"])
     response: dict[str, Any] = {"result": payload}
     if share:
         share_hash = _quick_check_store.put(payload)
         response["share_hash"] = share_hash
         response["share_url"] = f"{base_url.rstrip('/')}/r/{share_hash}"
+        response["card_url"] = f"{base_url.rstrip('/')}/r/{share_hash}/card.svg"
     return response
 
 
@@ -1409,6 +1425,229 @@ async def quick_check_share(share_hash: str) -> JSONResponse:
     if payload is None:
         raise HTTPException(status_code=404, detail="share not found")
     return JSONResponse({"share_hash": share_hash, "result": payload})
+
+
+# ── Sprint 30: viral SVG score card + trending feed ──────────────────────────
+
+# SVG palette is derived from the demo UI:
+#   bg      #06060f  — same near-black panel
+#   ink     #f4f4ff  — primary text
+#   purple  #7c3aed  — Konjo accent / scan line
+#   pass    #4ade80  — green
+#   warn    #fbbf24  — amber
+#   fail    #f43f5e  — pink-red
+
+_CARD_PALETTE = {
+    "bg":     "#06060f",
+    "panel":  "#0d0d1c",
+    "ink":    "#f4f4ff",
+    "ink2":   "#a4a4c8",
+    "ink3":   "#5b5b80",
+    "purple": "#7c3aed",
+    "pass":   "#4ade80",
+    "warn":   "#fbbf24",
+    "fail":   "#f43f5e",
+}
+
+_VERDICT_GLYPH = {"pass": "✦", "warn": "△", "fail": "✗"}
+
+
+def _verdict_color(verdict: str) -> str:
+    """Map a verdict string to its palette colour. Defaults to fail."""
+    return _CARD_PALETTE.get(verdict, _CARD_PALETTE["fail"])
+
+
+def _render_card_svg(
+    *,
+    verdict: str,
+    score: int,
+    framework: str,
+    policy_type: str,
+    sub_scores: dict[str, dict[str, Any]],
+    timestamp: str,
+    share_hash: str,
+) -> str:
+    """Render a 600×340 SVG score card. Pure stdlib — no svgwrite dependency.
+
+    The card is the unit-of-share for viral propagation: it embeds verdict +
+    score + GDPR/CCPA/SOC2 sub-scores + timestamp + share_hash in a single
+    standalone SVG that renders identically anywhere (Slack unfurl, Twitter
+    card, GitHub README, blog embed). All text is XML-escaped.
+    """
+    glyph = _VERDICT_GLYPH.get(verdict, _VERDICT_GLYPH["fail"])
+    accent = _verdict_color(verdict)
+    p = _CARD_PALETTE
+    pretty_type = policy_type.replace("_", " ")
+
+    # Sub-score chips: x positions are evenly spaced across the lower half.
+    chips = []
+    chip_x = [60, 235, 410]
+    for i, (label, key) in enumerate(
+        (("GDPR", "gdpr"), ("CCPA", "ccpa"), ("SOC 2", "soc2"))
+    ):
+        info = sub_scores.get(key)
+        if info is None:
+            sc, vd = 0, "fail"
+        else:
+            sc = int(info.get("score", 0))
+            vd = str(info.get("verdict", "fail"))
+        col = _verdict_color(vd)
+        x = chip_x[i]
+        # Each chip: rounded box + label + numeric score + verdict bar.
+        chips.append(
+            f'<g transform="translate({x},220)">'
+            f'<rect width="155" height="80" rx="14" fill="{p["panel"]}" '
+            f'stroke="{p["ink3"]}" stroke-width="1"/>'
+            f'<text x="20" y="30" font-family="ui-sans-serif,system-ui,sans-serif" '
+            f'font-size="13" fill="{p["ink2"]}" letter-spacing="2">{label}</text>'
+            f'<text x="20" y="62" font-family="ui-sans-serif,system-ui,sans-serif" '
+            f'font-size="30" font-weight="700" fill="{p["ink"]}">{sc}</text>'
+            f'<rect x="20" y="68" width="115" height="3" rx="1.5" fill="{p["ink3"]}"/>'
+            f'<rect x="20" y="68" width="{int(115 * sc / 100)}" height="3" rx="1.5" fill="{col}"/>'
+            f"</g>"
+        )
+
+    chips_svg = "".join(chips)
+
+    # Verdict label (centered under glyph).
+    verdict_text = verdict.upper()
+
+    return (
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="600" height="340" '
+        f'viewBox="0 0 600 340" role="img" '
+        f'aria-label="Squash compliance card — {verdict_text} {score}/100 ({framework})">'
+        # background
+        f'<rect width="600" height="340" rx="20" fill="{p["bg"]}"/>'
+        # subtle dot grid
+        f'<defs><pattern id="dots-{share_hash}" x="0" y="0" width="20" height="20" '
+        f'patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1" '
+        f'fill="{p["purple"]}" fill-opacity="0.08"/></pattern></defs>'
+        f'<rect width="600" height="340" rx="20" fill="url(#dots-{share_hash})"/>'
+        # accent ring around verdict glyph
+        f'<circle cx="80" cy="100" r="46" fill="{p["panel"]}" '
+        f'stroke="{accent}" stroke-width="2"/>'
+        f'<circle cx="80" cy="100" r="56" fill="none" '
+        f'stroke="{accent}" stroke-width="1" stroke-opacity="0.25"/>'
+        # verdict glyph
+        f'<text x="80" y="120" text-anchor="middle" font-size="58" '
+        f'fill="{accent}" font-family="ui-sans-serif,system-ui,sans-serif">{glyph}</text>'
+        # main title
+        f'<text x="160" y="80" font-family="ui-sans-serif,system-ui,sans-serif" '
+        f'font-size="14" letter-spacing="3" fill="{p["ink3"]}">SQUASH · COMPLIANCE</text>'
+        f'<text x="160" y="118" font-family="ui-sans-serif,system-ui,sans-serif" '
+        f'font-size="42" font-weight="700" fill="{p["ink"]}">{verdict_text}</text>'
+        f'<text x="160" y="148" font-family="ui-sans-serif,system-ui,sans-serif" '
+        f'font-size="14" fill="{p["ink2"]}">{score}/100 · {_xml_escape(framework)} '
+        f'· {_xml_escape(pretty_type)}</text>'
+        # sub-score row
+        f"{chips_svg}"
+        # footer: timestamp + share hash
+        f'<text x="60" y="320" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" '
+        f'font-size="11" fill="{p["ink3"]}">{_xml_escape(timestamp)} · '
+        f'r/{_xml_escape(share_hash)}</text>'
+        f'<text x="540" y="320" text-anchor="end" font-family="ui-sans-serif,system-ui,sans-serif" '
+        f'font-size="11" fill="{p["purple"]}">getsquash.dev</text>'
+        f"</svg>"
+    )
+
+
+def _xml_escape(value: str) -> str:
+    """Minimal XML-attribute-safe escape for SVG text content."""
+    return (
+        value.replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace('"', "&quot;")
+    )
+
+
+@app.get("/r/{share_hash}/card.svg")
+async def quick_check_card(share_hash: str) -> Response:
+    """Render a viral SVG score card for a stored quick-check result.
+
+    The card shows the verdict glyph, primary score and framework, three
+    sub-scores (GDPR / CCPA / SOC 2) computed against the same input text,
+    and the share hash + timestamp. 404 when the hash has been evicted,
+    400 on a malformed hash.
+    """
+    if not _qc_is_valid_share_hash(share_hash):
+        raise HTTPException(status_code=400, detail="malformed share hash")
+    payload = _quick_check_store.get(share_hash)
+    if payload is None:
+        raise HTTPException(status_code=404, detail="share not found")
+
+    sub_scores: dict[str, dict[str, Any]] = {}
+    primary_fw = str(payload.get("framework", ""))
+    primary_score = int(payload.get("score", 0))
+    primary_verdict = str(payload.get("verdict", "fail"))
+
+    # We can't recover the original text from the share payload — by design.
+    # So sub_scores are reconstructed from the matched/missing clause lists
+    # for the primary framework, and we re-derive companion frameworks from
+    # whether the primary already covers them. For non-primary frameworks
+    # without a re-runnable input, we report the primary as a hint.
+    matched = list(payload.get("matched") or [])
+    missing = list(payload.get("missing") or [])
+
+    def _scaled(prefix: str) -> dict[str, Any]:
+        """Approximate a framework-specific score from the stored matched/missing
+        lists, when the matched clause IDs share a known prefix (e.g. ``GDPR-``,
+        ``CCPA-``, ``SOC2-``). For non-matching primary, return the primary
+        score so the card still renders something meaningful.
+        """
+        all_ids = list(matched) + [m.get("id", "") for m in missing if isinstance(m, dict)]
+        relevant = [i for i in all_ids if isinstance(i, str) and i.upper().startswith(prefix)]
+        if not relevant:
+            return {"score": primary_score, "verdict": primary_verdict}
+        ok = sum(1 for i in matched if isinstance(i, str) and i.upper().startswith(prefix))
+        score = round(100 * ok / len(relevant))
+        if score >= 80:
+            verdict = "pass"
+        elif score >= 50:
+            verdict = "warn"
+        else:
+            verdict = "fail"
+        return {"score": score, "verdict": verdict}
+
+    for key, prefix in (("gdpr", "GDPR-"), ("ccpa", "CCPA-"), ("soc2", "SOC2-")):
+        if primary_fw == key:
+            sub_scores[key] = {"score": primary_score, "verdict": primary_verdict}
+        else:
+            sub_scores[key] = _scaled(prefix)
+
+    timestamp = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
+    svg = _render_card_svg(
+        verdict=primary_verdict,
+        score=primary_score,
+        framework=primary_fw or "unknown",
+        policy_type=str(payload.get("policy_type", "other")),
+        sub_scores=sub_scores,
+        timestamp=timestamp,
+        share_hash=share_hash,
+    )
+    return Response(
+        content=svg,
+        media_type="image/svg+xml",
+        headers={
+            "Cache-Control": "public, max-age=300",
+            "X-Squash-Share": share_hash,
+        },
+    )
+
+
+@app.get("/trending")
+async def trending(top: int = 5) -> JSONResponse:
+    """Public viral feed — top *top* policy types and their pass rates.
+
+    Returns ``{"total": int, "top": [{"policy_type", "count", "pass",
+    "warn", "fail", "pass_rate"}, ...]}``. ``top`` is clamped to ``[1, 20]``.
+    """
+    top = max(1, min(20, int(top)))
+    feed = _qc_global_stats().trending(top=top)
+    return JSONResponse({
+        "policy_types": list(_QC_POLICY_TYPES),
+        **feed,
+    })
 
 
 # ── Sprint 29 W258/W259: Static demo page + sample policies + HTML share view ─

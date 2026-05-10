@@ -46,9 +46,14 @@ log = logging.getLogger(__name__)
 
 __all__ = [
     "AVAILABLE_FRAMEWORKS",
+    "POLICY_TYPES",
     "QuickCheckResult",
     "ResultStore",
+    "StatsTracker",
+    "detect_policy_type",
+    "get_global_stats",
     "run_quick_check",
+    "score_all_frameworks",
 ]
 
 
@@ -190,6 +195,88 @@ _CLAUSE_LIBRARY: dict[str, list[dict[str, Any]]] = {
             "severity": "warning",
             "patterns": [r"accuracy", r"robust(ness)?", r"cybersecurity", r"resilience"],
             "rationale": "EU AI Act Art. 15 — accuracy, robustness, and security obligations.",
+        },
+    ],
+    "soc2": [
+        {
+            "id": "SOC2-CC1-CONTROL-ENV",
+            "label": "Control environment / governance commitment",
+            "severity": "error",
+            "patterns": [
+                r"control environment",
+                r"information security (program|policy|policies)",
+                r"security (program|governance|committee)",
+                r"code of conduct",
+            ],
+            "rationale": "SOC 2 CC1 — entity demonstrates a commitment to integrity and ethics.",
+        },
+        {
+            "id": "SOC2-CC6-LOGICAL-ACCESS",
+            "label": "Logical access controls",
+            "severity": "error",
+            "patterns": [
+                r"access control",
+                r"role[-\s]?based access",
+                r"least privilege",
+                r"multi[-\s]?factor authentication",
+                r"\bmfa\b",
+                r"authentication",
+            ],
+            "rationale": "SOC 2 CC6.1/CC6.2 — logical and physical access controls.",
+        },
+        {
+            "id": "SOC2-CC7-MONITORING",
+            "label": "System monitoring / anomaly detection",
+            "severity": "error",
+            "patterns": [
+                r"continuous monitoring",
+                r"system monitoring",
+                r"anomaly detection",
+                r"intrusion detection",
+                r"\bsiem\b",
+                r"log (review|monitoring|aggregation)",
+            ],
+            "rationale": "SOC 2 CC7.1/CC7.2 — detection and response to security events.",
+        },
+        {
+            "id": "SOC2-CC7-INCIDENT-RESPONSE",
+            "label": "Incident response plan",
+            "severity": "error",
+            "patterns": [
+                r"incident response",
+                r"security incident",
+                r"breach response",
+                r"escalation procedure",
+            ],
+            "rationale": "SOC 2 CC7.3/CC7.4 — documented incident response procedures.",
+        },
+        {
+            "id": "SOC2-A1-AVAILABILITY",
+            "label": "Availability / disaster recovery",
+            "severity": "warning",
+            "patterns": [
+                r"disaster recovery",
+                r"business continuity",
+                r"backup (and|&) (restore|recovery)",
+                r"\brto\b",
+                r"\brpo\b",
+                r"availability",
+            ],
+            "rationale": "SOC 2 Availability — disaster recovery and continuity commitments.",
+        },
+        {
+            "id": "SOC2-C1-CONFIDENTIALITY",
+            "label": "Confidentiality / encryption",
+            "severity": "warning",
+            "patterns": [
+                r"encryption (in transit|at rest)",
+                r"\baes[-\s]?256\b",
+                r"\btls\b",
+                r"key management",
+                r"data classification",
+                r"confidential",
+            ],
+            "rationale": "SOC 2 Confidentiality — encryption and key management commitments.",
         },
     ],
     "general": [
@@ -525,3 +612,256 @@ class ResultStore:
             return False
         with self._lock:
             return share_hash in self._records
+
+
+# ── Sprint 30: policy-type detection + trending stats ────────────────────────
+
+
+# Display order matches what /trending should return; also defines the
+# allowlist for policy_type values stored in the share payload.
+POLICY_TYPES: tuple[str, ...] = (
+    "privacy_policy",
+    "terms_of_service",
+    "gdpr_dpa",
+    "ccpa_notice",
+    "cookie_policy",
+    "ai_system_card",
+    "soc2_report",
+    "other",
+)
+
+# Each entry is a list of weighted (regex, weight) signals. The detector
+# computes a score per type and returns the argmax (or "other" if no signal
+# fires). Patterns are anchored on policy-document conventions, not legal
+# correctness — false positives that misclassify are recoverable; missing
+# the document type entirely surfaces as "other" in trending.
+_POLICY_TYPE_SIGNALS: dict[str, list[tuple[str, int]]] = {
+    "privacy_policy": [
+        # Title weight is intentionally heavier than peer doc-type titles —
+        # a privacy policy that *mentions* a DPA must still classify as
+        # privacy_policy, never as gdpr_dpa.
+        (r"\bprivacy policy\b", 5),
+        (r"personal information we collect", 2),
+        (r"data subject rights?", 2),
+        (r"data protection officer", 1),
+    ],
+    "terms_of_service": [
+        (r"\bterms of (service|use)\b", 3),
+        (r"acceptable use", 2),
+        (r"limitation of liability", 2),
+        (r"governing law", 1),
+        (r"warranty disclaimer", 1),
+    ],
+    "gdpr_dpa": [
+        (r"data processing agreement", 3),
+        (r"\bdpa\b", 1),
+        (r"article ?28", 2),
+        (r"\bsub[-\s]?processor", 2),
+        (r"standard contractual clauses", 2),
+        (r"\bcontroller\b.{0,40}\bprocessor\b", 2),
+    ],
+    "ccpa_notice": [
+        (r"\bccpa\b", 3),
+        (r"\bcpra\b", 2),
+        (r"california (consumer|resident)", 2),
+        (r"do not sell", 2),
+        (r"right to (know|delete|opt[-\s]?out)", 1),
+    ],
+    "cookie_policy": [
+        (r"\bcookie (policy|notice|banner)\b", 3),
+        (r"\bcookies?\b.{0,40}\b(strictly necessary|functional|analytic|advertising)", 2),
+        (r"cookie (preferences|consent|settings)", 2),
+        (r"local storage", 1),
+        (r"web beacon", 1),
+    ],
+    "ai_system_card": [
+        (r"\bmodel card\b", 3),
+        (r"\bsystem card\b", 3),
+        (r"intended use", 2),
+        (r"out[-\s]?of[-\s]?scope", 2),
+        (r"\b(eu )?ai act\b", 2),
+        (r"high[-\s]?risk", 1),
+        (r"human oversight", 1),
+    ],
+    "soc2_report": [
+        (r"\bsoc ?2\b", 3),
+        (r"trust services criteria", 2),
+        (r"\baicpa\b", 2),
+        (r"\bcc6\.\d", 1),
+        (r"control objectives?", 1),
+    ],
+}
+
+_POLICY_TYPE_PATTERN_CACHE: dict[str, list[tuple[re.Pattern[str], int]]] = {}
+_POLICY_TYPE_LOCK = threading.Lock()
+
+
+def _compiled_policy_type_signals(policy_type: str) -> list[tuple[re.Pattern[str], int]]:
+    cached = _POLICY_TYPE_PATTERN_CACHE.get(policy_type)
+    if cached is not None:
+        return cached
+    with _POLICY_TYPE_LOCK:
+        cached = _POLICY_TYPE_PATTERN_CACHE.get(policy_type)
+        if cached is not None:
+            return cached
+        compiled = [
+            (re.compile(p, re.IGNORECASE), w)
+            for p, w in _POLICY_TYPE_SIGNALS[policy_type]
+        ]
+        _POLICY_TYPE_PATTERN_CACHE[policy_type] = compiled
+        return compiled
+
+
+def detect_policy_type(text: str) -> str:
+    """Classify *text* into one of :data:`POLICY_TYPES`.
+
+    Returns the highest-scoring type, or ``"other"`` if no signal fires.
+    Ties are broken in favour of the more specific document class
+    (``ccpa_notice`` > ``privacy_policy`` etc.) — see ``_TIE_PRIORITY``.
+
+    Heuristic only — false positives are recoverable; the caller should
+    treat the result as advisory metadata, not a legal classification.
+    """
+    if not isinstance(text, str) or not text.strip():
+        return "other"
+    scores: dict[str, int] = {}
+    for ptype in _POLICY_TYPE_SIGNALS:
+        signals = _compiled_policy_type_signals(ptype)
+        scores[ptype] = sum(w for pattern, w in signals if pattern.search(text))
+    best_score = max(scores.values())
+    if best_score == 0:
+        return "other"
+    # Tie-break: prefer narrowly-recognisable B2B documents over the
+    # generic "privacy policy" catch-all (later in this tuple = higher prio).
+    # Rationale: a privacy-policy file that *mentions* a DPA is still a
+    # privacy policy; a DPA file does not contain a "privacy policy" title.
+    # Putting privacy_policy near the top means it loses ties to
+    # cookie_policy / ccpa_notice / gdpr_dpa / soc2_report when those
+    # specific markers also fire — but wins versus terms_of_service.
+    tie_order = (
+        "terms_of_service", "ai_system_card",
+        "privacy_policy",
+        "cookie_policy", "ccpa_notice", "soc2_report", "gdpr_dpa",
+    )
+    winners = [t for t, s in scores.items() if s == best_score]
+    for ptype in reversed(tie_order):
+        if ptype in winners:
+            return ptype
+    return winners[0]
+
+
+def score_all_frameworks(
+    text: str,
+    frameworks: tuple[str, ...] = ("gdpr", "ccpa", "soc2"),
+) -> dict[str, QuickCheckResult]:
+    """Score *text* against each named framework — used by the SVG card.
+
+    Skips any framework not in :data:`AVAILABLE_FRAMEWORKS`; raises
+    ``ValueError`` if *text* is empty or oversized (delegated to
+    :pyfunc:`run_quick_check`).
+    """
+    out: dict[str, QuickCheckResult] = {}
+    for fw in frameworks:
+        if fw not in AVAILABLE_FRAMEWORKS:
+            continue
+        out[fw] = run_quick_check(text, framework=fw)
+    return out
+
+
+# ── Trending stats tracker ───────────────────────────────────────────────────
+
+
+@dataclass
+class _Bucket:
+    """Per-policy-type aggregate counters for the trending feed."""
+
+    count: int = 0
+    pass_count: int = 0
+    warn_count: int = 0
+    fail_count: int = 0
+
+    def record(self, verdict: str) -> None:
+        self.count += 1
+        if verdict == "pass":
+            self.pass_count += 1
+        elif verdict == "warn":
+            self.warn_count += 1
+        elif verdict == "fail":
+            self.fail_count += 1
+
+    def to_dict(self) -> dict[str, Any]:
+        rate = (self.pass_count / self.count) if self.count else 0.0
+        return {
+            "count": self.count,
+            "pass": self.pass_count,
+            "warn": self.warn_count,
+            "fail": self.fail_count,
+            "pass_rate": round(rate, 4),
+        }
+
+
+class StatsTracker:
+    """Thread-safe in-memory aggregate counter for the ``/trending`` endpoint.
+
+    One bucket per :data:`POLICY_TYPES` entry. Each ``/quick-check`` call
+    records ``(policy_type, verdict)`` so trending always reflects what the
+    public has been pasting into the demo.
+
+    The store is intentionally process-local — for a multi-replica deploy
+    the API server fronts a single instance per pod, and trending is
+    "approximate / per-pod" by design. A future Sprint can back this with
+    Redis if precision matters; today, viral momentum is the goal.
+    """
+
+    def __init__(self) -> None:
+        self._buckets: dict[str, _Bucket] = {pt: _Bucket() for pt in POLICY_TYPES}
+        self._total: int = 0
+        self._lock = threading.Lock()
+
+    def record(self, policy_type: str, verdict: str) -> None:
+        """Record one check. Unknown *policy_type* falls back to ``"other"``."""
+        if policy_type not in self._buckets:
+            policy_type = "other"
+        if verdict not in {"pass", "warn", "fail"}:
+            return
+        with self._lock:
+            self._buckets[policy_type].record(verdict)
+            self._total += 1
+
+    def trending(self, top: int = 5) -> dict[str, Any]:
+        """Return the top *top* policy types by check count, plus totals.
+
+        Always returns a complete payload (``{"total", "top": [...]}``) even
+        when the tracker is empty — keeps the demo UI's render path simple.
+        """
+        if top <= 0:
+            top = 5
+        with self._lock:
+            ranked = sorted(
+                self._buckets.items(),
+                key=lambda kv: (-kv[1].count, kv[0]),
+            )
+            top_list = [
+                {"policy_type": pt, **bucket.to_dict()}
+                for pt, bucket in ranked[:top]
+                if bucket.count > 0
+            ]
+            return {"total": self._total, "top": top_list}
+
+    def reset(self) -> None:
+        """Wipe all counters — used by tests."""
+        with self._lock:
+            for bucket in self._buckets.values():
+                bucket.count = 0
+                bucket.pass_count = 0
+                bucket.warn_count = 0
+                bucket.fail_count = 0
+            self._total = 0
+
+
+_GLOBAL_STATS = StatsTracker()
+
+
+def get_global_stats() -> StatsTracker:
+    """Return the process-wide :class:`StatsTracker` used by the API."""
+    return _GLOBAL_STATS

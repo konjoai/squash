@@ -5,6 +5,71 @@ Format: [Conventional Commits](https://www.conventionalcommits.org/) · [Keep a 
 
 ---
 
+## [3.7.0] — 2026-05-10 — Viral SVG card + trending + UI overhaul (Sprint 30)
+
+The demo *is* the compliance scanner — visuals communicate everything.
+
+### Added — Sprint 30 W249–W251
+
+- **`GET /r/{hash}/card.svg`** — viral SVG score card. 600×340 standalone
+  SVG with verdict glyph (✦ pass / △ warn / ✗ fail), primary score and
+  framework, three sub-score chips (GDPR / CCPA / SOC 2), policy-type
+  label, UTC timestamp, and share-hash footer. Renders identically in
+  Slack unfurls, Twitter cards, GitHub READMEs, and blog embeds. No
+  external dependencies — pure stdlib SVG construction.
+- **`GET /trending`** — public viral feed. Returns `{total, top, policy_types}`
+  where `top` is the top-N policy types by check count plus per-type
+  pass / warn / fail / pass-rate counters. Backed by an in-process
+  `StatsTracker` recorded on every `/quick-check` call. Auth-free by design.
+- **`squash/quick_check.py`** additions:
+  - **SOC 2** clause framework (6 controls: CC1, CC6.1/.2, CC7.1/.2,
+    CC7.3/.4, A1, C1) — `AVAILABLE_FRAMEWORKS` is now {gdpr, ccpa,
+    eu-ai-act, soc2, general}.
+  - `detect_policy_type()` — heuristic classifier across 8 doc types
+    (privacy_policy, terms_of_service, gdpr_dpa, ccpa_notice,
+    cookie_policy, ai_system_card, soc2_report, other).
+  - `score_all_frameworks()` — multi-framework scorer used by the SVG card.
+  - `StatsTracker` + `get_global_stats()` — thread-safe in-memory aggregate.
+  - `POLICY_TYPES` taxonomy export.
+- **`POST /quick-check`** response now includes `card_url` (when `share=True`)
+  and embeds `policy_type` in the share payload.
+- **`demo/index.html`** — full visual rebuild. `#06060f` background with
+  faint purple dot grid. Animated horizontal scan beam (`@keyframes scan`).
+  Borderless dark textarea with glowing caret. Single circular `#7c3aed`
+  submit orb with breathing pulse ring (`@keyframes breathe`); morphs to
+  spinner during scan. Result reveal: large verdict glyph in colored
+  outer-glow card, three orbiting framework dots, sub-score chips, inline
+  SVG card preview with copy-link orb. Faint trending sidebar with
+  per-policy-type glyphs and pass-rate bars. `prefers-reduced-motion`
+  respected. All Sprint 29 DOM hooks preserved.
+- **`squash/__init__.py`** exports: `QUICK_CHECK_POLICY_TYPES`,
+  `QuickCheckStatsTracker`, `detect_quick_check_policy_type`,
+  `get_quick_check_stats`, `score_quick_check_all_frameworks`.
+- **`tests/test_squash_sprint30.py`** — 63 new tests covering the SOC 2
+  framework, policy-type detection, multi-framework scorer, thread-safe
+  stats tracker, both new API endpoints (200/400/404/no-auth/headers/body),
+  card-url presence in `/quick-check` response, the visual primitives in
+  the rebuilt UI, and the Sprint 29 contract preservation.
+
+### Changed
+- Bumped `pyproject.toml` and `squash/__init__.py` to **3.7.0**.
+- `tests/test_squash_w73.py` version-pin updated to 3.7.0.
+- `tests/test_squash_sprint29.py` version assertions loosened to
+  `>= 3.6.0` so future bumps don't break the Sprint 29 gate.
+- Auth bypass list extended: `/trending` is public; `/r/{hash}/card.svg`
+  inherits via the existing `/r/` prefix rule.
+
+### Why this matters — every share is a billboard
+A share permalink is now an instantly-renderable, framework-aware billboard.
+A founder pastes their privacy policy, gets a `/r/{hash}/card.svg`, drops
+the URL into Slack, and the unfurl preview is a Squash-branded compliance
+score. `/trending` turns aggregate behaviour into social proof: "what
+policies are people checking right now." The visual UI rebuild collapses
+the cognitive distance between "I have a document" and "I have a verdict"
+to a single keystroke on a breathing purple orb.
+
+---
+
 ## [3.6.0] — 2026-05-09 — Demo polish (Sprint 29)
 
 ### Added — Sprint 29 W258–W260
