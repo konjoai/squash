@@ -638,6 +638,215 @@ main.stage, .brand, .brand-link, footer, aside.trending { position: relative; z-
   text-shadow: 0 0 22px rgba(124,58,237,0.55);
   transition: text-shadow 600ms var(--ease-exit);
 }
+
+/* ──────────────────────────────────────────────────────────────────────
+   Konjo wave-2 — magnetic repulsion · gradient text · stagger reveal ·
+   risk heatmap · 3D depth · keyboard ripple · progress ring · burst.
+   Every rule additive. Every motion gated by prefers-reduced-motion.
+   ────────────────────────────────────────────────────────────────────── */
+
+/* 1. Magnetic repulsion — transition only; translate set by JS */
+.sq-magnet {
+  transition: transform 200ms var(--ease-exit);
+  will-change: transform;
+}
+
+/* 2. Animated gradient text on verdict reveal */
+.verdict-card.pass #qcSummary.sq-shimmer,
+.verdict-card.pass #qcScore.sq-shimmer,
+.verdict-card.pass #qcBadge.sq-shimmer {
+  background: linear-gradient(90deg, #4ade80, #ffffff, #4ade80);
+  background-size: 200% auto;
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent;
+  animation: sqTextShimmer 2.4s linear infinite;
+}
+.verdict-card.fail #qcSummary.sq-shimmer,
+.verdict-card.fail #qcScore.sq-shimmer,
+.verdict-card.fail #qcBadge.sq-shimmer {
+  background: linear-gradient(90deg, #f43f5e, #fb923c, #f43f5e);
+  background-size: 200% auto;
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent;
+  animation: sqTextShimmer 2.4s linear infinite;
+}
+.verdict-card.warn #qcSummary.sq-shimmer,
+.verdict-card.warn #qcScore.sq-shimmer,
+.verdict-card.warn #qcBadge.sq-shimmer {
+  background: linear-gradient(90deg, #fbbf24, #ffffff, #fbbf24);
+  background-size: 200% auto;
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent;
+  animation: sqTextShimmer 2.4s linear infinite;
+}
+@keyframes sqTextShimmer {
+  0%   { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+
+/* 3. Scroll-reveal stagger on sub-score chips */
+.sub-chip.sq-reveal {
+  opacity: 0;
+  transform: translateY(16px);
+  transition:
+    opacity 520ms var(--ease-enter),
+    transform 520ms var(--ease-enter);
+  will-change: opacity, transform;
+}
+.sub-chip.sq-reveal.sq-in {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* 4. Live clause risk heatmap — overlay div mirroring textarea */
+#sqHeatOverlay {
+  position: absolute; inset: 0;
+  padding: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 14px;
+  line-height: 1.55;
+  letter-spacing: inherit;
+  pointer-events: none;
+  white-space: pre-wrap; word-wrap: break-word;
+  overflow: hidden;
+  color: transparent;
+  z-index: 1;
+}
+#sqHeatOverlay .heat-clause {
+  display: inline;
+  background-color: transparent;
+  border-radius: 3px;
+  padding: 0 1px;
+  transition: background-color 400ms var(--ease-exit);
+}
+#sqHeatOverlay .heat-clause.low  { background-color: rgba(251,191,36,0.08); }
+#sqHeatOverlay .heat-clause.high { background-color: rgba(239,68,68,0.12); }
+.qc-textarea-wrap { z-index: 1; }
+textarea#qcText { position: relative; z-index: 2; }
+
+/* 5. Verdict card 3D depth layers */
+.verdict-card.sq-depth {
+  perspective: 600px;
+  transform-style: preserve-3d;
+}
+.verdict-card.sq-depth .sq-layer-back,
+.verdict-card.sq-depth .sq-layer-mid,
+.verdict-card.sq-depth .sq-layer-front {
+  transform-style: preserve-3d;
+  transition: transform 220ms var(--ease-exit);
+  will-change: transform;
+}
+.verdict-card.sq-depth .sq-layer-back  { transform: translateZ(-8px) scale(1.02); }
+.verdict-card.sq-depth .sq-layer-mid   { transform: translateZ(0); }
+.verdict-card.sq-depth .sq-layer-front { transform: translateZ(12px); }
+.verdict-card.sq-depth .sq-blur-plane {
+  position: absolute; inset: 0;
+  border-radius: inherit;
+  background:
+    radial-gradient(60% 60% at 50% 30%, rgba(124,58,237,0.18), transparent 75%);
+  filter: blur(18px);
+  opacity: 0.7;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* 6. Keyboard shortcut visual feedback — ripple + hint */
+button#btnQuickCheck.sq-ripple {
+  animation: sqKeyRipple 400ms var(--ease-exit);
+}
+@keyframes sqKeyRipple {
+  0%   { box-shadow: 0 0 0 0 rgba(124,58,237,0.80); }
+  100% { box-shadow: 0 0 0 20px rgba(124,58,237,0); }
+}
+.sq-kbd-hint {
+  position: absolute;
+  bottom: -32px; left: 50%;
+  transform: translate(-50%, 6px);
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(124,58,237,0.12);
+  border: 1px solid rgba(124,58,237,0.32);
+  color: var(--ink-2);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px; letter-spacing: 1px;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 300ms var(--ease-exit),
+    transform 300ms var(--ease-exit);
+}
+.sq-kbd-hint kbd {
+  font: inherit; color: var(--ink);
+  background: rgba(124,58,237,0.18);
+  padding: 1px 5px;
+  border-radius: 4px;
+  margin: 0 2px;
+}
+.orb-wrap.sq-show-hint .sq-kbd-hint {
+  opacity: 1; transform: translate(-50%, 0);
+}
+
+/* 7. Scan progress ring — SVG inside button */
+.sq-ring {
+  position: absolute; inset: -8px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 220ms var(--ease-exit);
+}
+button#btnQuickCheck.busy .sq-ring { opacity: 1; }
+button#btnQuickCheck.busy .spinner { display: none; }
+.sq-ring circle {
+  fill: none;
+  stroke: rgba(124,58,237,0.85);
+  stroke-width: 3;
+  stroke-linecap: round;
+  transition: stroke 360ms var(--ease-exit);
+  filter: drop-shadow(0 0 6px rgba(124,58,237,0.55));
+}
+.sq-ring circle.bg {
+  stroke: rgba(124,58,237,0.18);
+  filter: none;
+}
+.orb-wrap.sq-result-pass .sq-ring circle:not(.bg) { stroke: var(--pass); filter: drop-shadow(0 0 6px rgba(74,222,128,0.65)); }
+.orb-wrap.sq-result-fail .sq-ring circle:not(.bg) { stroke: var(--fail); filter: drop-shadow(0 0 6px rgba(244,63,94,0.65)); }
+.orb-wrap.sq-result-warn .sq-ring circle:not(.bg) { stroke: var(--warn); filter: drop-shadow(0 0 6px rgba(251,191,36,0.65)); }
+
+/* 8. Particle burst on score reveal — bursts spawned via JS */
+.sq-burst {
+  position: fixed; pointer-events: none;
+  z-index: 999;
+  width: 4px; height: 4px;
+  border-radius: 50%;
+  will-change: transform, opacity;
+  animation: sqBurst 600ms var(--ease-exit) forwards;
+}
+@keyframes sqBurst {
+  0%   { transform: translate3d(0,0,0) scale(1);   opacity: 1; }
+  100% { transform: translate3d(var(--bx,0), var(--by,0), 0) scale(0.3); opacity: 0; }
+}
+
+/* relative-context for the orb (so the ring + hint position correctly) */
+.orb-wrap { position: relative; }
+button#btnQuickCheck { position: relative; }
+
+@media (prefers-reduced-motion: reduce) {
+  .sq-magnet,
+  #qcSummary.sq-shimmer, #qcScore.sq-shimmer, #qcBadge.sq-shimmer,
+  .sub-chip.sq-reveal, .sq-burst,
+  button#btnQuickCheck.sq-ripple,
+  .sq-ring,
+  .verdict-card.sq-depth .sq-layer-back,
+  .verdict-card.sq-depth .sq-layer-mid,
+  .verdict-card.sq-depth .sq-layer-front {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+  }
+  .sub-chip.sq-reveal { opacity: 1; }
+  #qcSummary.sq-shimmer, #qcScore.sq-shimmer, #qcBadge.sq-shimmer {
+    background: none; -webkit-text-fill-color: currentColor; color: inherit;
+  }
+}
 </style>
 </head>
 <body>
@@ -673,6 +882,7 @@ main.stage, .brand, .brand-link, footer, aside.trending { position: relative; z-
 
     <div class="qc-stage">
       <div class="qc-textarea-wrap">
+        <div id="sqHeatOverlay" aria-hidden="true"></div>
         <textarea id="qcText" spellcheck="false" placeholder="paste policy text here…"></textarea>
         <div id="sqScanOverlay" aria-hidden="true"></div>
       </div>
@@ -707,20 +917,37 @@ main.stage, .brand, .brand-link, footer, aside.trending { position: relative; z-
         <span class="glyph">▶</span>
         <span class="spinner" aria-hidden="true"></span>
         <span class="label">Run Compliance Check</span>
+        <svg class="sq-ring" id="sqRing" viewBox="0 0 120 120" aria-hidden="true">
+          <circle class="bg" cx="60" cy="60" r="54"></circle>
+          <circle class="fg" cx="60" cy="60" r="54"
+                  pathLength="1000"
+                  stroke-dasharray="1000"
+                  stroke-dashoffset="1000"
+                  transform="rotate(-90 60 60)"></circle>
+        </svg>
       </button>
+      <div class="sq-kbd-hint" id="sqKbdHint" aria-hidden="true">
+        press <kbd>⌘</kbd><kbd>↵</kbd> to scan
+      </div>
     </div>
 
     <div class="qc-result" id="qcResult" aria-live="polite">
-      <div class="verdict-card" id="verdictCard">
-        <div class="verdict-glyph" id="qcBadge">·</div>
-        <div class="orbit" aria-hidden="true">
-          <i></i><i></i><i></i>
+      <div class="verdict-card sq-depth" id="verdictCard">
+        <div class="sq-blur-plane sq-layer-back" aria-hidden="true"></div>
+        <div class="sq-layer-back">
+          <div class="orbit" aria-hidden="true">
+            <i></i><i></i><i></i>
+          </div>
         </div>
-
-        <div class="verdict-score">
-          <span id="qcScore">0</span><sub>/100</sub>
+        <div class="sq-layer-mid">
+          <div class="verdict-glyph" id="qcBadge">·</div>
+          <p class="verdict-summary" id="qcSummary"></p>
         </div>
-        <p class="verdict-summary" id="qcSummary"></p>
+        <div class="sq-layer-front">
+          <div class="verdict-score">
+            <span id="qcScore">0</span><sub>/100</sub>
+          </div>
+        </div>
 
         <div class="sub-scores" id="subScores">
           <div class="sub-chip fail" data-fw="gdpr"><span class="label">GDPR</span><span class="num">0</span><span class="bar"><i></i></span></div>
@@ -1378,6 +1605,382 @@ main.stage, .brand, .brand-link, footer, aside.trending { position: relative; z-
       runScan(text).catch(() => tearDownScan());
     }, { passive: true });
   }
+})();
+</script>
+
+<script>
+/* ──────────────────────────────────────────────────────────────────────
+   Konjo wave-2 visual layer — magnetic repulsion, gradient shimmer,
+   stagger reveal, live risk heatmap, 3D depth, kbd ripple, progress
+   ring, particle burst. Pure additive, no existing function modified.
+   ────────────────────────────────────────────────────────────────────── */
+(() => {
+  if (typeof window === "undefined") return;
+  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const $ = (id) => document.getElementById(id);
+
+  /* ── 1. Magnetic cursor repulsion ─────────────────────────────────── */
+  const MAGNET_RADIUS = 80;     // px
+  const MAGNET_STRENGTH = 0.12; // per spec
+  const magnets = Array.from(document.querySelectorAll(
+    "button, textarea, .verdict-card, .sub-chip, .sample-pill, select"
+  ));
+  magnets.forEach((el) => el.classList.add("sq-magnet"));
+
+  let magnetRaf = 0;
+  let pendingMouse = null;
+
+  function updateMagnets() {
+    magnetRaf = 0;
+    if (!pendingMouse) return;
+    const { x: mx, y: my } = pendingMouse;
+    for (const el of magnets) {
+      // skip elements that are currently being dragged or carry their own
+      // transform-on-active (button:active scales 0.96, .sample-pill:hover
+      // translates). We append translate on top by reading data-magnet-dx/dy.
+      const rect = el.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) continue;
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      const dx = cx - mx, dy = cy - my;
+      const dist = Math.hypot(dx, dy);
+      if (dist < MAGNET_RADIUS) {
+        const tx = dx * MAGNET_STRENGTH;
+        const ty = dy * MAGNET_STRENGTH;
+        el.style.setProperty("--sq-mx", tx.toFixed(2) + "px");
+        el.style.setProperty("--sq-my", ty.toFixed(2) + "px");
+        el.style.transform = `translate(${tx.toFixed(2)}px, ${ty.toFixed(2)}px)`;
+      } else if (el.style.transform) {
+        el.style.transform = "";
+      }
+    }
+  }
+
+  if (!reduceMotion) {
+    window.addEventListener("mousemove", (e) => {
+      pendingMouse = { x: e.clientX, y: e.clientY };
+      if (!magnetRaf) magnetRaf = requestAnimationFrame(updateMagnets);
+    }, { passive: true });
+    document.addEventListener("mouseleave", () => {
+      pendingMouse = null;
+      for (const el of magnets) el.style.transform = "";
+    });
+  }
+
+  /* ── 2. Animated gradient text on verdict ─────────────────────────── */
+  const verdictCard = $("verdictCard");
+  const summaryEl   = $("qcSummary");
+  const scoreEl     = $("qcScore");
+  const badgeEl     = $("qcBadge");
+
+  function applyShimmer() {
+    [summaryEl, scoreEl, badgeEl].forEach((el) => {
+      if (el) el.classList.add("sq-shimmer");
+    });
+  }
+  function clearShimmer() {
+    [summaryEl, scoreEl, badgeEl].forEach((el) => {
+      if (el) el.classList.remove("sq-shimmer");
+    });
+  }
+
+  /* ── 3. Scroll-reveal stagger on sub-score chips ──────────────────── */
+  const chipSelector = ".sub-chip";
+  function prepChips() {
+    document.querySelectorAll(chipSelector).forEach((chip) => {
+      if (!reduceMotion) chip.classList.add("sq-reveal");
+    });
+  }
+  prepChips();
+
+  let revealObserver = null;
+  if (!reduceMotion && "IntersectionObserver" in window) {
+    revealObserver = new IntersectionObserver((entries) => {
+      const newlyIn = entries.filter((e) => e.isIntersecting);
+      newlyIn.forEach((entry, idx) => {
+        const el = entry.target;
+        if (el.classList.contains("sq-in")) return;
+        setTimeout(() => {
+          el.classList.add("sq-in");
+          burstFromElement(el);
+        }, idx * 80);                              // 80ms stagger per spec
+        revealObserver.unobserve(el);
+      });
+    }, { threshold: 0.4 });
+    document.querySelectorAll(chipSelector).forEach((c) => revealObserver.observe(c));
+  } else {
+    document.querySelectorAll(chipSelector).forEach((c) => c.classList.add("sq-in"));
+  }
+
+  /* ── 4. Live clause risk heatmap ──────────────────────────────────── */
+  const RISK_KEYWORDS_HIGH = [
+    "indemnify", "irrevocable", "perpetual", "waive", "sublicense",
+  ];
+  const RISK_KEYWORDS_LOW = [
+    "shall not", "liability",
+  ];
+  const ALL_RISK_WORDS = [...RISK_KEYWORDS_HIGH, ...RISK_KEYWORDS_LOW];
+  const ta = $("qcText");
+  const heat = $("sqHeatOverlay");
+
+  function classifyClause(clause) {
+    const lower = clause.toLowerCase();
+    let high = 0, low = 0;
+    for (const w of RISK_KEYWORDS_HIGH) if (lower.includes(w)) high++;
+    for (const w of RISK_KEYWORDS_LOW)  if (lower.includes(w)) low++;
+    if (high > 0) return "high";
+    if (low > 0)  return "low";
+    return "";
+  }
+
+  function escapeHtml(s) {
+    return s.replace(/[&<>"']/g, (c) => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;",
+      '"': "&quot;", "'": "&#39;",
+    }[c]));
+  }
+
+  function renderHeat() {
+    if (!ta || !heat) return;
+    const text = ta.value;
+    // tokenize into clauses by sentence-ish boundaries; preserve original
+    // whitespace so the overlay aligns to the textarea character-for-character.
+    const parts = text.split(/(?<=[.;!?\n])/);
+    let html = "";
+    for (const part of parts) {
+      const risk = classifyClause(part);
+      if (!risk) {
+        html += escapeHtml(part);
+      } else {
+        html += '<span class="heat-clause ' + risk + '">' + escapeHtml(part) + "</span>";
+      }
+    }
+    heat.innerHTML = html;
+    // mirror styles that affect line wrapping precisely
+    const cs = window.getComputedStyle(ta);
+    heat.style.font = cs.font;
+    heat.style.padding = cs.padding;
+    heat.style.lineHeight = cs.lineHeight;
+    heat.style.letterSpacing = cs.letterSpacing;
+    heat.style.transform = `translateY(${-ta.scrollTop}px)`;
+  }
+
+  let heatTimer = 0;
+  function scheduleHeat() {
+    clearTimeout(heatTimer);
+    heatTimer = setTimeout(renderHeat, 200);       // 200ms debounce per spec
+  }
+  if (ta && heat) {
+    ta.addEventListener("input", scheduleHeat);
+    ta.addEventListener("scroll", () => {
+      heat.style.transform = `translateY(${-ta.scrollTop}px)`;
+    }, { passive: true });
+    // initial paint after the existing sample loader settles
+    setTimeout(renderHeat, 400);
+    setTimeout(renderHeat, 1400);
+  }
+
+  /* ── 5. Verdict-card 3D depth parallax ─────────────────────────────── */
+  if (verdictCard && !reduceMotion) {
+    const layerBack  = verdictCard.querySelectorAll(".sq-layer-back");
+    const layerMid   = verdictCard.querySelectorAll(".sq-layer-mid");
+    const layerFront = verdictCard.querySelectorAll(".sq-layer-front");
+    let pRaf = 0, pX = 0, pY = 0, pActive = false;
+
+    function applyParallax() {
+      pRaf = 0;
+      const rect = verdictCard.getBoundingClientRect();
+      if (rect.width === 0) return;
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      const nx = (pX - cx) / rect.width;        // -0.5..0.5
+      const ny = (pY - cy) / rect.height;
+      // each layer shifts a different magnitude — true depth, not just rotate
+      layerBack.forEach((el) => {
+        el.style.transform =
+          `translate3d(${(-nx * 6).toFixed(2)}px, ${(-ny * 6).toFixed(2)}px, -8px) scale(1.02)`;
+      });
+      layerMid.forEach((el) => {
+        el.style.transform =
+          `translate3d(${(nx * 4).toFixed(2)}px, ${(ny * 4).toFixed(2)}px, 0)`;
+      });
+      layerFront.forEach((el) => {
+        el.style.transform =
+          `translate3d(${(nx * 12).toFixed(2)}px, ${(ny * 12).toFixed(2)}px, 12px)`;
+      });
+    }
+
+    verdictCard.addEventListener("mouseenter", () => { pActive = true; });
+    verdictCard.addEventListener("mousemove", (e) => {
+      if (!pActive) return;
+      pX = e.clientX; pY = e.clientY;
+      if (!pRaf) pRaf = requestAnimationFrame(applyParallax);
+    });
+    verdictCard.addEventListener("mouseleave", () => {
+      pActive = false;
+      layerBack.forEach((el)  => el.style.transform = "");
+      layerMid.forEach((el)   => el.style.transform = "");
+      layerFront.forEach((el) => el.style.transform = "");
+    });
+  }
+
+  /* ── 6. Keyboard shortcut visual feedback ─────────────────────────── */
+  const btn = $("btnQuickCheck");
+  const orbWrap = btn && btn.closest(".orb-wrap");
+  const kbdHint = $("sqKbdHint");
+  let idleTimer = 0;
+
+  function showHint() {
+    if (orbWrap && kbdHint && !reduceMotion) orbWrap.classList.add("sq-show-hint");
+  }
+  function hideHint() {
+    if (orbWrap) orbWrap.classList.remove("sq-show-hint");
+  }
+  function resetIdle() {
+    clearTimeout(idleTimer);
+    hideHint();
+    idleTimer = setTimeout(showHint, 3000);          // 3s idle per spec
+  }
+  if (ta) {
+    ta.addEventListener("input", resetIdle);
+    ta.addEventListener("keydown", resetIdle);
+    resetIdle();
+  }
+
+  function rippleAndSubmit() {
+    if (!btn) return;
+    btn.classList.remove("sq-ripple");
+    // force reflow so the same animation can restart
+    void btn.offsetWidth;
+    btn.classList.add("sq-ripple");
+    setTimeout(() => btn.classList.remove("sq-ripple"), 420);
+    hideHint();
+    btn.click();
+  }
+  document.addEventListener("keydown", (e) => {
+    const isSubmit = (e.key === "Enter") && (e.ctrlKey || e.metaKey);
+    if (!isSubmit) return;
+    e.preventDefault();
+    rippleAndSubmit();
+  });
+
+  /* ── 7. Scan progress ring ────────────────────────────────────────── */
+  const ring = $("sqRing");
+  const ringCircle = ring && ring.querySelector("circle.fg");
+  let ringRaf = 0, ringStart = 0, ringRunning = false;
+  const RING_LEN = 1000; // matches pathLength on the circle
+
+  function ringTick(now) {
+    ringRaf = 0;
+    if (!ringCircle || !ringRunning) return;
+    const elapsed = now - ringStart;
+    const expected = 1800;        // assumed scan duration; eases on completion
+    const progress = Math.min(0.97, elapsed / expected);  // never quite full
+    const offset = RING_LEN * (1 - progress);
+    ringCircle.setAttribute("stroke-dashoffset", String(offset.toFixed(2)));
+    if (ringRunning) ringRaf = requestAnimationFrame(ringTick);
+  }
+  function startRing() {
+    if (!ringCircle) return;
+    ringRunning = true;
+    ringStart = performance.now();
+    if (orbWrap) {
+      orbWrap.classList.remove("sq-result-pass", "sq-result-fail", "sq-result-warn");
+    }
+    ringCircle.setAttribute("stroke-dashoffset", String(RING_LEN));
+    ringRaf = requestAnimationFrame(ringTick);
+  }
+  function finishRing(verdict) {
+    ringRunning = false;
+    if (ringRaf) cancelAnimationFrame(ringRaf);
+    if (!ringCircle) return;
+    ringCircle.setAttribute("stroke-dashoffset", "0");
+    if (orbWrap) {
+      orbWrap.classList.remove("sq-result-pass", "sq-result-fail", "sq-result-warn");
+      orbWrap.classList.add("sq-result-" + (verdict || "fail"));
+    }
+    setTimeout(() => {
+      if (!btn || btn.classList.contains("busy")) return;
+      // reset to empty when busy clears for the next run
+      ringCircle.setAttribute("stroke-dashoffset", String(RING_LEN));
+      if (orbWrap) {
+        orbWrap.classList.remove("sq-result-pass", "sq-result-fail", "sq-result-warn");
+      }
+    }, 1400);
+  }
+
+  // observe the button's busy class
+  if (btn) {
+    const btnObs = new MutationObserver(() => {
+      if (btn.classList.contains("busy")) startRing();
+    });
+    btnObs.observe(btn, { attributes: true, attributeFilter: ["class"] });
+  }
+
+  /* ── 8. Particle burst on score-chip reveal ──────────────────────── */
+  function burstFromElement(el) {
+    if (reduceMotion) return;
+    const rect = el.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    let color = "#7c3aed";
+    if (el.classList.contains("pass")) color = "#4ade80";
+    else if (el.classList.contains("warn")) color = "#fbbf24";
+    else if (el.classList.contains("fail")) color = "#f43f5e";
+    const N = 8;
+    for (let i = 0; i < N; i++) {
+      const ang = (Math.PI * 2 * i) / N + Math.random() * 0.3;
+      const dist = 30 + Math.random() * 20;          // 30–50px per spec
+      const dx = Math.cos(ang) * dist;
+      const dy = Math.sin(ang) * dist;
+      const p = document.createElement("div");
+      p.className = "sq-burst";
+      p.style.left = (cx - 2) + "px";
+      p.style.top  = (cy - 2) + "px";
+      p.style.background = color;
+      p.style.boxShadow = `0 0 6px ${color}`;
+      p.style.setProperty("--bx", dx.toFixed(1) + "px");
+      p.style.setProperty("--by", dy.toFixed(1) + "px");
+      document.body.appendChild(p);
+      setTimeout(() => p.remove(), 700);
+    }
+  }
+
+  /* ── Verdict observer — drives shimmer, ring finish, chip re-bursts ─ */
+  let lastVerdictKey = "";
+  if (verdictCard) {
+    const obs = new MutationObserver(() => {
+      const cls = verdictCard.className || "";
+      const m = cls.match(/(?:^|\s)(pass|fail|warn)(?:\s|$)/);
+      const key = (m ? m[1] : "") + "|" + (scoreEl ? scoreEl.textContent : "");
+      if (!m) {
+        clearShimmer();
+        return;
+      }
+      if (key === lastVerdictKey) return;
+      lastVerdictKey = key;
+      applyShimmer();
+      finishRing(m[1]);
+      // re-arm the chip reveal observer for the freshly-rendered chips
+      document.querySelectorAll(chipSelector).forEach((c) => {
+        c.classList.remove("sq-in");
+        c.classList.add("sq-reveal");
+        if (revealObserver) revealObserver.observe(c);
+        else c.classList.add("sq-in");
+      });
+    });
+    obs.observe(verdictCard, { attributes: true, attributeFilter: ["class"] });
+  }
+
+  // also observe sub-chip class changes (set by the existing scorer)
+  // so a fresh burst fires when the chip flips pass→fail mid-run
+  document.querySelectorAll(chipSelector).forEach((chip) => {
+    const obs = new MutationObserver(() => {
+      // burst on each verdict-class transition once visible
+      if (chip.classList.contains("sq-in")) burstFromElement(chip);
+    });
+    obs.observe(chip, { attributes: true, attributeFilter: ["class"] });
+  });
 })();
 </script>
 </body>
