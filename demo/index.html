@@ -847,6 +847,199 @@ button#btnQuickCheck { position: relative; }
     background: none; -webkit-text-fill-color: currentColor; color: inherit;
   }
 }
+
+/* ──────────────────────────────────────────────────────────────────────
+   v3.8.0 — clause redline + financial exposure + scan history.
+   ────────────────────────────────────────────────────────────────────── */
+
+/* aggregate financial exposure chip on the verdict card */
+.sq-exposure-chip {
+  display: inline-flex; align-items: center; gap: 10px;
+  margin-top: 18px;
+  padding: 10px 16px;
+  background: rgba(244,63,94,0.08);
+  border: 1px solid rgba(244,63,94,0.30);
+  border-radius: 999px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px; letter-spacing: 0.5px;
+  color: var(--ink-2);
+  opacity: 0; transform: translateY(6px);
+  transition: opacity 360ms var(--ease-exit), transform 360ms var(--ease-exit);
+}
+.sq-exposure-chip.show { opacity: 1; transform: none; }
+.sq-exposure-chip .label {
+  color: var(--ink-3); text-transform: uppercase; letter-spacing: 2px; font-size: 10px;
+}
+.sq-exposure-chip .amount { color: #f43f5e; font-weight: 600; font-size: 13px; }
+.sq-exposure-chip .count { color: var(--ink-3); font-size: 11px; }
+.sq-exposure-chip .disclaimer {
+  margin-left: 8px; color: var(--ink-3); font-size: 10px;
+  letter-spacing: 1px; opacity: 0.7;
+}
+
+/* clause-redline accordion under the missing list */
+.sq-redline {
+  margin-top: 16px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.sq-redline-card {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel-2);
+  overflow: hidden;
+  transition: border-color 220ms var(--ease-exit), box-shadow 220ms var(--ease-exit);
+}
+.sq-redline-card.risk-critical { border-left: 3px solid #f43f5e; }
+.sq-redline-card.risk-high     { border-left: 3px solid #f97316; }
+.sq-redline-card.risk-medium   { border-left: 3px solid #fbbf24; }
+.sq-redline-card.risk-low      { border-left: 3px solid #4ade80; }
+.sq-redline-card summary {
+  list-style: none; cursor: pointer;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 12px;
+  padding: 10px 14px;
+  font-size: 13px;
+  color: var(--ink);
+  user-select: none;
+}
+.sq-redline-card summary::-webkit-details-marker { display: none; }
+.sq-redline-card summary::before {
+  content: "▸";
+  display: inline-block; color: var(--ink-3);
+  transition: transform 200ms var(--ease-exit);
+}
+.sq-redline-card[open] summary::before { transform: rotate(90deg); }
+.sq-redline-card .label { font-weight: 500; flex: 1; }
+.sq-redline-card .risk-pill {
+  font-family: ui-monospace, monospace; font-size: 10px;
+  letter-spacing: 1px; text-transform: uppercase;
+  padding: 2px 8px; border-radius: 999px;
+}
+.sq-redline-card.risk-critical .risk-pill { background: rgba(244,63,94,0.18); color: #fda4af; }
+.sq-redline-card.risk-high     .risk-pill { background: rgba(249,115,22,0.18); color: #fdba74; }
+.sq-redline-card.risk-medium   .risk-pill { background: rgba(251,191,36,0.18); color: #fde68a; }
+.sq-redline-card.risk-low      .risk-pill { background: rgba(74,222,128,0.18); color: #86efac; }
+.sq-redline-card .dollar {
+  font-family: ui-monospace, monospace; font-size: 11px;
+  color: #f43f5e;
+  background: rgba(244,63,94,0.08);
+  padding: 2px 8px; border-radius: 6px;
+}
+.sq-redline-card .body {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 0;
+  padding: 0;
+  border-top: 1px solid var(--line);
+}
+.sq-redline-card .body > div {
+  padding: 12px 14px;
+  font-family: ui-monospace, monospace; font-size: 12px;
+  line-height: 1.55;
+  white-space: pre-wrap; word-wrap: break-word;
+}
+.sq-redline-card .original {
+  background: rgba(244,63,94,0.05);
+  color: var(--ink-2);
+  border-right: 1px dashed var(--line);
+}
+.sq-redline-card .original::before {
+  content: "− original"; display: block;
+  font-family: inherit; font-size: 10px; color: rgba(244,63,94,0.85);
+  letter-spacing: 2px; margin-bottom: 6px; text-transform: uppercase;
+}
+.sq-redline-card .suggested {
+  background: rgba(74,222,128,0.06);
+  color: var(--ink);
+}
+.sq-redline-card .suggested::before {
+  content: "+ suggested fix"; display: block;
+  font-family: inherit; font-size: 10px; color: rgba(74,222,128,0.95);
+  letter-spacing: 2px; margin-bottom: 6px; text-transform: uppercase;
+}
+.sq-redline-card .citation {
+  grid-column: 1 / -1;
+  padding: 8px 14px;
+  font-size: 10px; letter-spacing: 1px;
+  color: var(--ink-3);
+  background: rgba(124,58,237,0.04);
+  border-top: 1px dashed var(--line);
+}
+.sq-redline-card .issue {
+  padding: 10px 14px;
+  border-top: 1px solid var(--line);
+  font-size: 12px; color: var(--ink-2);
+  background: var(--panel);
+}
+@media (max-width: 720px) {
+  .sq-redline-card .body { grid-template-columns: 1fr; }
+  .sq-redline-card .original { border-right: 0; border-bottom: 1px dashed var(--line); }
+}
+
+/* recent-scans history panel */
+.sq-history {
+  margin-top: 56px;
+  border-radius: 18px;
+  padding: 22px 24px 18px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  position: relative;
+}
+.sq-history h3 {
+  margin: 0 0 14px;
+  font-size: 11px; font-weight: 600; letter-spacing: 4px; text-transform: uppercase;
+  color: var(--ink-3);
+  display: flex; align-items: center; gap: 12px;
+}
+.sq-history h3 .count {
+  font-family: ui-monospace, monospace; font-size: 10px;
+  color: var(--ink-2); letter-spacing: 1px;
+}
+.sq-history .sparkline-wrap {
+  display: flex; align-items: center; gap: 16px;
+  padding: 8px 0 14px;
+  border-bottom: 1px dashed var(--line);
+}
+.sq-history svg.sparkline {
+  width: 100%; height: 44px;
+  flex: 1;
+}
+.sq-history .spark-stat {
+  font-family: ui-monospace, monospace; font-size: 12px;
+  color: var(--ink-2);
+  min-width: 120px;
+  text-align: right;
+}
+.sq-history .spark-stat .num { color: var(--ink); font-size: 14px; font-weight: 500; }
+.sq-history .spark-stat .lbl { color: var(--ink-3); font-size: 10px; letter-spacing: 1px; }
+.sq-history-list {
+  display: grid; gap: 6px;
+  margin-top: 14px;
+}
+.sq-history-row {
+  display: grid;
+  grid-template-columns: 80px 60px 1fr 70px 60px;
+  align-items: center; gap: 10px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  font-family: ui-monospace, monospace; font-size: 11px;
+  color: var(--ink-2);
+  transition: background-color 200ms var(--ease-exit);
+}
+.sq-history-row:hover { background: rgba(124,58,237,0.06); }
+.sq-history-row .v-pass { color: var(--pass); }
+.sq-history-row .v-warn { color: var(--warn); }
+.sq-history-row .v-fail { color: var(--fail); }
+.sq-history-row .fw    { color: var(--ink-3); }
+.sq-history-row .hash  { font-size: 10px; color: var(--ink-3); }
+.sq-history-row .ts    { color: var(--ink-3); }
+.sq-history-row .score { color: var(--ink); text-align: right; font-weight: 500; }
+.sq-history-empty {
+  text-align: center; padding: 24px 0;
+  color: var(--ink-3); font-size: 12px;
+  letter-spacing: 1px;
+}
+@media (max-width: 720px) {
+  .sq-history-row { grid-template-columns: 60px 50px 1fr 50px; }
+  .sq-history-row .hash { display: none; }
+}
 </style>
 </head>
 <body>
@@ -955,10 +1148,21 @@ button#btnQuickCheck { position: relative; }
           <div class="sub-chip fail" data-fw="soc2"><span class="label">SOC 2</span><span class="num">0</span><span class="bar"><i></i></span></div>
         </div>
 
+        <!-- P1-C: aggregate financial exposure chip -->
+        <div class="sq-exposure-chip" id="sqExposureChip" aria-live="polite">
+          <span class="label">est. exposure</span>
+          <span class="amount" id="sqExposureAmount">—</span>
+          <span class="count" id="sqExposureCount"></span>
+          <span class="disclaimer">est. — not legal advice</span>
+        </div>
+
         <div class="qc-clauses">
           <div class="qc-clause-block"><h4>matched</h4><ul id="qcMatched"></ul></div>
           <div class="qc-clause-block"><h4>missing</h4><ul id="qcMissing"></ul></div>
         </div>
+
+        <!-- P1-A: per-clause redline + suggested-fix diff -->
+        <div class="sq-redline" id="sqRedline" aria-label="Clause-level redline"></div>
 
         <div class="qc-card-row">
           <div class="qc-card-preview" id="qcCardPreview" hidden>
@@ -975,6 +1179,30 @@ button#btnQuickCheck { position: relative; }
       <div class="qc-error" id="qcError" role="alert"></div>
     </div>
     </div><!-- /.tilt-card -->
+  </section>
+
+  <!-- P1-B: scan history audit trail -->
+  <section class="sq-history" id="sqHistory" aria-label="Recent compliance scans">
+    <h3>
+      recent scans
+      <span class="count" id="sqHistoryCount">—</span>
+    </h3>
+    <div class="sparkline-wrap">
+      <svg class="sparkline" id="sqSparkline" viewBox="0 0 240 44"
+           preserveAspectRatio="none" aria-hidden="true">
+        <polyline class="sparkline-area" points="" fill="rgba(124,58,237,0.10)" stroke="none"></polyline>
+        <polyline class="sparkline-line" points=""
+                  fill="none" stroke="#7c3aed" stroke-width="1.6"
+                  stroke-linejoin="round" stroke-linecap="round"></polyline>
+      </svg>
+      <div class="spark-stat">
+        <div><span class="num" id="sqAvgScore">—</span></div>
+        <div class="lbl">avg score</div>
+      </div>
+    </div>
+    <div class="sq-history-list" id="sqHistoryList">
+      <div class="sq-history-empty">no scans yet — your first verdict will appear here</div>
+    </div>
   </section>
 
   <aside class="trending" id="trending" aria-label="Trending policy types">
@@ -1981,6 +2209,196 @@ button#btnQuickCheck { position: relative; }
     });
     obs.observe(chip, { attributes: true, attributeFilter: ["class"] });
   });
+})();
+</script>
+
+<script>
+/* ──────────────────────────────────────────────────────────────────────
+   v3.8.0 — clause redline + financial exposure + scan history.
+   Hooks the public /quick-check + /r/{hash}/remediation + /history
+   endpoints; entirely additive — no existing JS modified.
+   ────────────────────────────────────────────────────────────────────── */
+(() => {
+  if (typeof window === "undefined") return;
+  const $ = (id) => document.getElementById(id);
+  const escape = (s) => String(s).replace(/[&<>"']/g, (c) => ({
+    "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;",
+  }[c]));
+
+  const verdictCard = $("verdictCard");
+  const shareInput  = $("qcShareUrl");
+  const redline     = $("sqRedline");
+  const expChip     = $("sqExposureChip");
+  const expAmount   = $("sqExposureAmount");
+  const expCount    = $("sqExposureCount");
+
+  /* ── helpers ──────────────────────────────────────────────────────── */
+  function clearRedline() {
+    if (redline) redline.innerHTML = "";
+    if (expChip) expChip.classList.remove("show");
+    if (expAmount) expAmount.textContent = "—";
+    if (expCount)  expCount.textContent = "";
+  }
+
+  function renderRedline(report) {
+    if (!redline) return;
+    redline.innerHTML = "";
+    if (!report || !Array.isArray(report.entries)) return;
+    for (const e of report.entries) {
+      const card = document.createElement("details");
+      card.className = "sq-redline-card risk-" + (e.risk_level || "medium");
+      const open = e.risk_level === "critical" || e.risk_level === "high";
+      if (open) card.open = true;
+      const dollar = e.dollar_display ? `<span class="dollar">${escape(e.dollar_display)}</span>` : "";
+      card.innerHTML = `
+        <summary>
+          <span class="label">${escape(e.label || e.clause_id)}</span>
+          <span class="risk-pill">${escape(e.risk_level || "medium")}</span>
+          ${dollar}
+        </summary>
+        <div class="issue">${escape(e.issue || "")}</div>
+        <div class="body">
+          <div class="original">${escape(e.original || "")}</div>
+          <div class="suggested">${escape(e.suggested_fix || "")}</div>
+          ${e.citation ? `<div class="citation">${escape(e.citation)}</div>` : ""}
+        </div>
+      `;
+      redline.appendChild(card);
+    }
+    if (expChip && report.aggregate_display) {
+      expChip.classList.add("show");
+      if (expAmount) expAmount.textContent = report.aggregate_display;
+      if (expCount)  expCount.textContent = `${report.count} clause${report.count === 1 ? "" : "s"}`;
+    }
+  }
+
+  async function fetchRemediation(shareHash) {
+    if (!shareHash) return;
+    try {
+      const res = await fetch(`/r/${shareHash}/remediation`, { cache: "no-store" });
+      if (!res.ok) return;
+      const data = await res.json();
+      renderRedline(data);
+    } catch {
+      /* silent — remediation is best-effort */
+    }
+  }
+
+  function extractShareHash() {
+    // share URL is set by renderResult() to ".../r/<hash>" or ".../share/<hash>"
+    const u = shareInput && shareInput.value ? shareInput.value : "";
+    const m = u.match(/\/(?:r|share)\/([0-9a-f]{16})/);
+    return m ? m[1] : "";
+  }
+
+  /* ── verdict observer — fetch remediation when verdict lands ───────── */
+  if (verdictCard) {
+    let lastHash = "";
+    const obs = new MutationObserver(() => {
+      const cls = verdictCard.className || "";
+      const verdict = (cls.match(/(?:^|\s)(pass|fail|warn)(?:\s|$)/) || [])[1];
+      if (!verdict) { clearRedline(); return; }
+      // race: shareInput.value may not yet be set when card.classList fires.
+      // Retry briefly until the share-hash lands.
+      let attempts = 0;
+      const poll = () => {
+        const h = extractShareHash();
+        if (h && h !== lastHash) {
+          lastHash = h;
+          if (verdict === "pass") {
+            clearRedline();             // a clean pass has no exposure chip
+          } else {
+            fetchRemediation(h);
+          }
+          refreshHistory();             // every scan refreshes the trail
+          return;
+        }
+        if (attempts++ < 12) setTimeout(poll, 80);
+      };
+      poll();
+    });
+    obs.observe(verdictCard, { attributes: true, attributeFilter: ["class"] });
+  }
+
+  /* ── history panel ────────────────────────────────────────────────── */
+  const historyList   = $("sqHistoryList");
+  const historyCount  = $("sqHistoryCount");
+  const sparkLine     = document.querySelector("#sqSparkline .sparkline-line");
+  const sparkArea     = document.querySelector("#sqSparkline .sparkline-area");
+  const avgScoreEl    = $("sqAvgScore");
+
+  function renderSparkline(points) {
+    if (!sparkLine || !sparkArea || !Array.isArray(points) || points.length === 0) return;
+    const W = 240, H = 44, pad = 2;
+    const n = points.length;
+    const step = (W - pad * 2) / Math.max(1, n - 1);
+    const coords = points.map((v, i) => {
+      const x = pad + i * step;
+      const y = H - pad - (Math.max(0, Math.min(1, v)) * (H - pad * 2));
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    });
+    sparkLine.setAttribute("points", coords.join(" "));
+    const area = [`${pad},${H}`, ...coords, `${(pad + (n - 1) * step).toFixed(1)},${H}`];
+    sparkArea.setAttribute("points", area.join(" "));
+  }
+
+  function renderHistoryList(entries) {
+    if (!historyList) return;
+    if (!entries || entries.length === 0) {
+      historyList.innerHTML = `<div class="sq-history-empty">no scans yet — your first verdict will appear here</div>`;
+      return;
+    }
+    historyList.innerHTML = entries.map((r) => {
+      const ts = (r.timestamp || "").replace("T", " ").replace(/\+.*$/, "").replace(/-\d{2}:\d{2}$/, "").slice(11, 19);
+      const date = (r.timestamp || "").slice(5, 10).replace("-", "/");
+      const v = r.verdict || "fail";
+      return `
+        <div class="sq-history-row" data-share-hash="${escape(r.share_hash || "")}">
+          <span class="ts">${escape(date)} ${escape(ts)}</span>
+          <span class="fw">${escape(r.framework || "")}</span>
+          <span class="v-${escape(v)}">${escape(v.toUpperCase())}</span>
+          <span class="score">${escape(String(r.score ?? 0))}</span>
+          <span class="hash">${escape((r.input_hash || "").slice(0, 8))}</span>
+        </div>
+      `;
+    }).join("");
+    // clicking a row with a share hash opens it in a new tab
+    historyList.querySelectorAll(".sq-history-row").forEach((row) => {
+      const h = row.getAttribute("data-share-hash");
+      if (!h) return;
+      row.style.cursor = "pointer";
+      row.addEventListener("click", () => {
+        window.open(`/share/${h}`, "_blank", "noreferrer");
+      });
+    });
+  }
+
+  let historyTimer = 0;
+  async function refreshHistory() {
+    if (historyTimer) return;             // debounce simultaneous calls
+    historyTimer = setTimeout(() => { historyTimer = 0; }, 350);
+    try {
+      const res = await fetch(
+        "/history?limit=10&sparkline=true&sparkline_points=24&sparkline_bucket_seconds=3600",
+        { cache: "no-store" },
+      );
+      if (!res.ok) return;
+      const data = await res.json();
+      renderHistoryList(data.entries || []);
+      renderSparkline(data.pass_rate_sparkline || []);
+      if (historyCount) historyCount.textContent = `${data.total ?? 0} total`;
+      const stats = data.stats || {};
+      if (avgScoreEl && stats.avg_score != null) {
+        avgScoreEl.textContent = String(Math.round(stats.avg_score));
+      }
+    } catch {
+      /* silent */
+    }
+  }
+
+  // initial pull + periodic refresh
+  refreshHistory();
+  setInterval(refreshHistory, 30_000);
 })();
 </script>
 </body>

@@ -107,6 +107,7 @@ _UNAUTHED_PATHS = frozenset({
     "/demo",             # W258 (Sprint 29): static demo landing page
     "/quick-check/frameworks",
     "/trending",         # Sprint 30: aggregate viral feed — public by design
+    "/history",          # P1-B: scan history audit trail — public by design
 })
 
 # Badge + public score paths are dynamic — checked via prefix in middleware
@@ -1345,6 +1346,11 @@ def _quick_check_response(text: str, framework: str, share: bool, base_url: str)
     payload (so the SVG card and result page can render it) and records
     the ``(policy_type, verdict)`` pair in the global stats tracker that
     backs ``GET /trending``.
+
+    P1 (v3.8.0): every scan is appended to :class:`scan_history.ScanHistory`
+    so the demo's "recent scans" panel and ``GET /history`` have a real
+    audit trail to render. Failures are swallowed — a broken history
+    sink must never break the user-facing quick-check.
     """
     result = _qc_run(text, framework=framework)
     payload = result.to_dict()
@@ -1357,6 +1363,19 @@ def _quick_check_response(text: str, framework: str, share: bool, base_url: str)
         response["share_hash"] = share_hash
         response["share_url"] = f"{base_url.rstrip('/')}/r/{share_hash}"
         response["card_url"] = f"{base_url.rstrip('/')}/r/{share_hash}/card.svg"
+    else:
+        share_hash = ""
+    try:
+        from squash.scan_history import global_history
+        global_history().record(
+            text=text,
+            framework=payload.get("framework") or framework,
+            verdict=payload["verdict"],
+            score=int(payload["score"]),
+            share_hash=share_hash,
+        )
+    except Exception as exc:  # noqa: BLE001
+        log.warning("scan_history.record failed (non-fatal): %s", exc)
     return response
 
 
@@ -1425,6 +1444,99 @@ async def quick_check_share(share_hash: str) -> JSONResponse:
     if payload is None:
         raise HTTPException(status_code=404, detail="share not found")
     return JSONResponse({"share_hash": share_hash, "result": payload})
+
+
+# ── P1-A · P1-C — Clause-level remediation + financial exposure ──────────────
+
+
+@app.get("/r/{share_hash}/remediation")
+async def quick_check_remediation(share_hash: str) -> JSONResponse:
+    """Return per-clause redline + suggested fix + USD exposure band.
+
+    One entry per missing clause from the stored quick-check result. Each
+    entry includes the issue (what is wrong), an ``original`` representative
+    phrase, a drafted ``suggested_fix`` the user can paste in, the
+    ``risk_level``, and a financial exposure range
+    (``dollar_low_usd`` / ``dollar_high_usd``). The envelope carries the
+    aggregate exposure across all failing clauses.
+
+    404 if the share hash is unknown; 400 if malformed.
+    """
+    if not _qc_is_valid_share_hash(share_hash):
+        raise HTTPException(status_code=400, detail="malformed share hash")
+    payload = _quick_check_store.get(share_hash)
+    if payload is None:
+        raise HTTPException(status_code=404, detail="share not found")
+    from squash.clause_remediation import build_remediation
+    report = build_remediation(payload.get("missing") or [])
+    body = report.to_dict()
+    body["share_hash"] = share_hash
+    body["framework"] = payload.get("framework", "")
+    body["verdict"]   = payload.get("verdict", "")
+    return JSONResponse(body)
+
+
+# ── P1-B — Audit trail / scan history ────────────────────────────────────────
+
+
+@app.get("/history")
+async def quick_check_history(
+    limit: int = 20,
+    offset: int = 0,
+    framework: str | None = None,
+    verdict: str | None = None,
+    sparkline: bool = True,
+    sparkline_points: int = 24,
+    sparkline_bucket_seconds: int = 3600,
+) -> JSONResponse:
+    """Return the most recent quick-check scans, newest first.
+
+    Optional filters: ``framework`` (gdpr/ccpa/eu-ai-act/general/soc2) and
+    ``verdict`` (pass/warn/fail). Pagination via ``limit`` (max 500) +
+    ``offset``. When ``sparkline=true`` (default) the response also
+    includes a pass-rate sparkline aligned to the configured bucket size,
+    suitable for direct rendering as an SVG polyline.
+    """
+    if limit < 1 or limit > 500:
+        raise HTTPException(status_code=400, detail="limit must be in 1..500")
+    if offset < 0:
+        raise HTTPException(status_code=400, detail="offset must be >= 0")
+    if verdict and verdict not in {"pass", "warn", "fail"}:
+        raise HTTPException(
+            status_code=400, detail="verdict must be one of pass / warn / fail",
+        )
+    from squash.scan_history import global_history
+    h = global_history()
+    try:
+        records = h.list(
+            limit=limit, offset=offset,
+            framework=framework, verdict=verdict,
+        )
+        total = h.count(framework=framework, verdict=verdict)
+        body: dict[str, Any] = {
+            "total": total,
+            "limit": limit,
+            "offset": offset,
+            "entries": [r.to_dict() for r in records],
+        }
+        if sparkline:
+            if sparkline_points < 1 or sparkline_points > 200:
+                raise HTTPException(
+                    status_code=400, detail="sparkline_points must be in 1..200",
+                )
+            if sparkline_bucket_seconds < 60:
+                raise HTTPException(
+                    status_code=400, detail="sparkline_bucket_seconds must be >= 60",
+                )
+            body["pass_rate_sparkline"] = h.pass_rate_sparkline(
+                points=sparkline_points,
+                bucket_seconds=sparkline_bucket_seconds,
+                framework=framework,
+            )
+            body["stats"] = h.stats()
+        return JSONResponse(body)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 # ── Sprint 30: viral SVG score card + trending feed ──────────────────────────

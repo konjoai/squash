@@ -5,6 +5,70 @@ Format: [Conventional Commits](https://www.conventionalcommits.org/) · [Keep a 
 
 ---
 
+## [3.8.0] — 2026-05-12 — P1 sprint: redline + audit trail + financial exposure
+
+> The demo earns the next user: every failing clause is actionable, every
+> scan is auditable, every gap is a number a CFO will read.
+
+### Added — P1 (Critical / Low complexity)
+
+- **`squash/financial_risk.py`** — clause-level USD exposure quantification:
+  - `RISK_TABLE` covers all 27 clause IDs the quick-check catalogue emits.
+  - Each band has `low_usd`, `high_usd`, `risk_level`, `rationale`, and a
+    public citation (GDPR Art. 83, CCPA §1798.155, EU AI Act Art. 99,
+    AICPA TSC, FTC §5, etc.).
+  - `quantify(clause_id)`, `aggregate_exposure(ids)`, `format_usd(n)`,
+    `covered_clause_ids()`.
+- **`squash/clause_remediation.py`** — per-clause redline + suggested fix:
+  - 27-entry catalogue, one per missing-clause ID. Every entry carries
+    `label`, `issue`, `original`, `suggested_fix` (paste-ready clause
+    text), `citation`.
+  - `build_remediation(missing)` -> `RemediationReport` enriched with the
+    matching `RiskBand` per clause (so the demo can render one row per
+    clause with a paired exposure pill).
+  - The remediation and financial-risk catalogues are symmetric —
+    a dedicated test enforces it.
+- **`squash/scan_history.py`** — append-only audit trail:
+  - Thread-safe `ScanHistory` backed by SQLite (path-overridable, default
+    `~/.squash/scan_history.db`; `:memory:` for tests).
+  - `record()`, `list(limit, offset, framework, verdict)`, `count()`,
+    `stats()`, `pass_rate_sparkline(points, bucket_seconds)`.
+  - Capacity-bounded FIFO eviction (default 100 000 rows).
+  - `global_history()` lazy singleton + `reset_global_history()` test hook.
+- **`GET /r/{hash}/remediation`** — returns the `RemediationReport` for a
+  stored quick-check share hash. Entries include `dollar_low_usd` /
+  `dollar_high_usd`, the envelope includes aggregate exposure.
+- **`GET /history?limit=&offset=&framework=&verdict=&sparkline=`** — paginated
+  history with optional pass-rate sparkline. Public-by-design (added to
+  `_UNAUTHED_PATHS`).
+- **`POST /quick-check`** now appends every scan to `ScanHistory`
+  (failures swallowed so the user-facing path can never break).
+- **`demo/index.html`** — three new UI surfaces:
+  - Aggregate **financial-exposure chip** on the verdict card —
+    `est. exposure $150K–$17M · 5 clauses · est. — not legal advice`.
+  - **Clause redline accordion** under the missing-clauses list — one
+    `<details>` per failing clause with a side-by-side red/green diff,
+    risk pill, dollar pill, issue summary, and regulatory citation.
+  - **Recent-scans history panel** below the verdict — 24-point pass-rate
+    sparkline (pure SVG polyline, no JS chart lib), avg score, paginated
+    last-10 scan list with click-through to the share permalink.
+- **34 new tests** (`tests/test_squash_p1_sprint.py`) — financial-risk
+  table coverage + bounds + format helpers, remediation catalogue
+  symmetry, scan-history validation / pagination / capacity / sparkline,
+  TestClient-driven `/r/{hash}/remediation` and `/history` (status,
+  validation, filter, isolation via in-memory singleton), demo HTML
+  structural smoke, and the version-bump assertion.
+
+### Roadmap
+
+- **`PLAN.md`** (NEW) — short-horizon execution plan, with the full
+  P1 / P2 / P3 researched feature roadmap (custom playbook builder,
+  multi-framework parallel scoring, async dev API, bulk portfolio,
+  confidence scores, jurisdiction-aware scoring, collaborative
+  annotation).
+
+---
+
 ## [3.7.0] — 2026-05-10 — Viral SVG card + trending + UI overhaul (Sprint 30)
 
 The demo *is* the compliance scanner — visuals communicate everything.
