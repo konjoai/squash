@@ -1040,6 +1040,249 @@ button#btnQuickCheck { position: relative; }
   .sq-history-row { grid-template-columns: 60px 50px 1fr 50px; }
   .sq-history-row .hash { display: none; }
 }
+
+/* ──────────────────────────────────────────────────────────────────────
+   wave-3 — premium legal-intelligence layer.
+   Palette: #06060f base, #7c3aed accent. Zero new deps. Pure CSS + rAF.
+   ────────────────────────────────────────────────────────────────────── */
+
+/* 1. Scanning beam over the contract panel during a run */
+.qc-textarea-wrap.sq-scan-running::before {
+  content: "";
+  position: absolute; left: 0; right: 0; top: 0;
+  height: 8px; pointer-events: none;
+  z-index: 4;
+  background: linear-gradient(180deg,
+              rgba(124,58,237,0.15) 0%,
+              rgba(124,58,237,0.06) 55%,
+              transparent 100%);
+  filter: blur(0.3px);
+  animation: sqW3Beam 1.4s ease-in-out infinite;
+  will-change: transform;
+}
+@keyframes sqW3Beam {
+  0%   { transform: translateY(0); opacity: 0; }
+  10%  { opacity: 1; }
+  85%  { opacity: 1; }
+  100% { transform: translateY(calc(100% + 8px)); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .qc-textarea-wrap.sq-scan-running::before { display: none; }
+}
+
+/* 2. Magnetic clause cards — transition lerp set by JS via custom prop */
+.sq-redline-card {
+  transform-origin: center top;
+  transition:
+    transform 220ms cubic-bezier(0.23, 1, 0.32, 1),
+    box-shadow 220ms cubic-bezier(0.23, 1, 0.32, 1);
+  will-change: transform;
+}
+.sq-redline-card.sq-magnetic {
+  transform: translate3d(var(--sq-cx, 0), var(--sq-cy, 0), 0)
+             rotateX(var(--sq-rx, 0deg)) rotateY(var(--sq-ry, 0deg));
+}
+.sq-redline-card:hover {
+  box-shadow:
+    0 0 0 1px rgba(124,58,237,0.30),
+    0 14px 38px -16px rgba(124,58,237,0.45);
+}
+
+/* 3. Risk exposure kinetic counter (slot-machine digits) */
+.sq-ticker {
+  display: inline-flex; align-items: baseline; gap: 1px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+.sq-ticker .digit {
+  display: inline-block;
+  height: 1em; overflow: hidden;
+  vertical-align: baseline; line-height: 1;
+}
+.sq-ticker .digit .stack {
+  display: block;
+  transform: translateY(0);
+  transition: transform 400ms cubic-bezier(0.23, 1, 0.32, 1);
+  will-change: transform;
+}
+.sq-ticker .digit .stack > span {
+  display: block; height: 1em; line-height: 1;
+}
+.sq-ticker .symbol {
+  /* '$', 'K', 'M', '–', '.' — not animated */
+  display: inline-block;
+  vertical-align: baseline;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sq-ticker .digit .stack { transition: none; }
+}
+
+/* canvas behind the exposure chip — orbits */
+.sq-exposure-chip { position: relative; overflow: visible; }
+canvas#sqExposureOrbit {
+  position: absolute; left: 50%; top: 50%;
+  width: 220px; height: 60px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: -1;
+  opacity: 0;
+  transition: opacity 360ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.sq-exposure-chip.show + canvas#sqExposureOrbit,
+.sq-exposure-chip.show canvas#sqExposureOrbit { opacity: 1; }
+.sq-exposure-chip.show .sq-orbit-host { opacity: 1; }
+.sq-orbit-host {
+  position: absolute; inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 360ms cubic-bezier(0.23, 1, 0.32, 1);
+  z-index: -1;
+}
+
+/* 4. Clause verdict reveal — staggered entrance per row */
+.sq-redline-card.sq-revealing summary .label {
+  opacity: 0;
+  clip-path: inset(0 100% 0 0);
+  animation: sqW3LabelDraw 600ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+.sq-redline-card.sq-revealing summary .risk-pill {
+  opacity: 0;
+  transform: translateX(20px);
+  animation: sqW3SlideIn 300ms cubic-bezier(0.23, 1, 0.32, 1) 80ms forwards;
+}
+.sq-redline-card.sq-revealing summary .dollar {
+  opacity: 0;
+  transform: translateY(-12px);
+  animation: sqW3Drop 300ms cubic-bezier(0.23, 1, 0.32, 1) 120ms forwards;
+}
+.sq-redline-card.sq-revealing summary::before {
+  opacity: 0;
+  transform: scale(0.4);
+  animation: sqW3Bounce 360ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+.sq-redline-card.sq-revealing .original,
+.sq-redline-card.sq-revealing .suggested {
+  clip-path: inset(0 100% 0 0);
+  animation: sqW3WipeRight 600ms cubic-bezier(0.22, 1, 0.36, 1) 180ms forwards;
+}
+@keyframes sqW3LabelDraw {
+  0%   { opacity: 0; clip-path: inset(0 100% 0 0); }
+  100% { opacity: 1; clip-path: inset(0 0% 0 0); }
+}
+@keyframes sqW3SlideIn {
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes sqW3Drop {
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes sqW3Bounce {
+  to { opacity: 1; transform: scale(1) rotate(0deg); }
+}
+.sq-redline-card[open].sq-revealing summary::before {
+  transform: scale(1) rotate(90deg) !important;
+}
+@keyframes sqW3WipeRight {
+  0%   { clip-path: inset(0 100% 0 0); }
+  100% { clip-path: inset(0 0% 0 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sq-redline-card.sq-revealing summary .label,
+  .sq-redline-card.sq-revealing summary .risk-pill,
+  .sq-redline-card.sq-revealing summary .dollar,
+  .sq-redline-card.sq-revealing summary::before,
+  .sq-redline-card.sq-revealing .original,
+  .sq-redline-card.sq-revealing .suggested {
+    animation: none !important; opacity: 1; clip-path: none;
+    transform: none;
+  }
+}
+
+/* 5. 3D card flip on open/close */
+.sq-redline-card {
+  perspective: 1200px;
+}
+.sq-redline-card .body,
+.sq-redline-card .issue,
+.sq-redline-card .citation {
+  transform-origin: top center;
+  transform: rotateX(-90deg);
+  opacity: 0;
+  transition:
+    transform 350ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    opacity   300ms cubic-bezier(0.23, 1, 0.32, 1);
+  will-change: transform, opacity;
+}
+.sq-redline-card[open] .body,
+.sq-redline-card[open] .issue,
+.sq-redline-card[open] .citation {
+  transform: rotateX(0deg);
+  opacity: 1;
+}
+.sq-redline-card[open] > summary {
+  /* slight front-face dim while back face is up */
+  background: linear-gradient(180deg, rgba(124,58,237,0.04), transparent);
+}
+@media (prefers-reduced-motion: reduce) {
+  .sq-redline-card .body,
+  .sq-redline-card .issue,
+  .sq-redline-card .citation {
+    transform: none; opacity: 1; transition: none;
+  }
+}
+
+/* 6. Sparkline breath */
+#sqSparkline {
+  transform-origin: center center;
+  animation: sqW3SparkBreath 3s ease-in-out alternate infinite;
+  will-change: transform, opacity;
+}
+@keyframes sqW3SparkBreath {
+  0%   { transform: scaleY(1.00); opacity: 0.92; }
+  100% { transform: scaleY(1.06); opacity: 1.00; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #sqSparkline { animation: none; }
+}
+.sparkline-line.sq-fresh, .sparkline-area.sq-fresh {
+  animation: sqW3SparkIn 480ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+@keyframes sqW3SparkIn {
+  0%   { opacity: 0; transform: translateX(10px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+
+/* 7. Canvas clause risk heatmap */
+canvas#sqClauseHeatmap {
+  position: absolute; inset: -20px;
+  width: calc(100% + 40px); height: calc(100% + 40px);
+  pointer-events: none;
+  opacity: 0.85;
+  filter: blur(28px);
+  z-index: 0;
+  will-change: transform;
+}
+.sq-redline { position: relative; z-index: 1; }
+.sq-redline .sq-redline-card { position: relative; z-index: 1; }
+@media (prefers-reduced-motion: reduce) {
+  canvas#sqClauseHeatmap { display: none; }
+}
+
+/* 8. Scroll-entrance stagger — siblings inside <main.stage> */
+.sq-scroll-reveal {
+  opacity: 0;
+  transform: translateY(30px);
+  transition:
+    opacity 550ms cubic-bezier(0.23, 1, 0.32, 1),
+    transform 550ms cubic-bezier(0.23, 1, 0.32, 1);
+  will-change: transform, opacity;
+}
+.sq-scroll-reveal.sq-scroll-in {
+  opacity: 1; transform: translateY(0);
+}
+@media (prefers-reduced-motion: reduce) {
+  .sq-scroll-reveal { opacity: 1; transform: none; transition: none; }
+}
 </style>
 </head>
 <body>
@@ -1154,6 +1397,10 @@ button#btnQuickCheck { position: relative; }
           <span class="amount" id="sqExposureAmount">—</span>
           <span class="count" id="sqExposureCount"></span>
           <span class="disclaimer">est. — not legal advice</span>
+          <!-- wave-3: orbit particles around the kinetic counter -->
+          <span class="sq-orbit-host" aria-hidden="true">
+            <canvas id="sqExposureOrbit" width="440" height="120"></canvas>
+          </span>
         </div>
 
         <div class="qc-clauses">
@@ -1162,7 +1409,9 @@ button#btnQuickCheck { position: relative; }
         </div>
 
         <!-- P1-A: per-clause redline + suggested-fix diff -->
-        <div class="sq-redline" id="sqRedline" aria-label="Clause-level redline"></div>
+        <div class="sq-redline" id="sqRedline" aria-label="Clause-level redline">
+          <canvas id="sqClauseHeatmap" aria-hidden="true"></canvas>
+        </div>
 
         <div class="qc-card-row">
           <div class="qc-card-preview" id="qcCardPreview" hidden>
@@ -2399,6 +2648,383 @@ button#btnQuickCheck { position: relative; }
   // initial pull + periodic refresh
   refreshHistory();
   setInterval(refreshHistory, 30_000);
+})();
+</script>
+
+<script>
+/* ──────────────────────────────────────────────────────────────────────
+   wave-3 — premium legal-intelligence interactions.
+   Zero new deps. Konjo palette (#06060f, #7c3aed). rAF + IO + canvas.
+   ────────────────────────────────────────────────────────────────────── */
+(() => {
+  if (typeof window === "undefined") return;
+  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const $ = (id) => document.getElementById(id);
+
+  /* ── 1. Scanning beam toggle ──────────────────────────────────────── */
+  const btn = $("btnQuickCheck");
+  const wrap = document.querySelector(".qc-textarea-wrap");
+  if (btn && wrap) {
+    const obs = new MutationObserver(() => {
+      if (btn.classList.contains("busy")) wrap.classList.add("sq-scan-running");
+      else wrap.classList.remove("sq-scan-running");
+    });
+    obs.observe(btn, { attributes: true, attributeFilter: ["class"] });
+  }
+
+  /* ── 2. Magnetic clause cards ─────────────────────────────────────── */
+  const MAG_RADIUS = 90;
+  const MAG_MAX = 14;       // px translate
+  const MAG_ROT = 4;        // deg rotate
+  const MAG_T   = 0.10;     // lerp translate
+  const MAG_R   = 0.08;     // lerp rotate
+
+  const clauseState = new WeakMap();
+  let magRaf = 0;
+  let lastMouse = null;
+
+  function tickMagnetic() {
+    magRaf = 0;
+    const mouse = lastMouse;
+    if (!mouse) return;
+    const cards = document.querySelectorAll(".sq-redline-card");
+    let anyActive = false;
+    for (const card of cards) {
+      const rect = card.getBoundingClientRect();
+      if (rect.width === 0) continue;
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      const dx = mouse.x - cx;
+      const dy = mouse.y - cy;
+      const dist = Math.hypot(dx, dy);
+      let st = clauseState.get(card);
+      if (!st) {
+        st = { tx: 0, ty: 0, rx: 0, ry: 0 };
+        clauseState.set(card, st);
+      }
+      let targetTx = 0, targetTy = 0, targetRx = 0, targetRy = 0;
+      if (dist < MAG_RADIUS) {
+        const nrm = Math.max(0.01, dist);
+        const f = 1 - (dist / MAG_RADIUS);
+        targetTx = (dx / nrm) * MAG_MAX * f;
+        targetTy = (dy / nrm) * MAG_MAX * f;
+        // tilt toward cursor — invert sign so face leans into pointer
+        targetRy = (dx / rect.width)  * MAG_ROT * 2 * f;
+        targetRx = (-dy / rect.height) * MAG_ROT * 2 * f;
+        // clamp
+        if (targetRx >  MAG_ROT) targetRx =  MAG_ROT;
+        if (targetRx < -MAG_ROT) targetRx = -MAG_ROT;
+        if (targetRy >  MAG_ROT) targetRy =  MAG_ROT;
+        if (targetRy < -MAG_ROT) targetRy = -MAG_ROT;
+        anyActive = true;
+        card.classList.add("sq-magnetic");
+      }
+      st.tx += (targetTx - st.tx) * MAG_T;
+      st.ty += (targetTy - st.ty) * MAG_T;
+      st.rx += (targetRx - st.rx) * MAG_R;
+      st.ry += (targetRy - st.ry) * MAG_R;
+      // settle: snap to zero when near
+      if (Math.abs(st.tx) + Math.abs(st.ty) + Math.abs(st.rx) + Math.abs(st.ry) < 0.05) {
+        st.tx = st.ty = st.rx = st.ry = 0;
+        card.classList.remove("sq-magnetic");
+      }
+      card.style.setProperty("--sq-cx", st.tx.toFixed(2) + "px");
+      card.style.setProperty("--sq-cy", st.ty.toFixed(2) + "px");
+      card.style.setProperty("--sq-rx", st.rx.toFixed(2) + "deg");
+      card.style.setProperty("--sq-ry", st.ry.toFixed(2) + "deg");
+    }
+    if (anyActive || lastMouse) {
+      magRaf = requestAnimationFrame(tickMagnetic);
+    }
+  }
+
+  if (!reduceMotion) {
+    window.addEventListener("mousemove", (e) => {
+      lastMouse = { x: e.clientX, y: e.clientY };
+      if (!magRaf) magRaf = requestAnimationFrame(tickMagnetic);
+    }, { passive: true });
+    document.addEventListener("mouseleave", () => {
+      lastMouse = null;
+      // spring-return — let the next tick settle each card
+      const cards = document.querySelectorAll(".sq-redline-card");
+      for (const card of cards) {
+        const st = clauseState.get(card);
+        if (st) { st.tx *= 0.9; st.ty *= 0.9; st.rx *= 0.9; st.ry *= 0.9; }
+      }
+      if (!magRaf) magRaf = requestAnimationFrame(tickMagnetic);
+    });
+  }
+
+  /* ── 3. Kinetic counter on the exposure amount ────────────────────── */
+  const amountEl = $("sqExposureAmount");
+  let lastAmount = "";
+
+  function buildTicker(text) {
+    if (!amountEl) return;
+    const wrapEl = document.createElement("span");
+    wrapEl.className = "sq-ticker";
+    const target = String(text || "");
+    for (const ch of target) {
+      if (/[0-9]/.test(ch)) {
+        const digit = document.createElement("span");
+        digit.className = "digit";
+        const stack = document.createElement("span");
+        stack.className = "stack";
+        // 0..9 vertical stack
+        for (let i = 0; i <= 9; i++) {
+          const cell = document.createElement("span");
+          cell.textContent = String(i);
+          stack.appendChild(cell);
+        }
+        const n = parseInt(ch, 10);
+        stack.style.transform = `translateY(${-n}em)`;
+        digit.appendChild(stack);
+        wrapEl.appendChild(digit);
+      } else {
+        const sym = document.createElement("span");
+        sym.className = "symbol";
+        sym.textContent = ch;
+        wrapEl.appendChild(sym);
+      }
+    }
+    amountEl.innerHTML = "";
+    amountEl.appendChild(wrapEl);
+    return wrapEl;
+  }
+
+  function rollTicker(prev, next) {
+    if (!amountEl) return;
+    if (prev === next) { buildTicker(next); lastAmount = next; return; }
+    const tickerEl = buildTicker(next);
+    if (!tickerEl) return;
+    // pre-roll: position digit stacks to match prev where possible, then animate to next
+    if (!reduceMotion) {
+      const digits = tickerEl.querySelectorAll(".digit .stack");
+      // map prev's digits aligned to the *right* to match next length
+      const prevDigits = (prev || "").split("").filter((c) => /[0-9]/.test(c));
+      const nextDigits = (next || "").split("").filter((c) => /[0-9]/.test(c));
+      const offset = nextDigits.length - prevDigits.length;
+      digits.forEach((stack, i) => {
+        // For this digit, find the prev value at corresponding right-aligned index.
+        const prevIdx = i - offset;
+        const prevVal = (prevIdx >= 0 && prevIdx < prevDigits.length)
+          ? parseInt(prevDigits[prevIdx], 10) : 0;
+        const nextVal = parseInt(nextDigits[i], 10);
+        // start at prev
+        stack.style.transition = "none";
+        stack.style.transform = `translateY(${-prevVal}em)`;
+        // schedule the roll
+        const delay = i * 35;
+        requestAnimationFrame(() => {
+          setTimeout(() => {
+            stack.style.transition =
+              "transform 400ms cubic-bezier(0.23, 1, 0.32, 1)";
+            stack.style.transform = `translateY(${-nextVal}em)`;
+          }, delay);
+        });
+      });
+    }
+    lastAmount = next;
+  }
+
+  if (amountEl) {
+    // Watch the amount text content via MutationObserver and convert
+    // to a kinetic ticker whenever something else writes to it.
+    let internalUpdate = false;
+    const obs = new MutationObserver(() => {
+      if (internalUpdate) return;
+      const text = (amountEl.textContent || "").trim();
+      if (!text || text === lastAmount) return;
+      internalUpdate = true;
+      try { rollTicker(lastAmount, text); }
+      finally {
+        // release on next macrotask so our DOM rewrite doesn't re-enter
+        setTimeout(() => { internalUpdate = false; }, 0);
+      }
+    });
+    obs.observe(amountEl, { childList: true, characterData: true, subtree: true });
+  }
+
+  /* ── 3b. Exposure orbit canvas (tiny particles around the chip) ───── */
+  const orbitCanvas = $("sqExposureOrbit");
+  const orbitCtx = orbitCanvas && orbitCanvas.getContext("2d");
+  const orbitParticles = [];
+
+  if (orbitCanvas && orbitCtx && !reduceMotion) {
+    const ORBIT_N = 14;
+    for (let i = 0; i < ORBIT_N; i++) {
+      orbitParticles.push({
+        theta: (Math.PI * 2 * i) / ORBIT_N + Math.random() * 0.3,
+        speed: 0.0007 + Math.random() * 0.0012,
+        rx: 90 + Math.random() * 30,
+        ry: 22 + Math.random() * 8,
+        size: 1 + Math.random() * 1.2,
+        a:    0.30 + Math.random() * 0.20,
+      });
+    }
+    const cw = orbitCanvas.width, ch = orbitCanvas.height;
+    const cx = cw / 2, cy = ch / 2;
+    let lastTs = performance.now();
+    function orbitStep(ts) {
+      const dt = ts - lastTs; lastTs = ts;
+      orbitCtx.clearRect(0, 0, cw, ch);
+      for (const p of orbitParticles) {
+        p.theta += p.speed * dt;
+        const x = cx + Math.cos(p.theta) * p.rx;
+        const y = cy + Math.sin(p.theta) * p.ry;
+        orbitCtx.beginPath();
+        orbitCtx.fillStyle = `rgba(124, 58, 237, ${p.a.toFixed(3)})`;
+        orbitCtx.shadowBlur = 6;
+        orbitCtx.shadowColor = "rgba(124, 58, 237, 0.55)";
+        orbitCtx.arc(x, y, p.size, 0, Math.PI * 2);
+        orbitCtx.fill();
+      }
+      orbitCtx.shadowBlur = 0;
+      requestAnimationFrame(orbitStep);
+    }
+    requestAnimationFrame(orbitStep);
+  }
+
+  /* ── 4. Clause verdict reveal (decorate cards as they're added) ───── */
+  const redline = $("sqRedline");
+  if (redline) {
+    const obs = new MutationObserver(() => {
+      const cards = redline.querySelectorAll(".sq-redline-card:not(.sq-revealing)");
+      cards.forEach((card, idx) => {
+        // tag for the CSS keyframes
+        card.classList.add("sq-revealing");
+        // stagger across the list
+        card.style.animationDelay = (idx * 60) + "ms";
+        // strip the .sq-revealing class once animations have played so
+        // user interactions (open/close) aren't fighting the entry anim
+        setTimeout(() => card.classList.remove("sq-revealing"), 1200 + idx * 60);
+      });
+      // also kick the heatmap repaint when redline content changes
+      scheduleHeatmap();
+    });
+    obs.observe(redline, { childList: true });
+  }
+
+  /* ── 5. 3D flip on accordion (handled in CSS via [open]) ──────────── */
+  // No JS hook required — the CSS rules transform .body/.issue/.citation
+  // based on the <details>[open] attribute.
+
+  /* ── 6. Sparkline breath + fresh-data flash ───────────────────────── */
+  const sparkLine = document.querySelector("#sqSparkline .sparkline-line");
+  const sparkArea = document.querySelector("#sqSparkline .sparkline-area");
+  if (sparkLine && sparkArea) {
+    let lastPoints = "";
+    const obs = new MutationObserver(() => {
+      const cur = sparkLine.getAttribute("points") || "";
+      if (cur && cur !== lastPoints) {
+        lastPoints = cur;
+        sparkLine.classList.remove("sq-fresh"); sparkArea.classList.remove("sq-fresh");
+        // force reflow so the same animation can replay
+        void sparkLine.getBBox();
+        sparkLine.classList.add("sq-fresh"); sparkArea.classList.add("sq-fresh");
+        setTimeout(() => {
+          sparkLine.classList.remove("sq-fresh");
+          sparkArea.classList.remove("sq-fresh");
+        }, 600);
+      }
+    });
+    obs.observe(sparkLine, { attributes: true, attributeFilter: ["points"] });
+  }
+
+  /* ── 7. Canvas clause-risk heatmap ────────────────────────────────── */
+  const heatCanvas = $("sqClauseHeatmap");
+  const heatCtx = heatCanvas && heatCanvas.getContext("2d");
+  let heatRaf = 0;
+  let heatTimer = 0;
+
+  function scheduleHeatmap() {
+    clearTimeout(heatTimer);
+    heatTimer = setTimeout(paintHeatmap, 80);
+  }
+
+  function paintHeatmap() {
+    if (!heatCanvas || !heatCtx || !redline) return;
+    const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+    const rect = redline.getBoundingClientRect();
+    const w = Math.max(1, Math.floor(rect.width  + 40));
+    const h = Math.max(1, Math.floor(rect.height + 40));
+    if (heatCanvas.width !== Math.floor(w * dpr) || heatCanvas.height !== Math.floor(h * dpr)) {
+      heatCanvas.width  = Math.floor(w * dpr);
+      heatCanvas.height = Math.floor(h * dpr);
+      heatCanvas.style.width  = w + "px";
+      heatCanvas.style.height = h + "px";
+      heatCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    heatCtx.clearRect(0, 0, w, h);
+    const cards = redline.querySelectorAll(".sq-redline-card");
+    cards.forEach((card) => {
+      const cr = card.getBoundingClientRect();
+      // local coords relative to the redline (heat canvas is offset -20)
+      const cx = (cr.left + cr.width / 2) - rect.left + 20;
+      const cy = (cr.top + cr.height / 2) - rect.top + 20;
+      let color = "rgba(124, 58, 237, 0.18)";
+      let radius = 140;
+      let alpha = 0.18;
+      if (card.classList.contains("risk-critical")) {
+        color = "rgba(244, 63, 94, 0.42)"; radius = 220; alpha = 0.42;
+      } else if (card.classList.contains("risk-high")) {
+        color = "rgba(249, 115, 22, 0.34)"; radius = 190; alpha = 0.34;
+      } else if (card.classList.contains("risk-medium")) {
+        color = "rgba(251, 191, 36, 0.26)"; radius = 170; alpha = 0.26;
+      } else if (card.classList.contains("risk-low")) {
+        color = "rgba(74, 222, 128, 0.22)"; radius = 150; alpha = 0.22;
+      }
+      // parse $ exposure if present — high-risk (>$100K) gets boosted alpha
+      const dollar = card.querySelector(".dollar");
+      const txt = dollar ? dollar.textContent : "";
+      if (/\$\s*1\d{2,}|\$\s*[2-9]\d{2,}|\$\s*\d+\.\d+M|\$\s*\d+M|\$\s*\d+\.\d+B/i.test(txt)) {
+        radius += 40;
+        alpha = Math.min(0.65, alpha + 0.15);
+        color = color.replace(/[\d.]+\)/, alpha.toFixed(2) + ")");
+      }
+      const grad = heatCtx.createRadialGradient(cx, cy, 0, cx, cy, radius);
+      grad.addColorStop(0, color);
+      grad.addColorStop(1, "rgba(124, 58, 237, 0)");
+      heatCtx.fillStyle = grad;
+      heatCtx.fillRect(cx - radius, cy - radius, radius * 2, radius * 2);
+    });
+  }
+
+  if (heatCanvas && heatCtx && !reduceMotion) {
+    function heatTick() {
+      heatRaf = 0;
+      paintHeatmap();
+    }
+    window.addEventListener("resize", () => {
+      if (!heatRaf) heatRaf = requestAnimationFrame(heatTick);
+    }, { passive: true });
+    // initial paint shortly after mount
+    setTimeout(scheduleHeatmap, 200);
+  }
+
+  /* ── 8. Scroll-entrance stagger (IntersectionObserver) ────────────── */
+  if ("IntersectionObserver" in window && !reduceMotion) {
+    const targets = document.querySelectorAll(
+      "main.stage > section, main.stage > aside, main.stage > footer, .sq-history, .qc-result"
+    );
+    targets.forEach((el, idx) => {
+      el.classList.add("sq-scroll-reveal");
+      el.style.transitionDelay = (idx * 90) + "ms";
+    });
+    const io = new IntersectionObserver((entries) => {
+      for (const e of entries) {
+        if (e.isIntersecting) {
+          e.target.classList.add("sq-scroll-in");
+          io.unobserve(e.target);
+        }
+      }
+    }, { threshold: 0.10 });
+    targets.forEach((el) => io.observe(el));
+  } else {
+    document.querySelectorAll(".sq-scroll-reveal").forEach((el) => {
+      el.classList.add("sq-scroll-in");
+    });
+  }
 })();
 </script>
 </body>
