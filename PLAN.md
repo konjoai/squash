@@ -35,7 +35,7 @@ complexity; **P1 / Low complexity is implemented this sprint.**
 | ID | Feature | Surface |
 |---|---|---|
 | **P2-A** | **Custom policy playbook builder.** User-defined rule sets via JSON config. Rules specify clause patterns, risk weights, pass/fail thresholds. Stored per-org. | `POST /playbooks`, `GET /playbooks`, `GET /playbooks/{id}`; CLI `squash playbook init` / `validate` |
-| **P2-B** | **Multi-framework parallel scoring.** Single scan returns a compliance matrix: GDPR / CCPA / SOC 2 / EU AI Act columns, each with pass/partial/fail + score. | `POST /quick-check` accepts `frameworks: ["gdpr","ccpa","soc2","eu_ai_act"]`; response adds `matrix: {framework -> {verdict, score, …}}` |
+| **P2-B** ✅ | **Multi-framework clause-level scan + clustering + risk trend.** Three new endpoints under `/api/*` shipped this sprint: scan clauses against SOC2 / HIPAA / PCI-DSS in one pass, cluster clauses by TF-IDF cosine, query a persisted risk-exposure trend. | `POST /api/compliance/scan`, `POST /api/analysis/cluster`, `GET /api/trends/risk`, `POST /api/analyses` — **shipped** |
 | **P2-C** | **Developer API + CI/CD integration.** Async scan jobs, webhook callbacks, GitHub Action YAML, headless CLI. | `POST /jobs`, `GET /jobs/{id}`, `POST /jobs/{id}/cancel`; `/.github/actions/squash/`; `squash scan --file contract.txt --framework gdpr` |
 | **P2-D** | **Bulk portfolio scanning.** `POST /bulk` accepts an array of texts or a ZIP. Returns aggregate stats plus per-document verdicts. SSE progress stream. | `POST /bulk`, `GET /bulk/{job_id}/stream` (SSE), `GET /bulk/{job_id}` |
 
@@ -64,6 +64,8 @@ complexity; **P1 / Low complexity is implemented this sprint.**
 
 ## Done log (recent sprints)
 
+- **P2-B** — `/api/compliance/scan` (SOC2 + HIPAA + PCI-DSS), `/api/analysis/cluster` (TF-IDF k-means++), `/api/trends/risk` (SQLite-backed risk-exposure trend). 44 new tests.
+- **v3.8.0** — P1 ship: redline diff + audit trail + financial exposure (P1-A/B/C)
 - **v3.7.0** — viral SVG card · trending stats · UI overhaul (PR #7 merged)
 - **D4** — multi-jurisdiction compliance matrix
 - **D1** — squash GitHub App (Check Runs)

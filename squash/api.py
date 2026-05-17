@@ -108,6 +108,10 @@ _UNAUTHED_PATHS = frozenset({
     "/quick-check/frameworks",
     "/trending",         # Sprint 30: aggregate viral feed — public by design
     "/history",          # P1-B: scan history audit trail — public by design
+    "/api/compliance/scan",   # P2-B: multi-framework scan — public by design
+    "/api/analysis/cluster",  # P2 clustering — public by design
+    "/api/trends/risk",       # P2 risk trend — public by design
+    "/api/analyses",          # P2 explicit recorder — public by design
 })
 
 # Badge + public score paths are dynamic — checked via prefix in middleware
@@ -711,6 +715,20 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc",
 )
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Modular routers (squash.routes.*)
+# ──────────────────────────────────────────────────────────────────────────────
+# These live in their own package so the legacy flat squash/api.py module
+# does not need to be converted into a package (which would invalidate
+# `from squash.api import app` imports across the codebase).
+from squash.routes.compliance import analysis_router, compliance_router  # noqa: E402
+from squash.routes.trends import trends_router  # noqa: E402
+
+app.include_router(compliance_router)
+app.include_router(analysis_router)
+app.include_router(trends_router)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
