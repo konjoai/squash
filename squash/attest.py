@@ -47,13 +47,13 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from squash.sbom_builder import CompressRunMeta, CycloneDXBuilder
-from squash.spdx_builder import SpdxBuilder, SpdxOptions
-from squash.policy import PolicyEngine, PolicyResult, AVAILABLE_POLICIES
-from squash.scanner import ModelScanner, ScanResult
-from squash.oms_signer import OmsSigner, _is_offline
 from squash.canon import canonical_bytes
-from squash.clock import Clock, SystemClock
+from squash.clock import Clock
+from squash.oms_signer import OmsSigner, _is_offline
+from squash.policy import AVAILABLE_POLICIES, PolicyEngine, PolicyResult
+from squash.sbom_builder import CompressRunMeta, CycloneDXBuilder
+from squash.scanner import ModelScanner, ScanResult
+from squash.spdx_builder import SpdxBuilder, SpdxOptions
 
 log = logging.getLogger(__name__)
 
@@ -168,9 +168,7 @@ class AttestResult:
 
     def summary(self) -> str:
         status = "PASS" if self.passed else "FAIL"
-        policy_summary = "; ".join(
-            r.summary() for r in self.policy_results.values()
-        )
+        policy_summary = "; ".join(r.summary() for r in self.policy_results.values())
         return f"[{status}] {self.model_id}: {policy_summary}"
 
 
@@ -219,9 +217,7 @@ class AttestPipeline:
         out_dir.mkdir(parents=True, exist_ok=True)
 
         # Resolve model_id
-        model_id = config.model_id or (
-            model_path.name if model_path.is_dir() else model_path.stem
-        )
+        model_id = config.model_id or (model_path.name if model_path.is_dir() else model_path.stem)
 
         # Determine weight directory for hashing
         weight_dir = model_path if model_path.is_dir() else model_path.parent
@@ -351,10 +347,10 @@ class AttestPipeline:
             log.info("Evaluating VEX feed …")
             try:
                 from squash.vex import (
-                    VexFeed,
-                    VexEvaluator,
                     ModelInventory,
                     ModelInventoryEntry,
+                    VexEvaluator,
+                    VexFeed,
                 )
 
                 feed = (
@@ -365,9 +361,7 @@ class AttestPipeline:
                 bom = json.loads(result.cyclonedx_path.read_text())
                 purl = bom.get("components", [{}])[0].get("purl", "")
                 hashes = bom.get("components", [{}])[0].get("hashes", [])
-                sha256 = next(
-                    (h["content"] for h in hashes if h.get("alg") == "SHA-256"), ""
-                )
+                sha256 = next((h["content"] for h in hashes if h.get("alg") == "SHA-256"), "")
                 inv = ModelInventory(
                     entries=[
                         ModelInventoryEntry(
@@ -400,9 +394,7 @@ class AttestPipeline:
             if _offline and config.local_signing_key:
                 log.info("Signing CycloneDX BOM with local Ed25519 key (offline mode) …")
                 try:
-                    sig_path = OmsSigner.sign_local(
-                        result.cyclonedx_path, config.local_signing_key
-                    )
+                    sig_path = OmsSigner.sign_local(result.cyclonedx_path, config.local_signing_key)
                     result.signature_path = sig_path
                     log.info("  Signed (offline) → %s", sig_path)
                 except Exception as exc:
@@ -569,6 +561,7 @@ def _bind_training_provenance(bom_path: Path, dataset_ids: list[str]) -> None:
     """Resolve HF dataset provenance and bind to BOM (best-effort)."""
     try:
         from squash.provenance import ProvenanceCollector
+
         manifest = ProvenanceCollector.from_hf_datasets(dataset_ids)
         manifest.bind_to_sbom(bom_path)
     except Exception as e:  # broad catch — provenance is enrichment, not gating
@@ -593,6 +586,7 @@ def _build_master_record(
     # tests/test_reproducibility.py::TestPipelineReproducibility.
     if clock is None:
         from squash.clock import get_default_clock
+
         clk = get_default_clock()
     else:
         clk = clock
@@ -637,6 +631,7 @@ def _build_master_record(
 # ─────────────────────────────────────────────────────────────────────────────
 # Wave 18 — Composite multi-model attestation
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 @dataclass
 class CompositeAttestConfig:
@@ -757,31 +752,69 @@ class CompositeAttestPipeline:
         results: list[AttestResult],
         config: CompositeAttestConfig,
         output_dir: Path,
+        clock: Clock | None = None,
     ) -> dict[str, Any]:
-        """Return a CycloneDX 1.5 JSON document referencing component BOMs."""
-        import uuid
-        import datetime as _dt
+        """Return a CycloneDX 1.5 JSON document referencing component BOMs.
 
-        now = _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        Phase G.2: clock-injected timestamp and deterministic serial numbers
+        keyed on component content so the parent BOM is byte-identical on
+        rerun given the same inputs.
+        """
+        from squash._ids import cert_id as _cert_id
+
+        # Phase G.2: clock injection — reproducibility tests freeze this.
+        if clock is None:
+            from squash.clock import get_default_clock
+
+            clk = get_default_clock()
+        else:
+            clk = clock
+        now = (
+            clk()
+            .astimezone(datetime.timezone.utc)
+            .replace(microsecond=0)
+            .strftime("%Y-%m-%dT%H:%M:%SZ")
+        )
 
         # Collect component serial numbers from each result's CycloneDX BOM
         components: list[dict[str, Any]] = []
         dep_refs: list[str] = []
-        parent_serial = f"urn:uuid:{uuid.uuid4()}"
 
         for r in results:
             cdx_path = r.cyclonedx_path
             if cdx_path and cdx_path.exists():
                 try:
                     cdx = json.loads(cdx_path.read_text(encoding="utf-8"))
-                    serial = cdx.get("serialNumber", f"urn:uuid:{uuid.uuid4()}")
+                    serial = cdx.get("serialNumber") or (
+                        "urn:uuid:"
+                        + _cert_id(
+                            "cdx", canonical_payload=canonical_bytes({"path": str(cdx_path)})
+                        )
+                    )
                     comp = cdx.get("components", [{}])[0]
                     components.append(comp)
                     dep_refs.append(serial)
-                except Exception:
-                    dep_refs.append(f"urn:uuid:{uuid.uuid4()}")
+                except Exception as _e:
+                    log.warning("CompositeAttestPipeline: could not read BOM %s — %s", cdx_path, _e)
+                    dep_refs.append(
+                        "urn:uuid:"
+                        + _cert_id(
+                            "cdx",
+                            canonical_payload=canonical_bytes(
+                                {"path": str(cdx_path), "err": str(_e)}
+                            ),
+                        )
+                    )
             else:
-                dep_refs.append(f"urn:uuid:{uuid.uuid4()}")
+                dep_refs.append(
+                    "urn:uuid:"
+                    + _cert_id("cdx", canonical_payload=canonical_bytes({"model_id": r.model_id}))
+                )
+
+        # Phase G.2: parent serial keyed on all component refs — deterministic.
+        parent_serial = "urn:uuid:" + _cert_id(
+            "comp", canonical_payload=canonical_bytes({"refs": dep_refs, "output": str(output_dir)})
+        )
 
         return {
             "bomFormat": "CycloneDX",

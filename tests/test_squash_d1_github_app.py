@@ -846,6 +846,89 @@ class TestCli(unittest.TestCase):
         ns = argparse.Namespace(gha_command=None)
         self.assertEqual(_cmd_github_app(ns, quiet=True), 2)
 
+    def test_install_prints_url(self):
+        """install subcommand returns 0 and emits an install URL."""
+        from squash.cli import _cmd_github_app
+        import sys
+        buf = io.StringIO()
+        with mock.patch("sys.stdout", buf):
+            ns = argparse.Namespace(
+                gha_command="install",
+                gha_install_app_id=0,
+                gha_install_out=None,
+            )
+            rc = _cmd_github_app(ns, quiet=False)
+        self.assertEqual(rc, 0)
+        out = buf.getvalue()
+        self.assertIn("Install URL", out)
+        self.assertIn("github.com/apps/squash-ai", out)
+
+    def test_install_with_app_id_embeds_id_in_url(self):
+        """install with --app-id embeds the ID in the install URL."""
+        from squash.cli import _cmd_github_app
+        buf = io.StringIO()
+        with mock.patch("sys.stdout", buf):
+            ns = argparse.Namespace(
+                gha_command="install",
+                gha_install_app_id=42,
+                gha_install_out=None,
+            )
+            rc = _cmd_github_app(ns, quiet=False)
+        self.assertEqual(rc, 0)
+        self.assertIn("42", buf.getvalue())
+
+    def test_install_writes_config_template(self):
+        """install with --out writes a config template file."""
+        from squash.cli import _cmd_github_app
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "app.yaml"
+            ns = argparse.Namespace(
+                gha_command="install",
+                gha_install_app_id=0,
+                gha_install_out=str(target),
+            )
+            rc = _cmd_github_app(ns, quiet=True)
+            self.assertEqual(rc, 0)
+            self.assertTrue(target.exists())
+            self.assertIn("model_patterns", target.read_text())
+
+    def test_config_template_outputs_yaml(self):
+        """config-template subcommand prints YAML to stdout and exits 0."""
+        from squash.cli import _cmd_github_app
+        buf = io.StringIO()
+        with mock.patch("sys.stdout", buf):
+            ns = argparse.Namespace(gha_command="config-template")
+            rc = _cmd_github_app(ns, quiet=False)
+        self.assertEqual(rc, 0)
+        text = buf.getvalue()
+        self.assertIn("app_id:", text)
+        self.assertIn("webhook_secret:", text)
+        self.assertIn("model_patterns:", text)
+
+    def test_serve_missing_config_returns_two(self):
+        """serve without --config returns exit code 2."""
+        from squash.cli import _cmd_github_app
+        ns = argparse.Namespace(
+            gha_command="serve",
+            gha_config=None,
+            gha_host=None,
+            gha_port=None,
+        )
+        rc = _cmd_github_app(ns, quiet=True)
+        self.assertEqual(rc, 2)
+
+    def test_serve_bad_config_path_returns_two(self):
+        """serve with a non-existent config path returns exit code 2."""
+        from squash.cli import _cmd_github_app
+        ns = argparse.Namespace(
+            gha_command="serve",
+            gha_config="/no/such/file.yaml",
+            gha_host=None,
+            gha_port=None,
+        )
+        rc = _cmd_github_app(ns, quiet=True)
+        self.assertEqual(rc, 2)
+
 
 # ── CLI parser registration ───────────────────────────────────────────────────
 
@@ -855,6 +938,23 @@ class TestCliRegistration(unittest.TestCase):
         cli_src = (Path(__file__).parent.parent / "squash" / "cli.py").read_text()
         self.assertIn('args.command == "github-app"', cli_src)
         self.assertIn("_cmd_github_app", cli_src)
+
+    def test_install_subcommand_registered(self):
+        """The argparse parser exposes the 'install' subcommand."""
+        cli_src = (Path(__file__).parent.parent / "squash" / "cli.py").read_text()
+        self.assertIn('"install"', cli_src)
+        self.assertIn("gha_install_app_id", cli_src)
+
+    def test_config_template_subcommand_registered(self):
+        """The argparse parser exposes the 'config-template' subcommand."""
+        cli_src = (Path(__file__).parent.parent / "squash" / "cli.py").read_text()
+        self.assertIn('"config-template"', cli_src)
+
+    def test_serve_subcommand_registered(self):
+        """The argparse parser exposes the 'serve' subcommand with --port."""
+        cli_src = (Path(__file__).parent.parent / "squash" / "cli.py").read_text()
+        self.assertIn('"serve"', cli_src)
+        self.assertIn("gha_port", cli_src)
 
 
 if __name__ == "__main__":

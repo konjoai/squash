@@ -2398,6 +2398,18 @@ def _build_parser() -> argparse.ArgumentParser:
     gha_verify_body.add_argument("--body", default=None, dest="gha_v_body")
     gha_verify_body.add_argument("--body-file", default=None, dest="gha_v_body_file")
 
+    gha_install = gha_sub.add_parser(
+        "install", help="Print the GitHub App install URL and emit a config template",
+    )
+    gha_install.add_argument("--app-id", type=int, default=0, dest="gha_install_app_id",
+                              help="GitHub App numeric ID (optional — shown in install URL)")
+    gha_install.add_argument("--out", default=None, dest="gha_install_out",
+                              help="Write config template to this path (default: stdout)")
+
+    gha_sub.add_parser(
+        "config-template", help="Dump the YAML config template to stdout",
+    )
+
     # ── W221-W222 / C1 ★ — squash freeze (Emergency Response Orchestrator) ────
     fz_cmd = sub.add_parser(
         "freeze",
@@ -3858,6 +3870,34 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Policy framework(s) to enforce in the hook.",
     )
     hook_cmd.add_argument("--quiet", action="store_true", help="Suppress output")
+
+    # ── OWASP Agentic Top 10 2026 ─────────────────────────────────────────────
+    agentic_cmd = sub.add_parser(
+        "scan-agentic",
+        help="Scan an agentic system config against OWASP Agentic Top 10 2026",
+        description=(
+            "Load a YAML or JSON agentic system specification and run all ten "
+            "OWASP Agentic Top 10 2026 risk checks.  Prints a findings table "
+            "and exits 0 on pass (no critical/high findings) or 2 on fail.\n\n"
+            "Example: squash scan-agentic --config my-agent.yaml\n"
+            "Example: squash scan-agentic --config my-agent.json --json-result out.json"
+        ),
+    )
+    agentic_cmd.add_argument(
+        "--config",
+        required=True,
+        metavar="PATH",
+        dest="agentic_config",
+        help="Path to YAML or JSON agentic system specification file.",
+    )
+    agentic_cmd.add_argument(
+        "--json-result",
+        default=None,
+        metavar="PATH",
+        dest="json_result",
+        help="Write the full scan result as JSON to this path.",
+    )
+    agentic_cmd.add_argument("--quiet", action="store_true", help="Suppress non-error output")
 
     return parser
 
@@ -7149,6 +7189,15 @@ def _cmd_github_app(args: argparse.Namespace, quiet: bool) -> int:
             print("✓ signature valid" if ok else "✗ signature INVALID")
         return 0 if ok else 1
 
+    # ── install ────────────────────────────────────────────────────────────────
+    if sub == "install":
+        return _cmd_github_app_install(args, quiet, gh)
+
+    # ── config-template ────────────────────────────────────────────────────────
+    if sub == "config-template":
+        print(gh._CONFIG_TEMPLATE, end="")  # noqa: SLF001
+        return 0
+
     # ── serve / attest both need a config ──────────────────────────────────
     cfg_path = getattr(args, "gha_config", None)
     if not cfg_path:
@@ -7273,6 +7322,33 @@ def _cmd_github_app(args: argparse.Namespace, quiet: bool) -> int:
 
     print(f"unknown github-app subcommand: {sub}", file=sys.stderr)
     return 2
+
+
+def _cmd_github_app_install(
+    args: argparse.Namespace, quiet: bool, gh: object
+) -> int:
+    """Print the GitHub App install URL and optionally write a config template."""
+    app_id = int(getattr(args, "gha_install_app_id", 0) or 0)
+    out_path = getattr(args, "gha_install_out", None)
+
+    if app_id:
+        url = f"https://github.com/apps/squash-ai/installations/new?app_id={app_id}"
+    else:
+        url = "https://github.com/apps/squash-ai/installations/new"
+
+    if not quiet:
+        print(f"Install URL: {url}")
+        print("")
+        print("After installation, record your App ID and generate a private key,")
+        print("then create a config file with:")
+        print("  squash github-app config --init ./squash-github-app.yaml")
+
+    if out_path:
+        p = gh.dump_config_template(out_path)  # type: ignore[attr-defined]
+        if not quiet:
+            print(f"\nConfig template written to: {p}")
+
+    return 0
 
 
 def _cmd_registry_gate(args: argparse.Namespace, quiet: bool) -> int:
@@ -11231,6 +11307,91 @@ def _cmd_board_report(args: argparse.Namespace, quiet: bool) -> int:
     return 0
 
 
+def _cmd_scan_agentic(args: argparse.Namespace, quiet: bool) -> int:
+    """OWASP Agentic Top 10 2026 — ``squash scan-agentic``.
+
+    Exit codes:
+      0  All checks passed (no critical/high findings)
+      1  Configuration / argument error
+      2  One or more critical/high findings detected
+    """
+    import json as _json
+
+    from squash.agentic import AgenticScanner
+
+    config_path = Path(args.agentic_config)
+    if not config_path.exists():
+        print(f"error: config file not found: {config_path}", file=sys.stderr)
+        return 1
+
+    try:
+        raw = config_path.read_text(encoding="utf-8")
+        if config_path.suffix.lower() in {".yaml", ".yml"}:
+            try:
+                import yaml  # type: ignore[import-untyped]
+                config: dict = yaml.safe_load(raw) or {}
+            except ImportError:
+                print(
+                    "error: PyYAML is required for YAML configs — pip install pyyaml",
+                    file=sys.stderr,
+                )
+                return 1
+        else:
+            config = _json.loads(raw)
+    except (OSError, ValueError) as exc:
+        print(f"error reading config: {exc}", file=sys.stderr)
+        return 1
+
+    result = AgenticScanner().scan(config)
+
+    if not quiet:
+        sev_badge = {"critical": "CRIT", "high": "HIGH", "medium": "MED ", "low": "LOW "}
+        print(f"[squash scan-agentic] OWASP Agentic Top 10 2026")
+        print(f"  Config:  {config_path}")
+        print(f"  Score:   {result.score}/100")
+        print(f"  Status:  {'PASS' if result.passed else 'FAIL'}")
+        if result.findings:
+            print(f"  Findings ({len(result.findings)}):")
+            for f in result.findings:
+                badge = sev_badge.get(f.severity, "    ")
+                print(f"    [{badge}] {f.risk_id} — {f.title}")
+                for ev in f.evidence:
+                    print(f"           evidence: {ev}")
+                print(f"           fix: {f.remediation}")
+        else:
+            print("  No findings — all agentic checks passed.")
+
+    json_path = getattr(args, "json_result", None)
+    if json_path:
+        out = {
+            "framework": result.framework,
+            "passed": result.passed,
+            "score": result.score,
+            "summary": result.summary,
+            "findings": [
+                {
+                    "risk_id": f.risk_id,
+                    "title": f.title,
+                    "severity": f.severity,
+                    "description": f.description,
+                    "evidence": f.evidence,
+                    "remediation": f.remediation,
+                    "owasp_ref": f.owasp_ref,
+                }
+                for f in result.findings
+            ],
+        }
+        try:
+            Path(json_path).write_text(_json.dumps(out, indent=2), encoding="utf-8")
+            if not quiet:
+                print(f"  JSON result: {json_path}")
+        except OSError as exc:
+            print(f"error writing JSON result: {exc}", file=sys.stderr)
+            return 2
+
+    return 0 if result.passed else 2
+
+
 def main() -> None:
     parser = _build_parser()
     args = parser.parse_args()
@@ -11453,6 +11614,8 @@ def main() -> None:
         sys.exit(_cmd_github_app(args, quiet))
     elif args.command == "compliance-matrix":
         sys.exit(_cmd_compliance_matrix(args, quiet))
+    elif args.command == "scan-agentic":
+        sys.exit(_cmd_scan_agentic(args, quiet))
     else:
         parser.print_help()
         sys.exit(1)
