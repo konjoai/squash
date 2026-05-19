@@ -2,7 +2,7 @@
 
 The `pytest` of AI compliance — automated EU AI Act, NIST AI RMF, and OWASP LLM Top-10 checks for ML teams. CI/CD-native, open-core, developer-first. Runs in 10 seconds. Ships proof, not policy statements.
 
-**v3.1.0** — 4308 tests passing. Apache 2.0. `pip install squash-ai`. EU AI Act enforcement: August 2, 2026.
+**v3.1.0** — 4308 tests passing. Apache 2.0. `pip install squash-ai`. EU AI Act Article 50 (transparency/GPAI): December 2, 2026. Annex III high-risk: December 2, 2027 (Omnibus, pending OJ publication).
 
 ## Stack
 Python 3.10+ · FastAPI (optional) · cryptography (optional) · CycloneDX (optional) · Sigstore (optional) · setuptools · uv
@@ -28,7 +28,8 @@ docker build -t squash .                      # container build
 - Never log model weights, raw prompts, or API keys at INFO level or above
 - Rate-limit all API endpoints by default
 - Enforce per-request scan timeouts — never let a scan block indefinitely
-- The EU AI Act deadline is **August 2, 2026** — every sprint before that date is load-bearing
+- EU AI Act **Article 50** (transparency, watermarking, GPAI) deadline: **December 2, 2026** — every sprint before that date is load-bearing
+- EU AI Act **Annex III** (high-risk) deadline: **December 2, 2027** — postponed from August 2, 2026 by the Omnibus political agreement (May 7, 2026, pending Official Journal publication)
 - Version bumps touch `pyproject.toml` + `squash/__init__.py`
 
 ## Module Map

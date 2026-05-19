@@ -18,7 +18,7 @@ Frameworks covered: EU AI Act · NIST AI RMF · ISO 42001 · OWASP LLM Top 10 ·
 FedRAMP · CMMC · SOC 2-AI · HITRUST · GDPR-AI · DORA
 """
 
-__version__ = "3.8.0"
+__version__ = "3.11.0"
 
 from squash.sbom_builder import CompressRunMeta, CycloneDXBuilder, SbomDiff, SbomRegistry, EvalBinder
 from squash.oms_signer import OmsSigner, OmsVerifier
@@ -171,6 +171,15 @@ from squash.freeze import (  # noqa: F401 (Sprint 19 W221-W222 — Track C / C1)
     FreezeReceipt,
     FreezeStep,
     StepResult as FreezeStepResult,
+)
+from squash.github_app import (  # noqa: F401 (Sprint D1 — Track D / GitHub App)
+    GitHubAppConfig,
+    WebhookHandler,
+)
+from squash.agentic import (  # noqa: F401 (OWASP Agentic Top 10 2026)
+    AgenticFinding,
+    AgenticScanResult,
+    AgenticScanner,
 )
 
 __all__ = [
@@ -332,4 +341,11 @@ __all__ = [
     "detect_quick_check_policy_type",
     "get_quick_check_stats",
     "score_quick_check_all_frameworks",
+    # Sprint D1: GitHub App
+    "GitHubAppConfig",
+    "WebhookHandler",
+    # OWASP Agentic Top 10 2026
+    "AgenticFinding",
+    "AgenticScanResult",
+    "AgenticScanner",
 ]

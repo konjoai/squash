@@ -16,7 +16,9 @@
 [![RFC 8785](https://img.shields.io/badge/canonical%20JSON-RFC%208785-yellow)](https://datatracker.ietf.org/doc/html/rfc8785)
 [![RFC 3161](https://img.shields.io/badge/timestamp-RFC%203161-yellow)](https://datatracker.ietf.org/doc/html/rfc3161)
 
-> **⏰ EU AI Act high-risk enforcement: August 2, 2026**
+> **⏰ EU AI Act enforcement deadlines — two clocks running:**
+> - **Article 50 (transparency obligations, watermarking, GPAI): December 2, 2026** — 6 months away.
+> - **Annex III high-risk AI systems: December 2, 2027** — postponed from August 2, 2026 by the EU Parliament/Council Omnibus political agreement (May 7, 2026, pending Official Journal publication).
 >
 > Non-compliance: up to **€35M or 7% of global turnover.** Annex IV documentation alone takes 3–6 months manually. Squash does it in 10 seconds.
 

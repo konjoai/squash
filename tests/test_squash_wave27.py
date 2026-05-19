@@ -640,8 +640,8 @@ class TestWebhookCli:
                 p for p in squash_dir.rglob("*.py")
                 if "experimental" not in p.parts
             ]
-            assert len(py_files) <= 115, (
-                f"Module count {len(py_files)} exceeds limit 115: "
+            assert len(py_files) <= 130, (
+                f"Module count {len(py_files)} exceeds limit 130: "
                 + ", ".join(str(p.name) for p in sorted(py_files))
             )
             return

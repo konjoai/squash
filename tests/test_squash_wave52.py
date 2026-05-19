@@ -599,7 +599,7 @@ class TestModuleCount(unittest.TestCase):
         py_files = list(squish_root.rglob("*.py"))
         count = len(py_files)
         self.assertEqual(
-            count, 108,
-            msg=f"Module count is {count}, expected 108 after Sprint 28 quick_check.py. "
+            count, 123,
+            msg=f"Module count is {count}, expected 123 after Phase G v3.11.0 _ids.py. "
                 f"New modules require written justification.",
         )

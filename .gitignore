@@ -32,3 +32,4 @@ cyclonedx-mlbom.json
 sbom.spdx.json
 provenance.json
 .hypothesis/
+.claude/worktrees/
