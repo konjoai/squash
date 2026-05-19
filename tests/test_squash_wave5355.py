@@ -677,7 +677,7 @@ class TestModuleCount:
         import subprocess, pathlib
         root = pathlib.Path(__file__).parent.parent / "squash"
         count = len(list(root.rglob("*.py")))
-        assert count == 122, (
+        assert count == 123, (
             f"Module count should be 122, got {count}. "
             "D1 v3.9.0 raised the count to 122. "
             "New modules require deletion or written justification."
