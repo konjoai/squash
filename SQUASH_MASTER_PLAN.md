@@ -6,11 +6,21 @@
 
 ---
 
-## ⏰ The North Star — August 2, 2026
+## ⏰ The North Star — Two EU AI Act Clocks
 
-> **EU AI Act high-risk enforcement: August 2, 2026 — 94 days.**
+> **Omnibus update (May 7, 2026):** The EU Parliament and Council reached political agreement
+> to postpone Annex III high-risk AI enforcement from **August 2, 2026** to **December 2, 2027**.
+> Article 50 (transparency obligations, watermarking, GPAI) remains on **December 2, 2026**.
+> Pending Official Journal publication.
 >
-> Every sprint between today and August 2 is worth more than any sprint after.
+> **Article 50 — December 2, 2026 — 197 days.** Transparency obligations, watermarking, and
+> GPAI documentation requirements are live on this date. Every sprint before December 2, 2026
+> targeting transparency and watermarking features is load-bearing.
+>
+> **Annex III high-risk — December 2, 2027.** The high-risk enforcement window has expanded
+> by 16 months. This does not reduce urgency — it concentrates it: Article 50 is now
+> the near-term regulatory forcing function, and teams that wait will miss it.
+>
 > The whole product strategy is anchored to one truth: regulators no longer
 > want promises — they want receipts.
 
@@ -124,7 +134,7 @@ Launch anchors (unchanged):
 | **L1** | **Public Beta** | **Jul 11** | A1–A4, B1–B2, C1, design-partner quote | Loom 3-min demo video |
 | **L2** | **Show HN** | **Jul 14, 9am ET** (Tuesday) | C1 live (`squash freeze` demo) | Draft already in `docs/launch/hn-post.md` |
 | **L3** | **Product Hunt** | Jul 21 | Pre-arranged hunter, gallery design done | "Squash violations, not velocity." |
-| **L4** | **EU Enforcement Day** | **Aug 2 — T+0** | All preceding launches | "Squash users are compliant. Are you?" |
+| **L4** | **Product Launch Day** | **Aug 2 — T+0** | All preceding launches | "Squash users are compliant. Are you?" — Article 50 deadline Dec 2, 2026 now drives the urgency narrative |
 
 ---
 
@@ -340,7 +350,7 @@ squash (open-core CLI + SDK)
 | **Jul 7–11** | — | — | C9 Carbon (3d) | — | **L1 Public Beta** |
 | **Jul 14** | — | — | — | — | **L2 Show HN** |
 | **Jul 21** | — | — | — | — | **L3 Product Hunt** |
-| **Aug 2** | — | — | — | — | **L4 EU Enforcement Day** |
+| **Aug 2** | — | — | — | — | **L4 Product Launch Day** (Art. 50 Dec 2 deadline drives post-launch urgency) |
 
 ---
 
@@ -478,7 +488,8 @@ These are the statistics used in launch copy, sales materials, and PR pitches. A
 | $47B AI liability insurance market by 2030 | Allied Market Research | C6 |
 | 78% can't pass AI audit in 90 days | Gartner 2025 | C5 |
 | 82% of ML teams use GitHub | GitHub State of the Octoverse | D1 |
-| EU AI Act enforcement: Aug 2, 2026 | Official Journal of the EU | All |
+| EU AI Act Art. 50 (transparency/GPAI): Dec 2, 2026 | EU Omnibus political agreement, May 7, 2026 (OJ pending) | All |
+| EU AI Act Annex III (high-risk): Dec 2, 2027 | EU Omnibus political agreement, May 7, 2026 (OJ pending) | All |
 | $67.4B hallucination liability exposure | Swiss Re 2025 | C7 |
 
 ---

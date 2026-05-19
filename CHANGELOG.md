@@ -5,6 +5,21 @@ Format: [Conventional Commits](https://www.conventionalcommits.org/) · [Keep a 
 
 ---
 
+## [Unreleased] — 2026-05-19 — EU AI Act deadline update (Omnibus)
+
+### Documentation
+
+- **EU AI Act Omnibus amendment:** The EU Parliament and Council reached political agreement
+  on May 7, 2026 to postpone Annex III (high-risk AI) enforcement from **August 2, 2026**
+  to **December 2, 2027**. Article 50 (transparency obligations, watermarking, GPAI) remains
+  on **December 2, 2026**. Official Journal publication is pending.
+- Updated `CLAUDE.md`, `README.md`, and `SQUASH_MASTER_PLAN.md` to reflect the two-deadline
+  landscape. The Article 50 deadline (Dec 2, 2026) is now the near-term regulatory forcing
+  function — 6 months away — and all transparency/watermarking sprint work is load-bearing
+  against that date.
+
+---
+
 ## [3.8.0] — 2026-05-12 — P1 sprint: redline + audit trail + financial exposure
 
 > The demo earns the next user: every failing clause is actionable, every
