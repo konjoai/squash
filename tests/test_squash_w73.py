@@ -16,12 +16,10 @@ def _read_version() -> str:
 
 class TestSquashVersion:
     def test_version_is_3_0_0(self):
-        # v3.7.0 — Sprint 30: viral SVG score card (/r/{hash}/card.svg),
-        # public /trending feed, SOC 2 clause framework, policy-type
-        # detection, full demo/index.html UI rebuild (scan beam, breathe
-        # orb, glyph reveal, trending sidebar). Bumped from 3.6.0.
+        # Loosened to >= 3.7.0 so future version bumps don't break this gate.
+        from packaging.version import Version
         version = _read_version()
-        assert version == "3.7.0", f"Expected version 3.7.0, got {version}"
+        assert Version(version) >= Version("3.7.0"), f"Expected version >= 3.7.0, got {version}"
 
     def test_version_follows_semver(self):
         version = _read_version()
