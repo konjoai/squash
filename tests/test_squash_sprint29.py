@@ -267,10 +267,13 @@ class TestQuickCheckPerformance(unittest.TestCase):
             for p in sorted(SAMPLES_DIR.glob("*.txt"))
         ]
         assert cls.samples, "demo/sample_policies/ is empty"
-        # Reset the rate limiter so earlier tests in the full suite don't
+        # Reset both rate limiters so earlier tests in the full suite don't
         # exhaust the bucket and cause 429s here.
+        # _rate_window is the IP-level backstop used by unauthenticated paths.
         from squash.rate_limiter import get_rate_limiter
+        from squash.api import _rate_window
         get_rate_limiter().reset_all()
+        _rate_window.clear()
 
     def _post(self, text: str, framework: str) -> tuple[int, float]:
         t0 = time.perf_counter()
