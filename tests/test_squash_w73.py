@@ -17,9 +17,9 @@ def _read_version() -> str:
 class TestSquashVersion:
     def test_version_is_3_0_0(self):
         # Loosened to >= 3.7.0 so future version bumps don't break this gate.
-        from packaging.version import Version
         version = _read_version()
-        assert Version(version) >= Version("3.7.0"), f"Expected version >= 3.7.0, got {version}"
+        major, minor, patch = (int(x) for x in version.split("."))
+        assert (major, minor, patch) >= (3, 7, 0), f"Expected version >= 3.7.0, got {version}"
 
     def test_version_follows_semver(self):
         version = _read_version()
