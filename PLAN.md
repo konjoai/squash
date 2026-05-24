@@ -64,6 +64,11 @@ complexity; **P1 / Low complexity is implemented this sprint.**
 
 ## Done log (recent sprints)
 
+- **P2-E** — contract primitives: `/api/extract/obligations` (regex obligation
+  extractor with party/modal/deadline/condition), `/api/contracts/diff` (TF-IDF
+  cosine bipartite-match redline + risk_delta), `/api/alerts` (SQLite-backed
+  saved-search rules with HMAC-signed webhook fan-out, auto-evaluated on every
+  `/api/compliance/scan`). 49 new tests.
 - **P2-B** — `/api/compliance/scan` (SOC2 + HIPAA + PCI-DSS), `/api/analysis/cluster` (TF-IDF k-means++), `/api/trends/risk` (SQLite-backed risk-exposure trend). 44 new tests.
 - **v3.8.0** — P1 ship: redline diff + audit trail + financial exposure (P1-A/B/C)
 - **v3.7.0** — viral SVG card · trending stats · UI overhaul (PR #7 merged)

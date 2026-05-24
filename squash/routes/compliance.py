@@ -99,6 +99,16 @@ async def compliance_scan(req: _ScanRequest) -> dict[str, Any]:
         body["doc_hash"] = doc_hash
     else:
         body["recorded"] = False
+
+    # Fire any matching saved-search alerts. Imported locally so the
+    # router module stays cheap to import when alerts aren't in use.
+    try:
+        from squash.routes.alerts import evaluate_after_scan
+        deliveries = evaluate_after_scan(report)
+    except Exception:  # noqa: BLE001 — alerts never block scans
+        deliveries = []
+    body["alerts_fired"] = deliveries
+
     return body
 
 

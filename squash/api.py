@@ -112,6 +112,9 @@ _UNAUTHED_PATHS = frozenset({
     "/api/analysis/cluster",  # P2 clustering — public by design
     "/api/trends/risk",       # P2 risk trend — public by design
     "/api/analyses",          # P2 explicit recorder — public by design
+    "/api/extract/obligations",   # P2 obligation extraction — public by design
+    "/api/contracts/diff",        # P2 contract redline — public by design
+    "/api/alerts",                # P2 alert rules — public by design
 })
 
 # Badge + public score paths are dynamic — checked via prefix in middleware
@@ -120,6 +123,9 @@ _SCORE_PATH_PREFIX = "/v1/score/"   # public procurement score endpoints
 _SHARE_PATH_PREFIX = "/r/"          # W247: shareable result permalinks
 _DEMO_PATH_PREFIX = "/demo/"        # W258 (Sprint 29): static demo assets
 _FRIENDLY_SHARE_PREFIX = "/share/"  # W259 (Sprint 29): HTML result page
+_PUBLIC_API_PREFIX = "/api/"        # P2-B+ family: every /api/* route is
+                                    # public-by-design (compliance scan,
+                                    # cluster, trends, contracts, alerts).
 
 # ── Rate limiter ──────────────────────────────────────────────────────────────
 # W138: Per-key plan-based rate limiter (replaces per-IP env-var limiter).
@@ -725,10 +731,14 @@ app = FastAPI(
 # `from squash.api import app` imports across the codebase).
 from squash.routes.compliance import analysis_router, compliance_router  # noqa: E402
 from squash.routes.trends import trends_router  # noqa: E402
+from squash.routes.contracts import contracts_router  # noqa: E402
+from squash.routes.alerts import alerts_router  # noqa: E402
 
 app.include_router(compliance_router)
 app.include_router(analysis_router)
 app.include_router(trends_router)
+app.include_router(contracts_router)
+app.include_router(alerts_router)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -760,6 +770,7 @@ async def _security_middleware(request: Request, call_next):  # noqa: C901
         or path.startswith(_SHARE_PATH_PREFIX)
         or path.startswith(_DEMO_PATH_PREFIX)
         or path.startswith(_FRIENDLY_SHARE_PREFIX)
+        or path.startswith(_PUBLIC_API_PREFIX)
     ):
         client_ip = request.client.host if request.client else "unknown"
         now = time.monotonic()
