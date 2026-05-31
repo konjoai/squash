@@ -1,0 +1,3031 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>squash — paste any policy. get a verdict in seconds.</title>
+<meta name="description" content="Paste any policy. Get a compliance verdict in seconds. Squash scans privacy policies, GDPR DPAs, CCPA notices, ToS and cookie banners against GDPR, CCPA, SOC 2 and EU AI Act clause coverage." />
+<meta name="color-scheme" content="dark" />
+<meta property="og:title" content="squash — paste any policy. get a verdict in seconds." />
+<meta property="og:description" content="One-click compliance check. GDPR · CCPA · SOC 2." />
+<meta property="og:image" content="/badge/eu-ai-act/compliant" />
+<meta name="twitter:card" content="summary_large_image" />
+<style>
+/* ── tokens ─────────────────────────────────────────────────────────────── */
+:root {
+  --bg: #06060f;
+  --panel: #0d0d1c;
+  --panel-2: #11112a;
+  --line: #1d1d3a;
+  --ink: #f4f4ff;
+  --ink-2: #a4a4c8;
+  --ink-3: #5b5b80;
+  --purple: #7c3aed;
+  --purple-soft: rgba(124, 58, 237, 0.18);
+  --purple-edge: rgba(124, 58, 237, 0.42);
+  --pass: #4ade80;
+  --warn: #fbbf24;
+  --fail: #f43f5e;
+  --shadow-glow-pass: 0 0 0 1px rgba(74, 222, 128, 0.45), 0 0 60px -10px rgba(74, 222, 128, 0.45);
+  --shadow-glow-warn: 0 0 0 1px rgba(251, 191, 36, 0.45), 0 0 60px -10px rgba(251, 191, 36, 0.45);
+  --shadow-glow-fail: 0 0 0 1px rgba(244, 63, 94, 0.45), 0 0 60px -10px rgba(244, 63, 94, 0.45);
+}
+
+/* ── reset ──────────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+a { color: inherit; text-decoration: none; }
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+}
+
+/* ── stage ──────────────────────────────────────────────────────────────── */
+body {
+  min-height: 100vh;
+  background: var(--bg);
+  background-image:
+    radial-gradient(circle at 1px 1px, rgba(124, 58, 237, 0.08) 1px, transparent 1px);
+  background-size: 22px 22px;
+  background-attachment: fixed;
+  color: var(--ink);
+  font: 16px/1.55 system-ui, -apple-system, "SF Pro Text", "Segoe UI", Inter, sans-serif;
+  letter-spacing: -0.01em;
+  font-weight: 300;
+  overflow-x: hidden;
+  position: relative;
+}
+
+/* scan beam — sweeps top→bottom, like a doc scanner */
+.scan-beam {
+  position: fixed; left: 0; right: 0; top: 0; height: 2px;
+  background: linear-gradient(90deg, transparent 0%, var(--purple) 30%, var(--purple) 70%, transparent 100%);
+  box-shadow: 0 0 30px 4px var(--purple-soft);
+  opacity: 0.7;
+  pointer-events: none; z-index: 0;
+  animation: scan 9s linear infinite;
+}
+@keyframes scan {
+  0%   { transform: translateY(-2vh); opacity: 0; }
+  10%  { opacity: 0.7; }
+  90%  { opacity: 0.7; }
+  100% { transform: translateY(102vh); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .scan-beam { display: none; }
+}
+
+/* ── layout ─────────────────────────────────────────────────────────────── */
+.stage {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr min(720px, 92vw) 1fr;
+  min-height: 100vh;
+  padding: 96px 0 120px;
+  z-index: 1;
+}
+.stage > * { grid-column: 2; }
+
+.brand {
+  position: fixed; top: 22px; left: 28px; z-index: 5;
+  font-size: 13px; letter-spacing: 4px; text-transform: lowercase;
+  color: var(--ink-2); font-weight: 500;
+}
+.brand b { color: var(--ink); font-weight: 700; letter-spacing: 4px; }
+
+.brand-link {
+  position: fixed; top: 22px; right: 28px; z-index: 5;
+  font-size: 12px; letter-spacing: 2px; text-transform: lowercase;
+  color: var(--ink-3);
+}
+.brand-link:hover { color: var(--purple); }
+
+/* ── headline (sr-only mostly, the visible text is minimal) ─────────────── */
+header.hero {
+  text-align: center;
+  margin-bottom: 64px;
+}
+header.hero h1 {
+  margin: 0;
+  font-weight: 200;
+  font-size: clamp(28px, 4.5vw, 44px);
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+header.hero h1 b {
+  font-weight: 700; color: var(--purple);
+}
+header.hero p {
+  margin: 18px auto 0;
+  max-width: 520px;
+  color: var(--ink-3);
+  font-size: 14px;
+  letter-spacing: 0.5px;
+}
+.hero-claims {
+  display: flex; justify-content: center; gap: 22px;
+  margin-top: 22px;
+  font-size: 11px; letter-spacing: 3px; color: var(--ink-3);
+  text-transform: uppercase;
+}
+.hero-claims span { padding: 4px 10px; border: 1px solid var(--line); border-radius: 999px; }
+
+/* ── input ─────────────────────────────────────────────────────────────── */
+section#quick {
+  position: relative;
+  margin-bottom: 56px;
+}
+.qc-stage {
+  position: relative;
+  border-radius: 18px;
+  padding: 28px 26px 26px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+}
+.qc-stage::before {
+  content: "";
+  position: absolute; inset: -1px;
+  border-radius: 18px;
+  padding: 1px;
+  background: linear-gradient(135deg, var(--purple-edge) 0%, transparent 60%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  pointer-events: none;
+}
+
+textarea#qcText {
+  width: 100%;
+  min-height: 180px;
+  padding: 0;
+  border: 0; outline: none; resize: vertical;
+  background: transparent;
+  color: var(--ink);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 14px; line-height: 1.55;
+  caret-color: var(--purple);
+  text-shadow: 0 0 18px rgba(244, 244, 255, 0.15);
+}
+textarea#qcText::placeholder { color: var(--ink-3); font-style: italic; }
+textarea#qcText:focus { text-shadow: 0 0 24px rgba(244, 244, 255, 0.22); }
+
+/* meta-row beneath textarea — selectors + timer */
+.qc-meta {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; margin-top: 22px; padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+.qc-meta-left { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--ink-3); }
+.qc-meta select {
+  padding: 6px 10px; background: var(--panel-2); color: var(--ink-2);
+  border: 1px solid var(--line); border-radius: 8px; font: inherit;
+  font-size: 12px; letter-spacing: 0.5px; outline: none;
+}
+.qc-meta select:focus { border-color: var(--purple); }
+.qc-timer { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--ink-3); font-size: 11px; letter-spacing: 1px; }
+.qc-timer.live { color: var(--purple); }
+
+/* sample policy mini-pills (no labels — small icons) */
+.qc-samples {
+  display: flex; gap: 8px; flex-wrap: wrap;
+  margin-top: 20px; padding-top: 18px;
+  border-top: 1px dashed var(--line);
+}
+.sample-pill {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px;
+  border: 1px solid var(--line); border-radius: 50%;
+  font-size: 14px; color: var(--ink-2);
+  background: var(--panel-2); cursor: pointer;
+  transition: border-color .15s, color .15s, transform .1s, box-shadow .15s;
+}
+.sample-pill:hover {
+  border-color: var(--purple); color: var(--ink);
+  box-shadow: 0 0 0 4px var(--purple-soft);
+  transform: translateY(-1px);
+}
+.sample-pill[data-name] {
+  /* glyphs are wired in JS via data-glyph */
+}
+.sample-pill .name { display: none; }
+
+/* ── breathe orb (submit) ──────────────────────────────────────────────── */
+.orb-wrap {
+  display: flex; justify-content: center;
+  margin-top: 38px;
+}
+button#btnQuickCheck {
+  position: relative;
+  width: 96px; height: 96px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 50%, var(--purple) 0%, #5b1eb8 100%);
+  color: var(--ink);
+  font-size: 30px; font-weight: 600; letter-spacing: 0.5px;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 0 0 0 var(--purple-edge);
+  animation: breathe 3.4s ease-in-out infinite;
+  transition: transform .15s ease;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.25);
+}
+button#btnQuickCheck:hover { transform: scale(1.04); }
+button#btnQuickCheck:active { transform: scale(0.96); }
+button#btnQuickCheck:disabled { animation: none; opacity: 0.6; cursor: progress; }
+
+button#btnQuickCheck .label { font-size: 0; }    /* visual-zero, accessible-text below */
+button#btnQuickCheck .glyph { line-height: 1; }
+button#btnQuickCheck .spinner {
+  display: none;
+  width: 26px; height: 26px;
+  border: 2px solid rgba(255,255,255,0.35);
+  border-top-color: var(--ink);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+button#btnQuickCheck.busy .glyph { display: none; }
+button#btnQuickCheck.busy .spinner { display: inline-block; }
+
+@keyframes breathe {
+  0%, 100% { box-shadow: 0 0 0 0 var(--purple-edge); }
+  50%      { box-shadow: 0 0 0 22px rgba(124, 58, 237, 0); }
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  button#btnQuickCheck { animation: none; }
+}
+
+/* ── results reveal ────────────────────────────────────────────────────── */
+.qc-result {
+  margin-top: 56px;
+  display: none;
+}
+.qc-result.show { display: block; animation: rise 0.45s ease-out; }
+@keyframes rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.verdict-card {
+  position: relative;
+  display: flex; flex-direction: column; align-items: center;
+  text-align: center;
+  padding: 42px 28px 36px;
+  border-radius: 22px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+}
+.verdict-card.pass { box-shadow: var(--shadow-glow-pass); border-color: rgba(74,222,128,0.38); }
+.verdict-card.warn { box-shadow: var(--shadow-glow-warn); border-color: rgba(251,191,36,0.38); }
+.verdict-card.fail { box-shadow: var(--shadow-glow-fail); border-color: rgba(244,63,94,0.38); }
+
+.verdict-glyph {
+  width: 110px; height: 110px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 64px; font-weight: 600;
+  border-radius: 50%;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  animation: pop 0.55s cubic-bezier(.2,.7,.2,1.3);
+  position: relative;
+}
+.verdict-card.pass .verdict-glyph { color: var(--pass); border-color: rgba(74,222,128,0.5); }
+.verdict-card.warn .verdict-glyph { color: var(--warn); border-color: rgba(251,191,36,0.5); }
+.verdict-card.fail .verdict-glyph { color: var(--fail); border-color: rgba(244,63,94,0.5); }
+@keyframes pop { 0% { opacity: 0; transform: scale(0.6); } 100% { opacity: 1; transform: scale(1); } }
+
+/* orbit dots — one per framework chip */
+.orbit {
+  position: absolute;
+  width: 200px; height: 200px;
+  pointer-events: none;
+  animation: orbit-spin 14s linear infinite;
+}
+.orbit i {
+  position: absolute; left: 50%; top: 50%;
+  width: 12px; height: 12px; margin: -6px 0 0 -6px;
+  border-radius: 50%;
+}
+.orbit i:nth-child(1) { transform: rotate(  0deg) translateY(-100px); background: var(--pass); animation: dot-fade 14s linear infinite; }
+.orbit i:nth-child(2) { transform: rotate(120deg) translateY(-100px); background: var(--warn); animation: dot-fade 14s linear infinite -4.7s; }
+.orbit i:nth-child(3) { transform: rotate(240deg) translateY(-100px); background: var(--fail); animation: dot-fade 14s linear infinite -9.4s; }
+@keyframes orbit-spin { to { transform: rotate(360deg); } }
+@keyframes dot-fade { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .orbit, .orbit i { animation: none; }
+}
+
+.verdict-score {
+  margin-top: 24px;
+  font-size: 64px; font-weight: 200; letter-spacing: -0.04em;
+  color: var(--ink); line-height: 1;
+}
+.verdict-score sub { font-size: 16px; color: var(--ink-3); font-weight: 300; vertical-align: baseline; margin-left: 4px; }
+
+.verdict-summary {
+  margin-top: 12px; font-size: 13px; color: var(--ink-2);
+  letter-spacing: 0.5px;
+}
+#qcSummary { margin: 0; }
+
+/* sub-scores chip row */
+.sub-scores {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 14px; margin-top: 30px;
+  width: 100%;
+}
+.sub-chip {
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 16px 14px;
+  text-align: left;
+  position: relative;
+}
+.sub-chip .label { font-size: 11px; letter-spacing: 3px; color: var(--ink-3); text-transform: uppercase; }
+.sub-chip .num { display: block; margin-top: 6px; font-size: 28px; font-weight: 600; color: var(--ink); }
+.sub-chip .bar { height: 3px; border-radius: 2px; background: var(--line); margin-top: 10px; overflow: hidden; }
+.sub-chip .bar i { display: block; height: 100%; width: 0; transition: width .8s ease; }
+.sub-chip.pass .bar i { background: var(--pass); }
+.sub-chip.warn .bar i { background: var(--warn); }
+.sub-chip.fail .bar i { background: var(--fail); }
+
+/* clauses (matched / missing) */
+.qc-clauses {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 18px;
+  margin-top: 26px;
+}
+.qc-clause-block {
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 16px 18px;
+}
+.qc-clause-block h4 {
+  margin: 0 0 10px;
+  font-size: 11px; font-weight: 600; letter-spacing: 2px;
+  color: var(--ink-3); text-transform: uppercase;
+}
+.qc-clause-block ul { list-style: none; padding: 0; margin: 0; font-size: 13px; line-height: 1.7; color: var(--ink-2); }
+.qc-clause-block li::before { content: "·"; color: var(--ink-3); margin-right: 8px; }
+
+/* card preview + share row */
+.qc-card-row {
+  display: flex; gap: 18px; align-items: stretch;
+  margin-top: 28px;
+}
+.qc-card-preview {
+  flex: 1; min-width: 0;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: var(--bg);
+}
+.qc-card-preview img { display: block; width: 100%; height: auto; }
+.qc-share {
+  display: none;
+  flex-direction: column; gap: 10px;
+  align-items: center; justify-content: center;
+  width: 110px; padding: 12px;
+  border: 1px solid var(--line); border-radius: 14px; background: var(--panel-2);
+}
+.qc-share.show { display: flex; }
+#qcShareBlock { display: contents; }
+.copy-orb {
+  width: 50px; height: 50px; border-radius: 50%;
+  background: var(--panel); border: 1px solid var(--purple-edge);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; color: var(--purple);
+  transition: transform .15s, box-shadow .15s;
+}
+.copy-orb:hover { transform: scale(1.1); box-shadow: 0 0 0 4px var(--purple-soft); }
+.copy-orb:active { transform: scale(0.94); }
+.copy-orb.done { color: var(--pass); border-color: var(--pass); }
+.qc-share .url-tiny {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px; color: var(--ink-3); letter-spacing: 1px;
+  word-break: break-all; text-align: center;
+}
+input#qcShareUrl { /* hidden but kept for tests */ position: absolute; left: -9999px; }
+
+/* error */
+.qc-error {
+  display: none;
+  margin-top: 18px;
+  padding: 12px 16px;
+  border: 1px solid rgba(244,63,94,0.4);
+  border-radius: 12px;
+  background: rgba(244,63,94,0.08);
+  color: var(--fail);
+  font-size: 13px;
+  letter-spacing: 0.5px;
+}
+.qc-error.show { display: block; }
+
+/* ── trending sidebar ──────────────────────────────────────────────────── */
+aside.trending {
+  position: fixed;
+  right: 28px; top: 50%;
+  transform: translateY(-50%);
+  width: 220px;
+  padding: 18px 16px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  font-size: 12px;
+  z-index: 4;
+  opacity: 0.92;
+  transition: opacity .2s;
+}
+aside.trending:hover { opacity: 1; }
+aside.trending h3 {
+  margin: 0 0 14px;
+  font-size: 10px; font-weight: 600; letter-spacing: 4px; text-transform: uppercase;
+  color: var(--ink-3);
+  display: flex; align-items: center; gap: 8px;
+}
+aside.trending h3::before {
+  content: ""; width: 6px; height: 6px; border-radius: 50%;
+  background: var(--pass);
+  box-shadow: 0 0 8px var(--pass);
+  animation: pulse 1.6s ease-in-out infinite;
+}
+@keyframes pulse { 0%,100% { opacity: 0.4; } 50% { opacity: 1; } }
+.trend-list { display: grid; grid-template-columns: 1fr; gap: 10px; }
+.trend-row {
+  display: grid; grid-template-columns: 26px 1fr;
+  align-items: center; gap: 10px;
+}
+.trend-glyph {
+  display: flex; align-items: center; justify-content: center;
+  width: 26px; height: 26px;
+  border-radius: 6px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  font-size: 13px; color: var(--ink-2);
+}
+.trend-bar { height: 4px; border-radius: 2px; background: var(--line); overflow: hidden; }
+.trend-bar i { display: block; height: 100%; background: var(--pass); width: 0; transition: width 1s ease; }
+.trend-bar.warn i { background: var(--warn); }
+.trend-bar.fail i { background: var(--fail); }
+aside.trending .empty { color: var(--ink-3); font-size: 11px; text-align: center; padding: 12px 0; letter-spacing: 0.5px; }
+
+@media (max-width: 1100px) {
+  aside.trending {
+    position: relative; right: 0; top: 0; transform: none;
+    width: auto; margin-top: 40px;
+  }
+}
+
+/* ── footer ────────────────────────────────────────────────────────────── */
+footer {
+  text-align: center; margin-top: 80px;
+  font-size: 11px; color: var(--ink-3); letter-spacing: 2px;
+}
+footer a { color: var(--ink-2); }
+footer a:hover { color: var(--purple); }
+
+/* ──────────────────────────────────────────────────────────────────────
+   Konjo visual layer — particles, tilt, scan beam, flashlight, tension.
+   Pure additive over the v3.7.0 viral UI. Easings:
+     --ease-exit:  cubic-bezier(0.23, 1, 0.32, 1)
+     --ease-enter: cubic-bezier(0.34, 1.56, 0.64, 1)
+   ────────────────────────────────────────────────────────────────────── */
+:root {
+  --ease-exit:  cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-enter: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --tension: 0;
+}
+canvas#sqParticles {
+  position: fixed; inset: 0; width: 100vw; height: 100vh;
+  pointer-events: none; z-index: 0;
+  will-change: transform;
+}
+body { position: relative; }
+main.stage, .brand, .brand-link, footer, aside.trending { position: relative; z-index: 2; }
+
+#sqFlashlight {
+  position: fixed; left: 0; top: 0;
+  width: 240px; height: 240px;
+  margin-left: -120px; margin-top: -120px;
+  pointer-events: none; z-index: 3;
+  background: radial-gradient(circle 120px at center,
+              rgba(124,58,237,0.08) 0%,
+              rgba(124,58,237,0.04) 35%,
+              transparent 70%);
+  transform: translate3d(-9999px, -9999px, 0);
+  will-change: transform;
+  mix-blend-mode: screen;
+}
+@media (prefers-reduced-motion: reduce) {
+  #sqFlashlight, canvas#sqParticles { display: none; }
+}
+
+#quick.tilt-stage {
+  perspective: 1200px;
+  perspective-origin: 50% 50%;
+  transform-style: preserve-3d;
+  position: relative;
+  z-index: 4;
+}
+#quick.tilt-stage .tilt-card {
+  transform-style: preserve-3d;
+  transform: rotateX(0deg) rotateY(0deg);
+  transition: transform 500ms var(--ease-exit);
+  position: relative;
+  will-change: transform;
+}
+#quick.tilt-stage .tilt-card.tracking { transition: none; }
+#quick.tilt-stage .specular {
+  position: absolute; pointer-events: none;
+  width: 220px; height: 220px;
+  margin-left: -110px; margin-top: -110px;
+  background: radial-gradient(circle at center,
+              rgba(255,255,255,0.30) 0%,
+              rgba(255,255,255,0.10) 30%,
+              transparent 65%);
+  border-radius: 50%;
+  opacity: 0;
+  transition: opacity 220ms var(--ease-exit);
+  mix-blend-mode: screen;
+  z-index: 6;
+  will-change: transform, opacity;
+}
+#quick.tilt-stage .tilt-card:hover .specular { opacity: 1; }
+
+#qcText {
+  border-color: rgba(124, 58, 237, calc(0.25 + 0.40 * var(--tension))) !important;
+  box-shadow:
+    0 0 0 0 rgba(124,58,237,0),
+    0 0 calc(8px + 22px * var(--tension)) calc(-2px + 4px * var(--tension))
+        rgba(124, 58, 237, calc(0.10 + 0.45 * var(--tension)));
+  transition: border-color 220ms var(--ease-exit),
+              box-shadow 220ms var(--ease-exit);
+}
+#qcText.tension-amber {
+  border-color: rgba(251, 191, 36, 0.60) !important;
+  animation: sqTensionPulse 1.6s ease-in-out infinite;
+}
+@keyframes sqTensionPulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(251,191,36,0.55),
+                0 0 24px -2px rgba(251,191,36,0.45);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(251,191,36,0.0),
+                0 0 38px 2px rgba(251,191,36,0.65);
+  }
+}
+
+.qc-textarea-wrap { position: relative; }
+#sqScanOverlay {
+  position: absolute; inset: 0; border-radius: 12px;
+  background: rgba(6, 6, 15, 0.96);
+  border: 1px solid rgba(124,58,237,0.30);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px; line-height: 1.5;
+  padding: 14px; overflow: hidden;
+  display: none; z-index: 5; pointer-events: none;
+}
+#sqScanOverlay.scanning { display: block; animation: sqScanFade 240ms var(--ease-enter); }
+@keyframes sqScanFade { from { opacity: 0; } to { opacity: 1; } }
+#sqScanOverlay .scan-line {
+  display: block; color: var(--ink-3);
+  padding: 1px 4px; border-radius: 3px;
+  white-space: pre-wrap;
+  transition: background-color 120ms ease, color 120ms ease;
+  position: relative;
+}
+#sqScanOverlay .scan-line.lit {
+  background: rgba(124, 58, 237, 0.15);
+  color: #c4b5fd;
+}
+#sqScanOverlay .scan-line.passed { color: rgba(244, 244, 255, 0.55); }
+#sqScanOverlay .scan-beam {
+  position: absolute; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg,
+      rgba(124,58,237,0) 0%,
+      rgba(124,58,237,0.85) 18%,
+      rgba(196,181,253,1) 50%,
+      rgba(124,58,237,0.85) 82%,
+      rgba(124,58,237,0) 100%);
+  box-shadow: 0 0 20px rgba(124,58,237,0.6),
+              0 0 38px rgba(124,58,237,0.35);
+  transform: translateY(-4px);
+  pointer-events: none;
+}
+#sqScanOverlay .glyph {
+  position: absolute;
+  font-family: inherit; font-size: 12px;
+  color: #c4b5fd;
+  text-shadow: 0 0 6px rgba(124,58,237,0.85);
+  pointer-events: none;
+  will-change: transform, opacity;
+  animation: sqGlyphFloat 900ms var(--ease-exit) forwards;
+}
+@keyframes sqGlyphFloat {
+  0%   { transform: translate(0, 0); opacity: 1; }
+  60%  { opacity: 0.6; }
+  100% { transform: translate(var(--gx, 0), -42px); opacity: 0; }
+}
+
+.sq-typing::after {
+  content: "▍"; color: #c4b5fd;
+  margin-left: 2px;
+  animation: sqCaret 0.85s steps(2) infinite;
+}
+@keyframes sqCaret { 50% { opacity: 0; } }
+
+#qcScore.sq-counting {
+  text-shadow: 0 0 22px rgba(124,58,237,0.55);
+  transition: text-shadow 600ms var(--ease-exit);
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+   Konjo wave-2 — magnetic repulsion · gradient text · stagger reveal ·
+   risk heatmap · 3D depth · keyboard ripple · progress ring · burst.
+   Every rule additive. Every motion gated by prefers-reduced-motion.
+   ────────────────────────────────────────────────────────────────────── */
+
+/* 1. Magnetic repulsion — transition only; translate set by JS */
+.sq-magnet {
+  transition: transform 200ms var(--ease-exit);
+  will-change: transform;
+}
+
+/* 2. Animated gradient text on verdict reveal */
+.verdict-card.pass #qcSummary.sq-shimmer,
+.verdict-card.pass #qcScore.sq-shimmer,
+.verdict-card.pass #qcBadge.sq-shimmer {
+  background: linear-gradient(90deg, #4ade80, #ffffff, #4ade80);
+  background-size: 200% auto;
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent;
+  animation: sqTextShimmer 2.4s linear infinite;
+}
+.verdict-card.fail #qcSummary.sq-shimmer,
+.verdict-card.fail #qcScore.sq-shimmer,
+.verdict-card.fail #qcBadge.sq-shimmer {
+  background: linear-gradient(90deg, #f43f5e, #fb923c, #f43f5e);
+  background-size: 200% auto;
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent;
+  animation: sqTextShimmer 2.4s linear infinite;
+}
+.verdict-card.warn #qcSummary.sq-shimmer,
+.verdict-card.warn #qcScore.sq-shimmer,
+.verdict-card.warn #qcBadge.sq-shimmer {
+  background: linear-gradient(90deg, #fbbf24, #ffffff, #fbbf24);
+  background-size: 200% auto;
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent;
+  animation: sqTextShimmer 2.4s linear infinite;
+}
+@keyframes sqTextShimmer {
+  0%   { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+
+/* 3. Scroll-reveal stagger on sub-score chips */
+.sub-chip.sq-reveal {
+  opacity: 0;
+  transform: translateY(16px);
+  transition:
+    opacity 520ms var(--ease-enter),
+    transform 520ms var(--ease-enter);
+  will-change: opacity, transform;
+}
+.sub-chip.sq-reveal.sq-in {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* 4. Live clause risk heatmap — overlay div mirroring textarea */
+#sqHeatOverlay {
+  position: absolute; inset: 0;
+  padding: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 14px;
+  line-height: 1.55;
+  letter-spacing: inherit;
+  pointer-events: none;
+  white-space: pre-wrap; word-wrap: break-word;
+  overflow: hidden;
+  color: transparent;
+  z-index: 1;
+}
+#sqHeatOverlay .heat-clause {
+  display: inline;
+  background-color: transparent;
+  border-radius: 3px;
+  padding: 0 1px;
+  transition: background-color 400ms var(--ease-exit);
+}
+#sqHeatOverlay .heat-clause.low  { background-color: rgba(251,191,36,0.08); }
+#sqHeatOverlay .heat-clause.high { background-color: rgba(239,68,68,0.12); }
+.qc-textarea-wrap { z-index: 1; }
+textarea#qcText { position: relative; z-index: 2; }
+
+/* 5. Verdict card 3D depth layers */
+.verdict-card.sq-depth {
+  perspective: 600px;
+  transform-style: preserve-3d;
+}
+.verdict-card.sq-depth .sq-layer-back,
+.verdict-card.sq-depth .sq-layer-mid,
+.verdict-card.sq-depth .sq-layer-front {
+  transform-style: preserve-3d;
+  transition: transform 220ms var(--ease-exit);
+  will-change: transform;
+}
+.verdict-card.sq-depth .sq-layer-back  { transform: translateZ(-8px) scale(1.02); }
+.verdict-card.sq-depth .sq-layer-mid   { transform: translateZ(0); }
+.verdict-card.sq-depth .sq-layer-front { transform: translateZ(12px); }
+.verdict-card.sq-depth .sq-blur-plane {
+  position: absolute; inset: 0;
+  border-radius: inherit;
+  background:
+    radial-gradient(60% 60% at 50% 30%, rgba(124,58,237,0.18), transparent 75%);
+  filter: blur(18px);
+  opacity: 0.7;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* 6. Keyboard shortcut visual feedback — ripple + hint */
+button#btnQuickCheck.sq-ripple {
+  animation: sqKeyRipple 400ms var(--ease-exit);
+}
+@keyframes sqKeyRipple {
+  0%   { box-shadow: 0 0 0 0 rgba(124,58,237,0.80); }
+  100% { box-shadow: 0 0 0 20px rgba(124,58,237,0); }
+}
+.sq-kbd-hint {
+  position: absolute;
+  bottom: -32px; left: 50%;
+  transform: translate(-50%, 6px);
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(124,58,237,0.12);
+  border: 1px solid rgba(124,58,237,0.32);
+  color: var(--ink-2);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px; letter-spacing: 1px;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 300ms var(--ease-exit),
+    transform 300ms var(--ease-exit);
+}
+.sq-kbd-hint kbd {
+  font: inherit; color: var(--ink);
+  background: rgba(124,58,237,0.18);
+  padding: 1px 5px;
+  border-radius: 4px;
+  margin: 0 2px;
+}
+.orb-wrap.sq-show-hint .sq-kbd-hint {
+  opacity: 1; transform: translate(-50%, 0);
+}
+
+/* 7. Scan progress ring — SVG inside button */
+.sq-ring {
+  position: absolute; inset: -8px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 220ms var(--ease-exit);
+}
+button#btnQuickCheck.busy .sq-ring { opacity: 1; }
+button#btnQuickCheck.busy .spinner { display: none; }
+.sq-ring circle {
+  fill: none;
+  stroke: rgba(124,58,237,0.85);
+  stroke-width: 3;
+  stroke-linecap: round;
+  transition: stroke 360ms var(--ease-exit);
+  filter: drop-shadow(0 0 6px rgba(124,58,237,0.55));
+}
+.sq-ring circle.bg {
+  stroke: rgba(124,58,237,0.18);
+  filter: none;
+}
+.orb-wrap.sq-result-pass .sq-ring circle:not(.bg) { stroke: var(--pass); filter: drop-shadow(0 0 6px rgba(74,222,128,0.65)); }
+.orb-wrap.sq-result-fail .sq-ring circle:not(.bg) { stroke: var(--fail); filter: drop-shadow(0 0 6px rgba(244,63,94,0.65)); }
+.orb-wrap.sq-result-warn .sq-ring circle:not(.bg) { stroke: var(--warn); filter: drop-shadow(0 0 6px rgba(251,191,36,0.65)); }
+
+/* 8. Particle burst on score reveal — bursts spawned via JS */
+.sq-burst {
+  position: fixed; pointer-events: none;
+  z-index: 999;
+  width: 4px; height: 4px;
+  border-radius: 50%;
+  will-change: transform, opacity;
+  animation: sqBurst 600ms var(--ease-exit) forwards;
+}
+@keyframes sqBurst {
+  0%   { transform: translate3d(0,0,0) scale(1);   opacity: 1; }
+  100% { transform: translate3d(var(--bx,0), var(--by,0), 0) scale(0.3); opacity: 0; }
+}
+
+/* relative-context for the orb (so the ring + hint position correctly) */
+.orb-wrap { position: relative; }
+button#btnQuickCheck { position: relative; }
+
+@media (prefers-reduced-motion: reduce) {
+  .sq-magnet,
+  #qcSummary.sq-shimmer, #qcScore.sq-shimmer, #qcBadge.sq-shimmer,
+  .sub-chip.sq-reveal, .sq-burst,
+  button#btnQuickCheck.sq-ripple,
+  .sq-ring,
+  .verdict-card.sq-depth .sq-layer-back,
+  .verdict-card.sq-depth .sq-layer-mid,
+  .verdict-card.sq-depth .sq-layer-front {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+  }
+  .sub-chip.sq-reveal { opacity: 1; }
+  #qcSummary.sq-shimmer, #qcScore.sq-shimmer, #qcBadge.sq-shimmer {
+    background: none; -webkit-text-fill-color: currentColor; color: inherit;
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+   v3.8.0 — clause redline + financial exposure + scan history.
+   ────────────────────────────────────────────────────────────────────── */
+
+/* aggregate financial exposure chip on the verdict card */
+.sq-exposure-chip {
+  display: inline-flex; align-items: center; gap: 10px;
+  margin-top: 18px;
+  padding: 10px 16px;
+  background: rgba(244,63,94,0.08);
+  border: 1px solid rgba(244,63,94,0.30);
+  border-radius: 999px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px; letter-spacing: 0.5px;
+  color: var(--ink-2);
+  opacity: 0; transform: translateY(6px);
+  transition: opacity 360ms var(--ease-exit), transform 360ms var(--ease-exit);
+}
+.sq-exposure-chip.show { opacity: 1; transform: none; }
+.sq-exposure-chip .label {
+  color: var(--ink-3); text-transform: uppercase; letter-spacing: 2px; font-size: 10px;
+}
+.sq-exposure-chip .amount { color: #f43f5e; font-weight: 600; font-size: 13px; }
+.sq-exposure-chip .count { color: var(--ink-3); font-size: 11px; }
+.sq-exposure-chip .disclaimer {
+  margin-left: 8px; color: var(--ink-3); font-size: 10px;
+  letter-spacing: 1px; opacity: 0.7;
+}
+
+/* clause-redline accordion under the missing list */
+.sq-redline {
+  margin-top: 16px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.sq-redline-card {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel-2);
+  overflow: hidden;
+  transition: border-color 220ms var(--ease-exit), box-shadow 220ms var(--ease-exit);
+}
+.sq-redline-card.risk-critical { border-left: 3px solid #f43f5e; }
+.sq-redline-card.risk-high     { border-left: 3px solid #f97316; }
+.sq-redline-card.risk-medium   { border-left: 3px solid #fbbf24; }
+.sq-redline-card.risk-low      { border-left: 3px solid #4ade80; }
+.sq-redline-card summary {
+  list-style: none; cursor: pointer;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 12px;
+  padding: 10px 14px;
+  font-size: 13px;
+  color: var(--ink);
+  user-select: none;
+}
+.sq-redline-card summary::-webkit-details-marker { display: none; }
+.sq-redline-card summary::before {
+  content: "▸";
+  display: inline-block; color: var(--ink-3);
+  transition: transform 200ms var(--ease-exit);
+}
+.sq-redline-card[open] summary::before { transform: rotate(90deg); }
+.sq-redline-card .label { font-weight: 500; flex: 1; }
+.sq-redline-card .risk-pill {
+  font-family: ui-monospace, monospace; font-size: 10px;
+  letter-spacing: 1px; text-transform: uppercase;
+  padding: 2px 8px; border-radius: 999px;
+}
+.sq-redline-card.risk-critical .risk-pill { background: rgba(244,63,94,0.18); color: #fda4af; }
+.sq-redline-card.risk-high     .risk-pill { background: rgba(249,115,22,0.18); color: #fdba74; }
+.sq-redline-card.risk-medium   .risk-pill { background: rgba(251,191,36,0.18); color: #fde68a; }
+.sq-redline-card.risk-low      .risk-pill { background: rgba(74,222,128,0.18); color: #86efac; }
+.sq-redline-card .dollar {
+  font-family: ui-monospace, monospace; font-size: 11px;
+  color: #f43f5e;
+  background: rgba(244,63,94,0.08);
+  padding: 2px 8px; border-radius: 6px;
+}
+.sq-redline-card .body {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 0;
+  padding: 0;
+  border-top: 1px solid var(--line);
+}
+.sq-redline-card .body > div {
+  padding: 12px 14px;
+  font-family: ui-monospace, monospace; font-size: 12px;
+  line-height: 1.55;
+  white-space: pre-wrap; word-wrap: break-word;
+}
+.sq-redline-card .original {
+  background: rgba(244,63,94,0.05);
+  color: var(--ink-2);
+  border-right: 1px dashed var(--line);
+}
+.sq-redline-card .original::before {
+  content: "− original"; display: block;
+  font-family: inherit; font-size: 10px; color: rgba(244,63,94,0.85);
+  letter-spacing: 2px; margin-bottom: 6px; text-transform: uppercase;
+}
+.sq-redline-card .suggested {
+  background: rgba(74,222,128,0.06);
+  color: var(--ink);
+}
+.sq-redline-card .suggested::before {
+  content: "+ suggested fix"; display: block;
+  font-family: inherit; font-size: 10px; color: rgba(74,222,128,0.95);
+  letter-spacing: 2px; margin-bottom: 6px; text-transform: uppercase;
+}
+.sq-redline-card .citation {
+  grid-column: 1 / -1;
+  padding: 8px 14px;
+  font-size: 10px; letter-spacing: 1px;
+  color: var(--ink-3);
+  background: rgba(124,58,237,0.04);
+  border-top: 1px dashed var(--line);
+}
+.sq-redline-card .issue {
+  padding: 10px 14px;
+  border-top: 1px solid var(--line);
+  font-size: 12px; color: var(--ink-2);
+  background: var(--panel);
+}
+@media (max-width: 720px) {
+  .sq-redline-card .body { grid-template-columns: 1fr; }
+  .sq-redline-card .original { border-right: 0; border-bottom: 1px dashed var(--line); }
+}
+
+/* recent-scans history panel */
+.sq-history {
+  margin-top: 56px;
+  border-radius: 18px;
+  padding: 22px 24px 18px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  position: relative;
+}
+.sq-history h3 {
+  margin: 0 0 14px;
+  font-size: 11px; font-weight: 600; letter-spacing: 4px; text-transform: uppercase;
+  color: var(--ink-3);
+  display: flex; align-items: center; gap: 12px;
+}
+.sq-history h3 .count {
+  font-family: ui-monospace, monospace; font-size: 10px;
+  color: var(--ink-2); letter-spacing: 1px;
+}
+.sq-history .sparkline-wrap {
+  display: flex; align-items: center; gap: 16px;
+  padding: 8px 0 14px;
+  border-bottom: 1px dashed var(--line);
+}
+.sq-history svg.sparkline {
+  width: 100%; height: 44px;
+  flex: 1;
+}
+.sq-history .spark-stat {
+  font-family: ui-monospace, monospace; font-size: 12px;
+  color: var(--ink-2);
+  min-width: 120px;
+  text-align: right;
+}
+.sq-history .spark-stat .num { color: var(--ink); font-size: 14px; font-weight: 500; }
+.sq-history .spark-stat .lbl { color: var(--ink-3); font-size: 10px; letter-spacing: 1px; }
+.sq-history-list {
+  display: grid; gap: 6px;
+  margin-top: 14px;
+}
+.sq-history-row {
+  display: grid;
+  grid-template-columns: 80px 60px 1fr 70px 60px;
+  align-items: center; gap: 10px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  font-family: ui-monospace, monospace; font-size: 11px;
+  color: var(--ink-2);
+  transition: background-color 200ms var(--ease-exit);
+}
+.sq-history-row:hover { background: rgba(124,58,237,0.06); }
+.sq-history-row .v-pass { color: var(--pass); }
+.sq-history-row .v-warn { color: var(--warn); }
+.sq-history-row .v-fail { color: var(--fail); }
+.sq-history-row .fw    { color: var(--ink-3); }
+.sq-history-row .hash  { font-size: 10px; color: var(--ink-3); }
+.sq-history-row .ts    { color: var(--ink-3); }
+.sq-history-row .score { color: var(--ink); text-align: right; font-weight: 500; }
+.sq-history-empty {
+  text-align: center; padding: 24px 0;
+  color: var(--ink-3); font-size: 12px;
+  letter-spacing: 1px;
+}
+@media (max-width: 720px) {
+  .sq-history-row { grid-template-columns: 60px 50px 1fr 50px; }
+  .sq-history-row .hash { display: none; }
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+   wave-3 — premium legal-intelligence layer.
+   Palette: #06060f base, #7c3aed accent. Zero new deps. Pure CSS + rAF.
+   ────────────────────────────────────────────────────────────────────── */
+
+/* 1. Scanning beam over the contract panel during a run */
+.qc-textarea-wrap.sq-scan-running::before {
+  content: "";
+  position: absolute; left: 0; right: 0; top: 0;
+  height: 8px; pointer-events: none;
+  z-index: 4;
+  background: linear-gradient(180deg,
+              rgba(124,58,237,0.15) 0%,
+              rgba(124,58,237,0.06) 55%,
+              transparent 100%);
+  filter: blur(0.3px);
+  animation: sqW3Beam 1.4s ease-in-out infinite;
+  will-change: transform;
+}
+@keyframes sqW3Beam {
+  0%   { transform: translateY(0); opacity: 0; }
+  10%  { opacity: 1; }
+  85%  { opacity: 1; }
+  100% { transform: translateY(calc(100% + 8px)); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .qc-textarea-wrap.sq-scan-running::before { display: none; }
+}
+
+/* 2. Magnetic clause cards — transition lerp set by JS via custom prop */
+.sq-redline-card {
+  transform-origin: center top;
+  transition:
+    transform 220ms cubic-bezier(0.23, 1, 0.32, 1),
+    box-shadow 220ms cubic-bezier(0.23, 1, 0.32, 1);
+  will-change: transform;
+}
+.sq-redline-card.sq-magnetic {
+  transform: translate3d(var(--sq-cx, 0), var(--sq-cy, 0), 0)
+             rotateX(var(--sq-rx, 0deg)) rotateY(var(--sq-ry, 0deg));
+}
+.sq-redline-card:hover {
+  box-shadow:
+    0 0 0 1px rgba(124,58,237,0.30),
+    0 14px 38px -16px rgba(124,58,237,0.45);
+}
+
+/* 3. Risk exposure kinetic counter (slot-machine digits) */
+.sq-ticker {
+  display: inline-flex; align-items: baseline; gap: 1px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+.sq-ticker .digit {
+  display: inline-block;
+  height: 1em; overflow: hidden;
+  vertical-align: baseline; line-height: 1;
+}
+.sq-ticker .digit .stack {
+  display: block;
+  transform: translateY(0);
+  transition: transform 400ms cubic-bezier(0.23, 1, 0.32, 1);
+  will-change: transform;
+}
+.sq-ticker .digit .stack > span {
+  display: block; height: 1em; line-height: 1;
+}
+.sq-ticker .symbol {
+  /* '$', 'K', 'M', '–', '.' — not animated */
+  display: inline-block;
+  vertical-align: baseline;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sq-ticker .digit .stack { transition: none; }
+}
+
+/* canvas behind the exposure chip — orbits */
+.sq-exposure-chip { position: relative; overflow: visible; }
+canvas#sqExposureOrbit {
+  position: absolute; left: 50%; top: 50%;
+  width: 220px; height: 60px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: -1;
+  opacity: 0;
+  transition: opacity 360ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.sq-exposure-chip.show + canvas#sqExposureOrbit,
+.sq-exposure-chip.show canvas#sqExposureOrbit { opacity: 1; }
+.sq-exposure-chip.show .sq-orbit-host { opacity: 1; }
+.sq-orbit-host {
+  position: absolute; inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 360ms cubic-bezier(0.23, 1, 0.32, 1);
+  z-index: -1;
+}
+
+/* 4. Clause verdict reveal — staggered entrance per row */
+.sq-redline-card.sq-revealing summary .label {
+  opacity: 0;
+  clip-path: inset(0 100% 0 0);
+  animation: sqW3LabelDraw 600ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+.sq-redline-card.sq-revealing summary .risk-pill {
+  opacity: 0;
+  transform: translateX(20px);
+  animation: sqW3SlideIn 300ms cubic-bezier(0.23, 1, 0.32, 1) 80ms forwards;
+}
+.sq-redline-card.sq-revealing summary .dollar {
+  opacity: 0;
+  transform: translateY(-12px);
+  animation: sqW3Drop 300ms cubic-bezier(0.23, 1, 0.32, 1) 120ms forwards;
+}
+.sq-redline-card.sq-revealing summary::before {
+  opacity: 0;
+  transform: scale(0.4);
+  animation: sqW3Bounce 360ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+.sq-redline-card.sq-revealing .original,
+.sq-redline-card.sq-revealing .suggested {
+  clip-path: inset(0 100% 0 0);
+  animation: sqW3WipeRight 600ms cubic-bezier(0.22, 1, 0.36, 1) 180ms forwards;
+}
+@keyframes sqW3LabelDraw {
+  0%   { opacity: 0; clip-path: inset(0 100% 0 0); }
+  100% { opacity: 1; clip-path: inset(0 0% 0 0); }
+}
+@keyframes sqW3SlideIn {
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes sqW3Drop {
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes sqW3Bounce {
+  to { opacity: 1; transform: scale(1) rotate(0deg); }
+}
+.sq-redline-card[open].sq-revealing summary::before {
+  transform: scale(1) rotate(90deg) !important;
+}
+@keyframes sqW3WipeRight {
+  0%   { clip-path: inset(0 100% 0 0); }
+  100% { clip-path: inset(0 0% 0 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sq-redline-card.sq-revealing summary .label,
+  .sq-redline-card.sq-revealing summary .risk-pill,
+  .sq-redline-card.sq-revealing summary .dollar,
+  .sq-redline-card.sq-revealing summary::before,
+  .sq-redline-card.sq-revealing .original,
+  .sq-redline-card.sq-revealing .suggested {
+    animation: none !important; opacity: 1; clip-path: none;
+    transform: none;
+  }
+}
+
+/* 5. 3D card flip on open/close */
+.sq-redline-card {
+  perspective: 1200px;
+}
+.sq-redline-card .body,
+.sq-redline-card .issue,
+.sq-redline-card .citation {
+  transform-origin: top center;
+  transform: rotateX(-90deg);
+  opacity: 0;
+  transition:
+    transform 350ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    opacity   300ms cubic-bezier(0.23, 1, 0.32, 1);
+  will-change: transform, opacity;
+}
+.sq-redline-card[open] .body,
+.sq-redline-card[open] .issue,
+.sq-redline-card[open] .citation {
+  transform: rotateX(0deg);
+  opacity: 1;
+}
+.sq-redline-card[open] > summary {
+  /* slight front-face dim while back face is up */
+  background: linear-gradient(180deg, rgba(124,58,237,0.04), transparent);
+}
+@media (prefers-reduced-motion: reduce) {
+  .sq-redline-card .body,
+  .sq-redline-card .issue,
+  .sq-redline-card .citation {
+    transform: none; opacity: 1; transition: none;
+  }
+}
+
+/* 6. Sparkline breath */
+#sqSparkline {
+  transform-origin: center center;
+  animation: sqW3SparkBreath 3s ease-in-out alternate infinite;
+  will-change: transform, opacity;
+}
+@keyframes sqW3SparkBreath {
+  0%   { transform: scaleY(1.00); opacity: 0.92; }
+  100% { transform: scaleY(1.06); opacity: 1.00; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #sqSparkline { animation: none; }
+}
+.sparkline-line.sq-fresh, .sparkline-area.sq-fresh {
+  animation: sqW3SparkIn 480ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+@keyframes sqW3SparkIn {
+  0%   { opacity: 0; transform: translateX(10px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+
+/* 7. Canvas clause risk heatmap */
+canvas#sqClauseHeatmap {
+  position: absolute; inset: -20px;
+  width: calc(100% + 40px); height: calc(100% + 40px);
+  pointer-events: none;
+  opacity: 0.85;
+  filter: blur(28px);
+  z-index: 0;
+  will-change: transform;
+}
+.sq-redline { position: relative; z-index: 1; }
+.sq-redline .sq-redline-card { position: relative; z-index: 1; }
+@media (prefers-reduced-motion: reduce) {
+  canvas#sqClauseHeatmap { display: none; }
+}
+
+/* 8. Scroll-entrance stagger — siblings inside <main.stage> */
+.sq-scroll-reveal {
+  opacity: 0;
+  transform: translateY(30px);
+  transition:
+    opacity 550ms cubic-bezier(0.23, 1, 0.32, 1),
+    transform 550ms cubic-bezier(0.23, 1, 0.32, 1);
+  will-change: transform, opacity;
+}
+.sq-scroll-reveal.sq-scroll-in {
+  opacity: 1; transform: translateY(0);
+}
+@media (prefers-reduced-motion: reduce) {
+  .sq-scroll-reveal { opacity: 1; transform: none; transition: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- Konjo visual layer — particle canvas (idle drift / pass spiral / fail ash) -->
+<canvas id="sqParticles" aria-hidden="true"></canvas>
+
+<!-- cursor flashlight (radial gradient that follows the pointer) -->
+<div id="sqFlashlight" aria-hidden="true"></div>
+
+<!-- accessible navigation anchor (Sprint 29 contract) -->
+<a class="sr-only" href="#quick">jump to quick compliance check</a>
+
+<div class="brand"><b>squash</b></div>
+<a class="brand-link" href="https://github.com/konjoai/squash">github →</a>
+
+<div class="scan-beam" aria-hidden="true"></div>
+
+<main class="stage">
+
+  <header class="hero">
+    <h1>paste any policy. get a <b>verdict</b>.</h1>
+    <p>Paste any policy. Get a compliance verdict in seconds.</p>
+    <div class="hero-claims">
+      <span>GDPR</span><span>CCPA</span><span>SOC 2</span>
+    </div>
+  </header>
+
+  <section id="quick" class="tilt-stage" aria-labelledby="quickTitle">
+    <div class="tilt-card">
+    <div class="specular" aria-hidden="true"></div>
+    <h2 id="quickTitle" class="sr-only">Quick compliance check</h2>
+
+    <div class="qc-stage">
+      <div class="qc-textarea-wrap">
+        <div id="sqHeatOverlay" aria-hidden="true"></div>
+        <textarea id="qcText" spellcheck="false" placeholder="paste policy text here…"></textarea>
+        <div id="sqScanOverlay" aria-hidden="true"></div>
+      </div>
+
+      <div class="qc-meta">
+        <div class="qc-meta-left">
+          <select id="qcFramework" aria-label="framework">
+            <option value="auto">auto</option>
+            <option value="gdpr" selected>gdpr</option>
+            <option value="ccpa">ccpa</option>
+            <option value="soc2">soc2</option>
+            <option value="eu-ai-act">eu-ai-act</option>
+            <option value="general">general</option>
+          </select>
+          <select id="qcSample" aria-label="sample">
+            <option value="">— sample —</option>
+            <option value="01_privacy_policy.txt" data-glyph="P">01_privacy_policy.txt</option>
+            <option value="02_terms_of_service.txt" data-glyph="T">02_terms_of_service.txt</option>
+            <option value="03_gdpr_dpa.txt" data-glyph="D">03_gdpr_dpa.txt</option>
+            <option value="04_ccpa_notice.txt" data-glyph="C">04_ccpa_notice.txt</option>
+            <option value="05_cookie_policy.txt" data-glyph="K">05_cookie_policy.txt</option>
+          </select>
+        </div>
+        <span class="qc-timer" id="qcTimer">ready</span>
+      </div>
+
+      <div class="qc-samples" id="qcSamples" aria-label="sample policies"></div>
+    </div>
+
+    <div class="orb-wrap">
+      <button id="btnQuickCheck" type="button" aria-label="Run Compliance Check">
+        <span class="glyph">▶</span>
+        <span class="spinner" aria-hidden="true"></span>
+        <span class="label">Run Compliance Check</span>
+        <svg class="sq-ring" id="sqRing" viewBox="0 0 120 120" aria-hidden="true">
+          <circle class="bg" cx="60" cy="60" r="54"></circle>
+          <circle class="fg" cx="60" cy="60" r="54"
+                  pathLength="1000"
+                  stroke-dasharray="1000"
+                  stroke-dashoffset="1000"
+                  transform="rotate(-90 60 60)"></circle>
+        </svg>
+      </button>
+      <div class="sq-kbd-hint" id="sqKbdHint" aria-hidden="true">
+        press <kbd>⌘</kbd><kbd>↵</kbd> to scan
+      </div>
+    </div>
+
+    <div class="qc-result" id="qcResult" aria-live="polite">
+      <div class="verdict-card sq-depth" id="verdictCard">
+        <div class="sq-blur-plane sq-layer-back" aria-hidden="true"></div>
+        <div class="sq-layer-back">
+          <div class="orbit" aria-hidden="true">
+            <i></i><i></i><i></i>
+          </div>
+        </div>
+        <div class="sq-layer-mid">
+          <div class="verdict-glyph" id="qcBadge">·</div>
+          <p class="verdict-summary" id="qcSummary"></p>
+        </div>
+        <div class="sq-layer-front">
+          <div class="verdict-score">
+            <span id="qcScore">0</span><sub>/100</sub>
+          </div>
+        </div>
+
+        <div class="sub-scores" id="subScores">
+          <div class="sub-chip fail" data-fw="gdpr"><span class="label">GDPR</span><span class="num">0</span><span class="bar"><i></i></span></div>
+          <div class="sub-chip fail" data-fw="ccpa"><span class="label">CCPA</span><span class="num">0</span><span class="bar"><i></i></span></div>
+          <div class="sub-chip fail" data-fw="soc2"><span class="label">SOC 2</span><span class="num">0</span><span class="bar"><i></i></span></div>
+        </div>
+
+        <!-- P1-C: aggregate financial exposure chip -->
+        <div class="sq-exposure-chip" id="sqExposureChip" aria-live="polite">
+          <span class="label">est. exposure</span>
+          <span class="amount" id="sqExposureAmount">—</span>
+          <span class="count" id="sqExposureCount"></span>
+          <span class="disclaimer">est. — not legal advice</span>
+          <!-- wave-3: orbit particles around the kinetic counter -->
+          <span class="sq-orbit-host" aria-hidden="true">
+            <canvas id="sqExposureOrbit" width="440" height="120"></canvas>
+          </span>
+        </div>
+
+        <div class="qc-clauses">
+          <div class="qc-clause-block"><h4>matched</h4><ul id="qcMatched"></ul></div>
+          <div class="qc-clause-block"><h4>missing</h4><ul id="qcMissing"></ul></div>
+        </div>
+
+        <!-- P1-A: per-clause redline + suggested-fix diff -->
+        <div class="sq-redline" id="sqRedline" aria-label="Clause-level redline">
+          <canvas id="sqClauseHeatmap" aria-hidden="true"></canvas>
+        </div>
+
+        <div class="qc-card-row">
+          <div class="qc-card-preview" id="qcCardPreview" hidden>
+            <img id="qcCardImg" alt="Squash compliance score card" />
+          </div>
+          <div class="qc-share" id="qcShareBlock" aria-label="Share this result">
+            <input id="qcShareUrl" readonly value="" />
+            <button id="btnQcCopy" class="copy-orb" type="button" title="Copy link" aria-label="Copy link">⌁</button>
+            <a id="qcShareOpen" href="#" target="_blank" rel="noreferrer" class="url-tiny">open ↗</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="qc-error" id="qcError" role="alert"></div>
+    </div>
+    </div><!-- /.tilt-card -->
+  </section>
+
+  <!-- P1-B: scan history audit trail -->
+  <section class="sq-history" id="sqHistory" aria-label="Recent compliance scans">
+    <h3>
+      recent scans
+      <span class="count" id="sqHistoryCount">—</span>
+    </h3>
+    <div class="sparkline-wrap">
+      <svg class="sparkline" id="sqSparkline" viewBox="0 0 240 44"
+           preserveAspectRatio="none" aria-hidden="true">
+        <polyline class="sparkline-area" points="" fill="rgba(124,58,237,0.10)" stroke="none"></polyline>
+        <polyline class="sparkline-line" points=""
+                  fill="none" stroke="#7c3aed" stroke-width="1.6"
+                  stroke-linejoin="round" stroke-linecap="round"></polyline>
+      </svg>
+      <div class="spark-stat">
+        <div><span class="num" id="sqAvgScore">—</span></div>
+        <div class="lbl">avg score</div>
+      </div>
+    </div>
+    <div class="sq-history-list" id="sqHistoryList">
+      <div class="sq-history-empty">no scans yet — your first verdict will appear here</div>
+    </div>
+  </section>
+
+  <aside class="trending" id="trending" aria-label="Trending policy types">
+    <h3>trending</h3>
+    <div class="trend-list" id="trendList">
+      <div class="empty">awaiting first scan…</div>
+    </div>
+  </aside>
+
+  <footer>
+    squash · pip install squash-ai · <a href="https://github.com/konjoai/squash">source</a>
+  </footer>
+
+</main>
+
+<script>
+(() => {
+  "use strict";
+
+  // ── config ──────────────────────────────────────────────────────────
+  const API_BASE = "";  // same-origin
+  const SAMPLE_BASE = (() => {
+    const here = location.pathname.replace(/\/$/, "");
+    if (here === "/demo") return "/demo/sample_policies/";
+    if (here.endsWith("/index.html")) return "sample_policies/";
+    return "sample_policies/";
+  })();
+  const POLICY_GLYPHS = {
+    privacy_policy:   "P",
+    terms_of_service: "T",
+    gdpr_dpa:         "D",
+    ccpa_notice:      "C",
+    cookie_policy:    "K",
+    ai_system_card:   "A",
+    soc2_report:      "S",
+    other:            "·",
+  };
+  const SAMPLE_NAMES = [
+    "01_privacy_policy.txt",
+    "02_terms_of_service.txt",
+    "03_gdpr_dpa.txt",
+    "04_ccpa_notice.txt",
+    "05_cookie_policy.txt",
+  ];
+
+  // ── DOM hooks ───────────────────────────────────────────────────────
+  const $ = (id) => document.getElementById(id);
+  const text     = $("qcText");
+  const fwSel    = $("qcFramework");
+  const sampleSel= $("qcSample");
+  const samples  = $("qcSamples");
+  const btn      = $("btnQuickCheck");
+  const timer    = $("qcTimer");
+  const result   = $("qcResult");
+  const card     = $("verdictCard");
+  const badge    = $("qcBadge");
+  const score    = $("qcScore");
+  const summary  = $("qcSummary");
+  const matched  = $("qcMatched");
+  const missing  = $("qcMissing");
+  const errBox   = $("qcError");
+  const subScoresWrap = $("subScores");
+  const cardPreview = $("qcCardPreview");
+  const cardImg  = $("qcCardImg");
+  const shareUrl = $("qcShareUrl");
+  const copyBtn  = $("btnQcCopy");
+  const openLnk  = $("qcShareOpen");
+  const trendList= $("trendList");
+
+  // ── render sample pills ─────────────────────────────────────────────
+  SAMPLE_NAMES.forEach(name => {
+    const opt = sampleSel.querySelector(`option[value="${name}"]`);
+    const glyph = (opt && opt.dataset.glyph) || "·";
+    const pill = document.createElement("button");
+    pill.className = "sample-pill";
+    pill.dataset.name = name;
+    pill.title = name;
+    pill.textContent = glyph;
+    pill.addEventListener("click", () => loadSample(name));
+    samples.appendChild(pill);
+  });
+  sampleSel.addEventListener("change", () => {
+    if (sampleSel.value) loadSample(sampleSel.value);
+  });
+
+  async function loadSample(name) {
+    try {
+      const r = await fetch(SAMPLE_BASE + name, { cache: "no-store" });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      text.value = await r.text();
+      sampleSel.value = name;
+      // auto-pick framework from filename hint
+      if (name.includes("ccpa"))      fwSel.value = "ccpa";
+      else if (name.includes("gdpr") || name.includes("privacy")) fwSel.value = "gdpr";
+      else                             fwSel.value = "auto";
+      hideResult();
+    } catch (err) {
+      showError(`could not load ${name}`);
+    }
+  }
+
+  // ── timer ───────────────────────────────────────────────────────────
+  let tStart = 0, rafId = null;
+  function tick() {
+    const ms = performance.now() - tStart;
+    timer.textContent = (ms / 1000).toFixed(2) + "s";
+    rafId = requestAnimationFrame(tick);
+  }
+  function timerStart() {
+    tStart = performance.now();
+    timer.classList.add("live");
+    timer.textContent = "0.00s";
+    rafId = requestAnimationFrame(tick);
+  }
+  function timerStop() {
+    if (rafId) cancelAnimationFrame(rafId);
+    timer.classList.remove("live");
+  }
+
+  // ── result helpers ──────────────────────────────────────────────────
+  function hideResult() {
+    result.classList.remove("show");
+    errBox.classList.remove("show");
+    cardPreview.hidden = true;
+  }
+  function showError(msg) {
+    errBox.textContent = msg;
+    errBox.classList.add("show");
+    result.classList.add("show");
+  }
+
+  function setSubScore(fw, info) {
+    const chip = subScoresWrap.querySelector(`[data-fw="${fw}"]`);
+    if (!chip) return;
+    chip.classList.remove("pass", "warn", "fail");
+    chip.classList.add(info.verdict || "fail");
+    chip.querySelector(".num").textContent = String(info.score || 0);
+    chip.querySelector(".bar i").style.width = `${Math.max(0, Math.min(100, info.score || 0))}%`;
+  }
+
+  function renderResult(body) {
+    const r = body.result || {};
+    const v = r.verdict || "fail";
+    card.classList.remove("pass", "warn", "fail");
+    card.classList.add(v);
+    badge.textContent = ({ pass: "✦", warn: "△", fail: "✗" })[v] || "·";
+    score.textContent = String(r.score || 0);
+    summary.textContent = r.summary || "";
+
+    // matched / missing
+    matched.innerHTML = "";
+    missing.innerHTML = "";
+    (r.matched || []).slice(0, 8).forEach(id => {
+      const li = document.createElement("li");
+      li.textContent = id;
+      matched.appendChild(li);
+    });
+    (r.missing || []).slice(0, 8).forEach(m => {
+      const li = document.createElement("li");
+      li.textContent = m.label || m.id;
+      missing.appendChild(li);
+    });
+
+    // sub-scores: derive from matched/missing prefixes when not the primary
+    const primaryFw = (r.framework || "").toLowerCase();
+    const primary = { score: r.score || 0, verdict: v };
+    setSubScore("gdpr", primaryFw === "gdpr" ? primary : derive(r, "GDPR-"));
+    setSubScore("ccpa", primaryFw === "ccpa" ? primary : derive(r, "CCPA-"));
+    setSubScore("soc2", primaryFw === "soc2" ? primary : derive(r, "SOC2-"));
+
+    // share + card
+    if (body.share_hash) {
+      shareUrl.value = body.share_url || "";
+      openLnk.href = body.share_url || "#";
+      // card_url defaults to /r/{hash}/card.svg if the API ever stops returning it
+      cardImg.src = body.card_url || `/r/${body.share_hash}/card.svg`;
+      cardPreview.hidden = false;
+    }
+
+    result.classList.add("show");
+    errBox.classList.remove("show");
+  }
+
+  function derive(r, prefix) {
+    const all = (r.matched || []).concat((r.missing || []).map(m => m.id || ""));
+    const relevant = all.filter(i => typeof i === "string" && i.toUpperCase().startsWith(prefix));
+    if (!relevant.length) return { score: r.score || 0, verdict: r.verdict || "fail" };
+    const ok = (r.matched || []).filter(i => i.toUpperCase().startsWith(prefix)).length;
+    const sc = Math.round(100 * ok / relevant.length);
+    const vd = sc >= 80 ? "pass" : sc >= 50 ? "warn" : "fail";
+    return { score: sc, verdict: vd };
+  }
+
+  // ── submit ──────────────────────────────────────────────────────────
+  async function runCheck() {
+    const body = (text.value || "").trim();
+    if (!body) { showError("paste some policy text first"); return; }
+    btn.classList.add("busy");
+    btn.disabled = true;
+    hideResult();
+    timerStart();
+    try {
+      const res = await fetch(API_BASE + "/quick-check", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: body, framework: fwSel.value || "auto", share: true }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
+      renderResult(data);
+      refreshTrending();
+    } catch (err) {
+      showError(err.message || "scan failed");
+    } finally {
+      btn.classList.remove("busy");
+      btn.disabled = false;
+      timerStop();
+    }
+  }
+  btn.addEventListener("click", runCheck);
+
+  // ── copy share link ─────────────────────────────────────────────────
+  copyBtn.addEventListener("click", async () => {
+    if (!shareUrl.value) return;
+    try {
+      await navigator.clipboard.writeText(shareUrl.value);
+      copyBtn.classList.add("done");
+      copyBtn.textContent = "✓";
+      setTimeout(() => { copyBtn.classList.remove("done"); copyBtn.textContent = "⌁"; }, 1400);
+    } catch { /* ignore — fallback below */ }
+  });
+
+  // ── trending sidebar ────────────────────────────────────────────────
+  async function refreshTrending() {
+    try {
+      const r = await fetch(API_BASE + "/trending?top=5", { cache: "no-store" });
+      if (!r.ok) return;
+      const data = await r.json();
+      renderTrending(data);
+    } catch { /* silent — sidebar is decorative */ }
+  }
+  function renderTrending(data) {
+    const top = (data && data.top) || [];
+    if (!top.length) {
+      trendList.innerHTML = '<div class="empty">awaiting first scan…</div>';
+      return;
+    }
+    trendList.innerHTML = "";
+    top.forEach(row => {
+      const tile = document.createElement("div");
+      tile.className = "trend-row";
+      const glyph = document.createElement("div");
+      glyph.className = "trend-glyph";
+      glyph.title = row.policy_type;
+      glyph.textContent = POLICY_GLYPHS[row.policy_type] || "·";
+      const bar = document.createElement("div");
+      bar.className = "trend-bar";
+      const rate = Math.round((row.pass_rate || 0) * 100);
+      bar.classList.add(rate >= 80 ? "pass" : rate >= 50 ? "warn" : "fail");
+      const fill = document.createElement("i");
+      bar.appendChild(fill);
+      tile.appendChild(glyph);
+      tile.appendChild(bar);
+      trendList.appendChild(tile);
+      requestAnimationFrame(() => { fill.style.width = `${rate}%`; });
+    });
+  }
+
+  // initial pull (cheap) — even for first visitor it shows global state
+  refreshTrending();
+  setInterval(refreshTrending, 12000);
+})();
+</script>
+
+<script>
+/* ──────────────────────────────────────────────────────────────────────
+   Konjo visual layer — vanilla JS, no deps.
+   Adapted for v3.7.0 markup: verdict class lands on #verdictCard,
+   not #qcBadge. All hooks are additive (MutationObserver + parallel
+   scan-beam). Respects prefers-reduced-motion.
+   ────────────────────────────────────────────────────────────────────── */
+(() => {
+  if (typeof window === "undefined") return;
+  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  /* ── 1. Particle system ─────────────────────────────────────────── */
+  const canvas = document.getElementById("sqParticles");
+  const ctx = canvas && canvas.getContext("2d");
+  let particles = [];
+  let mode = "idle";
+  let modeStartedAt = 0;
+  const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+  const PARTICLE_COUNT = 200;
+  let cw = 0, ch = 0;
+
+  function resizeCanvas() {
+    if (!canvas) return;
+    cw = window.innerWidth; ch = window.innerHeight;
+    canvas.width = Math.floor(cw * dpr);
+    canvas.height = Math.floor(ch * dpr);
+    canvas.style.width = cw + "px";
+    canvas.style.height = ch + "px";
+    if (ctx) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  function rng(min, max) { return min + Math.random() * (max - min); }
+
+  function spawnIdleParticle(p) {
+    p.x = rng(0, cw); p.y = rng(0, ch);
+    p.vx = rng(-0.18, 0.18); p.vy = rng(-0.10, 0.10);
+    p.size = rng(0.6, 1.8);
+    p.hue = rng(258, 282); p.sat = rng(40, 70); p.light = rng(15, 28);
+    p.alpha = rng(0.04, 0.07);
+    p.life = 1; p.kind = "idle";
+    p.theta = rng(0, Math.PI * 2); p.r = 0;
+  }
+  function initParticles() {
+    particles = new Array(PARTICLE_COUNT);
+    for (let i = 0; i < PARTICLE_COUNT; i++) {
+      particles[i] = {}; spawnIdleParticle(particles[i]);
+    }
+  }
+  function setMode(next) {
+    mode = next; modeStartedAt = performance.now();
+    if (mode === "pass") {
+      const cx = cw / 2, cy = ch / 2;
+      for (const p of particles) {
+        const dx = p.x - cx, dy = p.y - cy;
+        p.r = Math.hypot(dx, dy);
+        p.theta = Math.atan2(dy, dx);
+        p.kind = "pass";
+        p.alpha = rng(0.55, 0.95);
+        p.size = rng(1.2, 2.6);
+        p.hue = 140; p.sat = 80; p.light = 60;
+        p.life = 1;
+      }
+    } else if (mode === "fail") {
+      for (const p of particles) {
+        const ang = rng(0, Math.PI * 2);
+        const speed = rng(2.5, 6.5);
+        p.vx = Math.cos(ang) * speed;
+        p.vy = Math.sin(ang) * speed - rng(0.5, 2.0);
+        p.kind = "fail";
+        p.alpha = rng(0.7, 1.0);
+        p.size = rng(1.0, 2.4);
+        p.hue = 0; p.sat = 70; p.light = 50;
+        p.life = 1;
+      }
+    }
+  }
+  function step(now) {
+    if (!ctx) return;
+    ctx.clearRect(0, 0, cw, ch);
+    const elapsed = (now - modeStartedAt) / 1000;
+    const cx = cw / 2, cy = ch / 2;
+    for (const p of particles) {
+      if (p.kind === "idle") {
+        p.x += p.vx; p.y += p.vy;
+        if (p.x < -4) p.x = cw + 4;
+        if (p.x > cw + 4) p.x = -4;
+        if (p.y < -4) p.y = ch + 4;
+        if (p.y > ch + 4) p.y = -4;
+      } else if (p.kind === "pass") {
+        const t = Math.min(1, elapsed / 1.5);
+        p.r = Math.max(0, p.r * (1 - 0.022) - 0.7);
+        p.theta += 0.06 + t * 0.10;
+        p.x = cx + Math.cos(p.theta) * p.r;
+        p.y = cy + Math.sin(p.theta) * p.r;
+        if (t >= 1) spawnIdleParticle(p);
+      } else if (p.kind === "fail") {
+        p.vy += 0.30; p.vx *= 0.992;
+        p.x += p.vx; p.y += p.vy;
+        p.life -= 0.012; p.alpha = Math.max(0, p.life);
+        if (p.life <= 0 || p.y > ch + 30) spawnIdleParticle(p);
+      }
+      ctx.globalAlpha = p.alpha;
+      ctx.fillStyle = `hsl(${p.hue}, ${p.sat}%, ${p.light}%)`;
+      if (p.kind !== "idle") {
+        ctx.shadowBlur = 8;
+        ctx.shadowColor = `hsl(${p.hue}, ${p.sat}%, ${p.light}%)`;
+      } else { ctx.shadowBlur = 0; }
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+    if (mode !== "idle" && elapsed > 2.5) mode = "idle";
+    if (!reduceMotion) requestAnimationFrame(step);
+  }
+  if (canvas && ctx && !reduceMotion) {
+    resizeCanvas(); initParticles();
+    requestAnimationFrame(step);
+    window.addEventListener("resize", resizeCanvas, { passive: true });
+  }
+
+  /* ── 2. 3D perspective tilt + specular highlight ─────────────────── */
+  const tiltStage = document.getElementById("quick");
+  const tiltCard = tiltStage && tiltStage.querySelector(".tilt-card");
+  const specular = tiltStage && tiltStage.querySelector(".specular");
+  if (tiltStage && tiltCard && !reduceMotion) {
+    let raf = 0, mx = 0, my = 0, hovering = false;
+    function applyTilt() {
+      const rect = tiltStage.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) return;
+      const cxT = rect.left + rect.width / 2;
+      const cyT = rect.top + rect.height / 2;
+      const tiltX = (my - cyT) / rect.height * 8;
+      const tiltY = (cxT - mx) / rect.width * 8;
+      tiltCard.style.transform =
+        `rotateX(${tiltX.toFixed(2)}deg) rotateY(${tiltY.toFixed(2)}deg)`;
+      if (specular) {
+        specular.style.transform =
+          `translate3d(${mx - rect.left}px, ${my - rect.top}px, 0)`;
+      }
+    }
+    tiltStage.addEventListener("mouseenter", () => {
+      hovering = true; tiltCard.classList.add("tracking");
+    });
+    tiltStage.addEventListener("mousemove", (e) => {
+      mx = e.clientX; my = e.clientY;
+      if (!raf && hovering) {
+        raf = requestAnimationFrame(() => { raf = 0; applyTilt(); });
+      }
+    });
+    tiltStage.addEventListener("mouseleave", () => {
+      hovering = false; tiltCard.classList.remove("tracking");
+      tiltCard.style.transform = "rotateX(0deg) rotateY(0deg)";
+    });
+  }
+
+  /* ── 3. Cursor flashlight ─────────────────────────────────────────── */
+  const flashlight = document.getElementById("sqFlashlight");
+  if (flashlight && !reduceMotion) {
+    let fx = 0, fy = 0, fraf = 0;
+    function moveFlash() {
+      fraf = 0;
+      flashlight.style.transform = `translate3d(${fx}px, ${fy}px, 0)`;
+    }
+    window.addEventListener("mousemove", (e) => {
+      fx = e.clientX; fy = e.clientY;
+      if (!fraf) fraf = requestAnimationFrame(moveFlash);
+    }, { passive: true });
+  }
+
+  /* ── 4. Textarea tension meter ────────────────────────────────────── */
+  const ta = document.getElementById("qcText");
+  function updateTension() {
+    if (!ta) return;
+    const len = ta.value.length;
+    let t;
+    if (len < 100) t = 0.10 + (len / 100) * 0.20;
+    else if (len < 500) t = 0.30 + ((len - 100) / 400) * 0.50;
+    else t = Math.min(1, 0.80 + ((len - 500) / 1500) * 0.20);
+    ta.style.setProperty("--tension", t.toFixed(3));
+    ta.classList.toggle("tension-amber", len >= 500);
+  }
+  if (ta) {
+    ta.addEventListener("input", updateTension);
+    setTimeout(updateTension, 200);
+    setTimeout(updateTension, 1200);
+  }
+
+  /* ── 5. Scan-beam overlay ─────────────────────────────────────────── */
+  const overlay = document.getElementById("sqScanOverlay");
+  let scanRunning = false;
+
+  function tearDownScan() {
+    if (!overlay) return;
+    overlay.classList.remove("scanning");
+    overlay.innerHTML = "";
+    scanRunning = false;
+  }
+
+  async function runScan(text) {
+    if (!overlay || !ta || reduceMotion) return Promise.resolve();
+    scanRunning = true;
+    overlay.innerHTML = "";
+    overlay.classList.add("scanning");
+
+    const tarect = ta.getBoundingClientRect();
+    const wrapRect = overlay.parentElement.getBoundingClientRect();
+    overlay.style.top = (tarect.top - wrapRect.top) + "px";
+    overlay.style.left = (tarect.left - wrapRect.left) + "px";
+    overlay.style.width = tarect.width + "px";
+    overlay.style.height = tarect.height + "px";
+
+    const lines = text.split("\n");
+    const lineEls = lines.map((ln) => {
+      const el = document.createElement("span");
+      el.className = "scan-line";
+      el.textContent = ln.length ? ln : " ";
+      overlay.appendChild(el);
+      return el;
+    });
+    const beam = document.createElement("div");
+    beam.className = "scan-beam";
+    overlay.appendChild(beam);
+
+    const overlayHeight = overlay.clientHeight;
+    const lineRects = lineEls.map((el) => ({
+      el,
+      top: el.offsetTop,
+      bottom: el.offsetTop + el.offsetHeight,
+    }));
+
+    const totalDuration = Math.max(900, Math.min(2200, lines.length * 60));
+    const start = performance.now();
+
+    return new Promise((resolve) => {
+      function tick(now) {
+        if (!scanRunning) return resolve();
+        const t = Math.min(1, (now - start) / totalDuration);
+        const y = t * (overlayHeight + 6);
+        beam.style.transform = `translateY(${y - 4}px)`;
+
+        for (const lr of lineRects) {
+          const inBeam = y >= lr.top && y <= lr.bottom + 4;
+          if (inBeam && !lr.el.classList.contains("lit")) {
+            lr.el.classList.add("lit");
+            spawnGlyphsFor(lr.el);
+          } else if (!inBeam && lr.el.classList.contains("lit") && y > lr.bottom + 4) {
+            lr.el.classList.remove("lit");
+            lr.el.classList.add("passed");
+          }
+        }
+
+        if (t < 1) requestAnimationFrame(tick);
+        else setTimeout(() => { tearDownScan(); resolve(); }, 320);
+      }
+      requestAnimationFrame(tick);
+    });
+  }
+
+  function spawnGlyphsFor(lineEl) {
+    if (!overlay) return;
+    const txt = lineEl.textContent;
+    if (!txt || !txt.trim()) return;
+    const indices = [];
+    for (let i = 0; i < txt.length; i++) if (txt[i].trim()) indices.push(i);
+    const n = Math.min(4, Math.max(1, Math.floor(indices.length / 18)));
+    const baseTop = lineEl.offsetTop;
+    const baseLeft = lineEl.offsetLeft + 4;
+    for (let k = 0; k < n; k++) {
+      const idx = indices[Math.floor(Math.random() * indices.length)];
+      const ch = txt[idx];
+      if (!ch || !ch.trim()) continue;
+      const g = document.createElement("span");
+      g.className = "glyph";
+      g.textContent = ch;
+      g.style.left = (baseLeft + idx * 7.8) + "px";
+      g.style.top = baseTop + "px";
+      g.style.setProperty("--gx", (rng(-22, 22)).toFixed(1) + "px");
+      overlay.appendChild(g);
+      setTimeout(() => { g.remove(); }, 950);
+    }
+  }
+
+  /* ── 6. Verdict observer — typewriter, counter, particles ────────── */
+  // v3.7.0 lands the verdict class on #verdictCard, not #qcBadge.
+  const verdictCard = document.getElementById("verdictCard");
+  const summaryEl = document.getElementById("qcSummary");
+  const scoreEl = document.getElementById("qcScore");
+  let lastVerdictKey = "";
+
+  function typewriter(el, text, speed = 40) {
+    if (!el) return;
+    el.classList.add("sq-typing");
+    el.textContent = "";
+    let i = 0;
+    const id = setInterval(() => {
+      if (i >= text.length) {
+        clearInterval(id);
+        el.classList.remove("sq-typing");
+        return;
+      }
+      el.textContent += text[i++];
+    }, speed);
+  }
+  function animateCounter(el, target, duration = 600) {
+    if (!el) return;
+    const final = parseInt(target, 10);
+    if (!Number.isFinite(final)) { el.textContent = String(target); return; }
+    const start = performance.now();
+    el.classList.add("sq-counting");
+    function frame(now) {
+      const t = Math.min(1, (now - start) / duration);
+      const eased = 1 - Math.pow(1 - t, 3);
+      el.textContent = String(Math.round(final * eased));
+      if (t < 1) requestAnimationFrame(frame);
+      else {
+        el.textContent = String(final);
+        setTimeout(() => el.classList.remove("sq-counting"), 400);
+      }
+    }
+    requestAnimationFrame(frame);
+  }
+  function reactToVerdict(verdict) {
+    if (verdict === "pass") setMode("pass");
+    else setMode("fail");
+
+    if (summaryEl) {
+      const text = summaryEl.textContent || "";
+      if (text) setTimeout(() => typewriter(summaryEl, text, 40), 80);
+    }
+    if (scoreEl) {
+      const target = scoreEl.textContent;
+      scoreEl.textContent = "0";
+      setTimeout(() => animateCounter(scoreEl, target, 600), 280);
+    }
+  }
+  if (verdictCard) {
+    const obs = new MutationObserver(() => {
+      const cls = verdictCard.className || "";
+      const m = cls.match(/(?:^|\s)(pass|fail|warn)(?:\s|$)/);
+      const key = (m ? m[1] : "") + "|" + (scoreEl ? scoreEl.textContent : "");
+      if (!m || key === lastVerdictKey) return;
+      lastVerdictKey = key;
+      reactToVerdict(m[1]);
+    });
+    obs.observe(verdictCard, { attributes: true, attributeFilter: ["class"] });
+  }
+
+  /* ── 7. Hook the scan button so the beam plays in parallel ───────── */
+  const btn = document.getElementById("btnQuickCheck");
+  if (btn && ta && !reduceMotion) {
+    btn.addEventListener("click", () => {
+      const text = ta.value;
+      if (!text || !text.trim()) return;
+      runScan(text).catch(() => tearDownScan());
+    }, { passive: true });
+  }
+})();
+</script>
+
+<script>
+/* ──────────────────────────────────────────────────────────────────────
+   Konjo wave-2 visual layer — magnetic repulsion, gradient shimmer,
+   stagger reveal, live risk heatmap, 3D depth, kbd ripple, progress
+   ring, particle burst. Pure additive, no existing function modified.
+   ────────────────────────────────────────────────────────────────────── */
+(() => {
+  if (typeof window === "undefined") return;
+  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const $ = (id) => document.getElementById(id);
+
+  /* ── 1. Magnetic cursor repulsion ─────────────────────────────────── */
+  const MAGNET_RADIUS = 80;     // px
+  const MAGNET_STRENGTH = 0.12; // per spec
+  const magnets = Array.from(document.querySelectorAll(
+    "button, textarea, .verdict-card, .sub-chip, .sample-pill, select"
+  ));
+  magnets.forEach((el) => el.classList.add("sq-magnet"));
+
+  let magnetRaf = 0;
+  let pendingMouse = null;
+
+  function updateMagnets() {
+    magnetRaf = 0;
+    if (!pendingMouse) return;
+    const { x: mx, y: my } = pendingMouse;
+    for (const el of magnets) {
+      // skip elements that are currently being dragged or carry their own
+      // transform-on-active (button:active scales 0.96, .sample-pill:hover
+      // translates). We append translate on top by reading data-magnet-dx/dy.
+      const rect = el.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) continue;
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      const dx = cx - mx, dy = cy - my;
+      const dist = Math.hypot(dx, dy);
+      if (dist < MAGNET_RADIUS) {
+        const tx = dx * MAGNET_STRENGTH;
+        const ty = dy * MAGNET_STRENGTH;
+        el.style.setProperty("--sq-mx", tx.toFixed(2) + "px");
+        el.style.setProperty("--sq-my", ty.toFixed(2) + "px");
+        el.style.transform = `translate(${tx.toFixed(2)}px, ${ty.toFixed(2)}px)`;
+      } else if (el.style.transform) {
+        el.style.transform = "";
+      }
+    }
+  }
+
+  if (!reduceMotion) {
+    window.addEventListener("mousemove", (e) => {
+      pendingMouse = { x: e.clientX, y: e.clientY };
+      if (!magnetRaf) magnetRaf = requestAnimationFrame(updateMagnets);
+    }, { passive: true });
+    document.addEventListener("mouseleave", () => {
+      pendingMouse = null;
+      for (const el of magnets) el.style.transform = "";
+    });
+  }
+
+  /* ── 2. Animated gradient text on verdict ─────────────────────────── */
+  const verdictCard = $("verdictCard");
+  const summaryEl   = $("qcSummary");
+  const scoreEl     = $("qcScore");
+  const badgeEl     = $("qcBadge");
+
+  function applyShimmer() {
+    [summaryEl, scoreEl, badgeEl].forEach((el) => {
+      if (el) el.classList.add("sq-shimmer");
+    });
+  }
+  function clearShimmer() {
+    [summaryEl, scoreEl, badgeEl].forEach((el) => {
+      if (el) el.classList.remove("sq-shimmer");
+    });
+  }
+
+  /* ── 3. Scroll-reveal stagger on sub-score chips ──────────────────── */
+  const chipSelector = ".sub-chip";
+  function prepChips() {
+    document.querySelectorAll(chipSelector).forEach((chip) => {
+      if (!reduceMotion) chip.classList.add("sq-reveal");
+    });
+  }
+  prepChips();
+
+  let revealObserver = null;
+  if (!reduceMotion && "IntersectionObserver" in window) {
+    revealObserver = new IntersectionObserver((entries) => {
+      const newlyIn = entries.filter((e) => e.isIntersecting);
+      newlyIn.forEach((entry, idx) => {
+        const el = entry.target;
+        if (el.classList.contains("sq-in")) return;
+        setTimeout(() => {
+          el.classList.add("sq-in");
+          burstFromElement(el);
+        }, idx * 80);                              // 80ms stagger per spec
+        revealObserver.unobserve(el);
+      });
+    }, { threshold: 0.4 });
+    document.querySelectorAll(chipSelector).forEach((c) => revealObserver.observe(c));
+  } else {
+    document.querySelectorAll(chipSelector).forEach((c) => c.classList.add("sq-in"));
+  }
+
+  /* ── 4. Live clause risk heatmap ──────────────────────────────────── */
+  const RISK_KEYWORDS_HIGH = [
+    "indemnify", "irrevocable", "perpetual", "waive", "sublicense",
+  ];
+  const RISK_KEYWORDS_LOW = [
+    "shall not", "liability",
+  ];
+  const ALL_RISK_WORDS = [...RISK_KEYWORDS_HIGH, ...RISK_KEYWORDS_LOW];
+  const ta = $("qcText");
+  const heat = $("sqHeatOverlay");
+
+  function classifyClause(clause) {
+    const lower = clause.toLowerCase();
+    let high = 0, low = 0;
+    for (const w of RISK_KEYWORDS_HIGH) if (lower.includes(w)) high++;
+    for (const w of RISK_KEYWORDS_LOW)  if (lower.includes(w)) low++;
+    if (high > 0) return "high";
+    if (low > 0)  return "low";
+    return "";
+  }
+
+  function escapeHtml(s) {
+    return s.replace(/[&<>"']/g, (c) => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;",
+      '"': "&quot;", "'": "&#39;",
+    }[c]));
+  }
+
+  function renderHeat() {
+    if (!ta || !heat) return;
+    const text = ta.value;
+    // tokenize into clauses by sentence-ish boundaries; preserve original
+    // whitespace so the overlay aligns to the textarea character-for-character.
+    const parts = text.split(/(?<=[.;!?\n])/);
+    let html = "";
+    for (const part of parts) {
+      const risk = classifyClause(part);
+      if (!risk) {
+        html += escapeHtml(part);
+      } else {
+        html += '<span class="heat-clause ' + risk + '">' + escapeHtml(part) + "</span>";
+      }
+    }
+    heat.innerHTML = html;
+    // mirror styles that affect line wrapping precisely
+    const cs = window.getComputedStyle(ta);
+    heat.style.font = cs.font;
+    heat.style.padding = cs.padding;
+    heat.style.lineHeight = cs.lineHeight;
+    heat.style.letterSpacing = cs.letterSpacing;
+    heat.style.transform = `translateY(${-ta.scrollTop}px)`;
+  }
+
+  let heatTimer = 0;
+  function scheduleHeat() {
+    clearTimeout(heatTimer);
+    heatTimer = setTimeout(renderHeat, 200);       // 200ms debounce per spec
+  }
+  if (ta && heat) {
+    ta.addEventListener("input", scheduleHeat);
+    ta.addEventListener("scroll", () => {
+      heat.style.transform = `translateY(${-ta.scrollTop}px)`;
+    }, { passive: true });
+    // initial paint after the existing sample loader settles
+    setTimeout(renderHeat, 400);
+    setTimeout(renderHeat, 1400);
+  }
+
+  /* ── 5. Verdict-card 3D depth parallax ─────────────────────────────── */
+  if (verdictCard && !reduceMotion) {
+    const layerBack  = verdictCard.querySelectorAll(".sq-layer-back");
+    const layerMid   = verdictCard.querySelectorAll(".sq-layer-mid");
+    const layerFront = verdictCard.querySelectorAll(".sq-layer-front");
+    let pRaf = 0, pX = 0, pY = 0, pActive = false;
+
+    function applyParallax() {
+      pRaf = 0;
+      const rect = verdictCard.getBoundingClientRect();
+      if (rect.width === 0) return;
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      const nx = (pX - cx) / rect.width;        // -0.5..0.5
+      const ny = (pY - cy) / rect.height;
+      // each layer shifts a different magnitude — true depth, not just rotate
+      layerBack.forEach((el) => {
+        el.style.transform =
+          `translate3d(${(-nx * 6).toFixed(2)}px, ${(-ny * 6).toFixed(2)}px, -8px) scale(1.02)`;
+      });
+      layerMid.forEach((el) => {
+        el.style.transform =
+          `translate3d(${(nx * 4).toFixed(2)}px, ${(ny * 4).toFixed(2)}px, 0)`;
+      });
+      layerFront.forEach((el) => {
+        el.style.transform =
+          `translate3d(${(nx * 12).toFixed(2)}px, ${(ny * 12).toFixed(2)}px, 12px)`;
+      });
+    }
+
+    verdictCard.addEventListener("mouseenter", () => { pActive = true; });
+    verdictCard.addEventListener("mousemove", (e) => {
+      if (!pActive) return;
+      pX = e.clientX; pY = e.clientY;
+      if (!pRaf) pRaf = requestAnimationFrame(applyParallax);
+    });
+    verdictCard.addEventListener("mouseleave", () => {
+      pActive = false;
+      layerBack.forEach((el)  => el.style.transform = "");
+      layerMid.forEach((el)   => el.style.transform = "");
+      layerFront.forEach((el) => el.style.transform = "");
+    });
+  }
+
+  /* ── 6. Keyboard shortcut visual feedback ─────────────────────────── */
+  const btn = $("btnQuickCheck");
+  const orbWrap = btn && btn.closest(".orb-wrap");
+  const kbdHint = $("sqKbdHint");
+  let idleTimer = 0;
+
+  function showHint() {
+    if (orbWrap && kbdHint && !reduceMotion) orbWrap.classList.add("sq-show-hint");
+  }
+  function hideHint() {
+    if (orbWrap) orbWrap.classList.remove("sq-show-hint");
+  }
+  function resetIdle() {
+    clearTimeout(idleTimer);
+    hideHint();
+    idleTimer = setTimeout(showHint, 3000);          // 3s idle per spec
+  }
+  if (ta) {
+    ta.addEventListener("input", resetIdle);
+    ta.addEventListener("keydown", resetIdle);
+    resetIdle();
+  }
+
+  function rippleAndSubmit() {
+    if (!btn) return;
+    btn.classList.remove("sq-ripple");
+    // force reflow so the same animation can restart
+    void btn.offsetWidth;
+    btn.classList.add("sq-ripple");
+    setTimeout(() => btn.classList.remove("sq-ripple"), 420);
+    hideHint();
+    btn.click();
+  }
+  document.addEventListener("keydown", (e) => {
+    const isSubmit = (e.key === "Enter") && (e.ctrlKey || e.metaKey);
+    if (!isSubmit) return;
+    e.preventDefault();
+    rippleAndSubmit();
+  });
+
+  /* ── 7. Scan progress ring ────────────────────────────────────────── */
+  const ring = $("sqRing");
+  const ringCircle = ring && ring.querySelector("circle.fg");
+  let ringRaf = 0, ringStart = 0, ringRunning = false;
+  const RING_LEN = 1000; // matches pathLength on the circle
+
+  function ringTick(now) {
+    ringRaf = 0;
+    if (!ringCircle || !ringRunning) return;
+    const elapsed = now - ringStart;
+    const expected = 1800;        // assumed scan duration; eases on completion
+    const progress = Math.min(0.97, elapsed / expected);  // never quite full
+    const offset = RING_LEN * (1 - progress);
+    ringCircle.setAttribute("stroke-dashoffset", String(offset.toFixed(2)));
+    if (ringRunning) ringRaf = requestAnimationFrame(ringTick);
+  }
+  function startRing() {
+    if (!ringCircle) return;
+    ringRunning = true;
+    ringStart = performance.now();
+    if (orbWrap) {
+      orbWrap.classList.remove("sq-result-pass", "sq-result-fail", "sq-result-warn");
+    }
+    ringCircle.setAttribute("stroke-dashoffset", String(RING_LEN));
+    ringRaf = requestAnimationFrame(ringTick);
+  }
+  function finishRing(verdict) {
+    ringRunning = false;
+    if (ringRaf) cancelAnimationFrame(ringRaf);
+    if (!ringCircle) return;
+    ringCircle.setAttribute("stroke-dashoffset", "0");
+    if (orbWrap) {
+      orbWrap.classList.remove("sq-result-pass", "sq-result-fail", "sq-result-warn");
+      orbWrap.classList.add("sq-result-" + (verdict || "fail"));
+    }
+    setTimeout(() => {
+      if (!btn || btn.classList.contains("busy")) return;
+      // reset to empty when busy clears for the next run
+      ringCircle.setAttribute("stroke-dashoffset", String(RING_LEN));
+      if (orbWrap) {
+        orbWrap.classList.remove("sq-result-pass", "sq-result-fail", "sq-result-warn");
+      }
+    }, 1400);
+  }
+
+  // observe the button's busy class
+  if (btn) {
+    const btnObs = new MutationObserver(() => {
+      if (btn.classList.contains("busy")) startRing();
+    });
+    btnObs.observe(btn, { attributes: true, attributeFilter: ["class"] });
+  }
+
+  /* ── 8. Particle burst on score-chip reveal ──────────────────────── */
+  function burstFromElement(el) {
+    if (reduceMotion) return;
+    const rect = el.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    let color = "#7c3aed";
+    if (el.classList.contains("pass")) color = "#4ade80";
+    else if (el.classList.contains("warn")) color = "#fbbf24";
+    else if (el.classList.contains("fail")) color = "#f43f5e";
+    const N = 8;
+    for (let i = 0; i < N; i++) {
+      const ang = (Math.PI * 2 * i) / N + Math.random() * 0.3;
+      const dist = 30 + Math.random() * 20;          // 30–50px per spec
+      const dx = Math.cos(ang) * dist;
+      const dy = Math.sin(ang) * dist;
+      const p = document.createElement("div");
+      p.className = "sq-burst";
+      p.style.left = (cx - 2) + "px";
+      p.style.top  = (cy - 2) + "px";
+      p.style.background = color;
+      p.style.boxShadow = `0 0 6px ${color}`;
+      p.style.setProperty("--bx", dx.toFixed(1) + "px");
+      p.style.setProperty("--by", dy.toFixed(1) + "px");
+      document.body.appendChild(p);
+      setTimeout(() => p.remove(), 700);
+    }
+  }
+
+  /* ── Verdict observer — drives shimmer, ring finish, chip re-bursts ─ */
+  let lastVerdictKey = "";
+  if (verdictCard) {
+    const obs = new MutationObserver(() => {
+      const cls = verdictCard.className || "";
+      const m = cls.match(/(?:^|\s)(pass|fail|warn)(?:\s|$)/);
+      const key = (m ? m[1] : "") + "|" + (scoreEl ? scoreEl.textContent : "");
+      if (!m) {
+        clearShimmer();
+        return;
+      }
+      if (key === lastVerdictKey) return;
+      lastVerdictKey = key;
+      applyShimmer();
+      finishRing(m[1]);
+      // re-arm the chip reveal observer for the freshly-rendered chips
+      document.querySelectorAll(chipSelector).forEach((c) => {
+        c.classList.remove("sq-in");
+        c.classList.add("sq-reveal");
+        if (revealObserver) revealObserver.observe(c);
+        else c.classList.add("sq-in");
+      });
+    });
+    obs.observe(verdictCard, { attributes: true, attributeFilter: ["class"] });
+  }
+
+  // also observe sub-chip class changes (set by the existing scorer)
+  // so a fresh burst fires when the chip flips pass→fail mid-run
+  document.querySelectorAll(chipSelector).forEach((chip) => {
+    const obs = new MutationObserver(() => {
+      // burst on each verdict-class transition once visible
+      if (chip.classList.contains("sq-in")) burstFromElement(chip);
+    });
+    obs.observe(chip, { attributes: true, attributeFilter: ["class"] });
+  });
+})();
+</script>
+
+<script>
+/* ──────────────────────────────────────────────────────────────────────
+   v3.8.0 — clause redline + financial exposure + scan history.
+   Hooks the public /quick-check + /r/{hash}/remediation + /history
+   endpoints; entirely additive — no existing JS modified.
+   ────────────────────────────────────────────────────────────────────── */
+(() => {
+  if (typeof window === "undefined") return;
+  const $ = (id) => document.getElementById(id);
+  const escape = (s) => String(s).replace(/[&<>"']/g, (c) => ({
+    "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;",
+  }[c]));
+
+  const verdictCard = $("verdictCard");
+  const shareInput  = $("qcShareUrl");
+  const redline     = $("sqRedline");
+  const expChip     = $("sqExposureChip");
+  const expAmount   = $("sqExposureAmount");
+  const expCount    = $("sqExposureCount");
+
+  /* ── helpers ──────────────────────────────────────────────────────── */
+  function clearRedline() {
+    if (redline) redline.innerHTML = "";
+    if (expChip) expChip.classList.remove("show");
+    if (expAmount) expAmount.textContent = "—";
+    if (expCount)  expCount.textContent = "";
+  }
+
+  function renderRedline(report) {
+    if (!redline) return;
+    redline.innerHTML = "";
+    if (!report || !Array.isArray(report.entries)) return;
+    for (const e of report.entries) {
+      const card = document.createElement("details");
+      card.className = "sq-redline-card risk-" + (e.risk_level || "medium");
+      const open = e.risk_level === "critical" || e.risk_level === "high";
+      if (open) card.open = true;
+      const dollar = e.dollar_display ? `<span class="dollar">${escape(e.dollar_display)}</span>` : "";
+      card.innerHTML = `
+        <summary>
+          <span class="label">${escape(e.label || e.clause_id)}</span>
+          <span class="risk-pill">${escape(e.risk_level || "medium")}</span>
+          ${dollar}
+        </summary>
+        <div class="issue">${escape(e.issue || "")}</div>
+        <div class="body">
+          <div class="original">${escape(e.original || "")}</div>
+          <div class="suggested">${escape(e.suggested_fix || "")}</div>
+          ${e.citation ? `<div class="citation">${escape(e.citation)}</div>` : ""}
+        </div>
+      `;
+      redline.appendChild(card);
+    }
+    if (expChip && report.aggregate_display) {
+      expChip.classList.add("show");
+      if (expAmount) expAmount.textContent = report.aggregate_display;
+      if (expCount)  expCount.textContent = `${report.count} clause${report.count === 1 ? "" : "s"}`;
+    }
+  }
+
+  async function fetchRemediation(shareHash) {
+    if (!shareHash) return;
+    try {
+      const res = await fetch(`/r/${shareHash}/remediation`, { cache: "no-store" });
+      if (!res.ok) return;
+      const data = await res.json();
+      renderRedline(data);
+    } catch {
+      /* silent — remediation is best-effort */
+    }
+  }
+
+  function extractShareHash() {
+    // share URL is set by renderResult() to ".../r/<hash>" or ".../share/<hash>"
+    const u = shareInput && shareInput.value ? shareInput.value : "";
+    const m = u.match(/\/(?:r|share)\/([0-9a-f]{16})/);
+    return m ? m[1] : "";
+  }
+
+  /* ── verdict observer — fetch remediation when verdict lands ───────── */
+  if (verdictCard) {
+    let lastHash = "";
+    const obs = new MutationObserver(() => {
+      const cls = verdictCard.className || "";
+      const verdict = (cls.match(/(?:^|\s)(pass|fail|warn)(?:\s|$)/) || [])[1];
+      if (!verdict) { clearRedline(); return; }
+      // race: shareInput.value may not yet be set when card.classList fires.
+      // Retry briefly until the share-hash lands.
+      let attempts = 0;
+      const poll = () => {
+        const h = extractShareHash();
+        if (h && h !== lastHash) {
+          lastHash = h;
+          if (verdict === "pass") {
+            clearRedline();             // a clean pass has no exposure chip
+          } else {
+            fetchRemediation(h);
+          }
+          refreshHistory();             // every scan refreshes the trail
+          return;
+        }
+        if (attempts++ < 12) setTimeout(poll, 80);
+      };
+      poll();
+    });
+    obs.observe(verdictCard, { attributes: true, attributeFilter: ["class"] });
+  }
+
+  /* ── history panel ────────────────────────────────────────────────── */
+  const historyList   = $("sqHistoryList");
+  const historyCount  = $("sqHistoryCount");
+  const sparkLine     = document.querySelector("#sqSparkline .sparkline-line");
+  const sparkArea     = document.querySelector("#sqSparkline .sparkline-area");
+  const avgScoreEl    = $("sqAvgScore");
+
+  function renderSparkline(points) {
+    if (!sparkLine || !sparkArea || !Array.isArray(points) || points.length === 0) return;
+    const W = 240, H = 44, pad = 2;
+    const n = points.length;
+    const step = (W - pad * 2) / Math.max(1, n - 1);
+    const coords = points.map((v, i) => {
+      const x = pad + i * step;
+      const y = H - pad - (Math.max(0, Math.min(1, v)) * (H - pad * 2));
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    });
+    sparkLine.setAttribute("points", coords.join(" "));
+    const area = [`${pad},${H}`, ...coords, `${(pad + (n - 1) * step).toFixed(1)},${H}`];
+    sparkArea.setAttribute("points", area.join(" "));
+  }
+
+  function renderHistoryList(entries) {
+    if (!historyList) return;
+    if (!entries || entries.length === 0) {
+      historyList.innerHTML = `<div class="sq-history-empty">no scans yet — your first verdict will appear here</div>`;
+      return;
+    }
+    historyList.innerHTML = entries.map((r) => {
+      const ts = (r.timestamp || "").replace("T", " ").replace(/\+.*$/, "").replace(/-\d{2}:\d{2}$/, "").slice(11, 19);
+      const date = (r.timestamp || "").slice(5, 10).replace("-", "/");
+      const v = r.verdict || "fail";
+      return `
+        <div class="sq-history-row" data-share-hash="${escape(r.share_hash || "")}">
+          <span class="ts">${escape(date)} ${escape(ts)}</span>
+          <span class="fw">${escape(r.framework || "")}</span>
+          <span class="v-${escape(v)}">${escape(v.toUpperCase())}</span>
+          <span class="score">${escape(String(r.score ?? 0))}</span>
+          <span class="hash">${escape((r.input_hash || "").slice(0, 8))}</span>
+        </div>
+      `;
+    }).join("");
+    // clicking a row with a share hash opens it in a new tab
+    historyList.querySelectorAll(".sq-history-row").forEach((row) => {
+      const h = row.getAttribute("data-share-hash");
+      if (!h) return;
+      row.style.cursor = "pointer";
+      row.addEventListener("click", () => {
+        window.open(`/share/${h}`, "_blank", "noreferrer");
+      });
+    });
+  }
+
+  let historyTimer = 0;
+  async function refreshHistory() {
+    if (historyTimer) return;             // debounce simultaneous calls
+    historyTimer = setTimeout(() => { historyTimer = 0; }, 350);
+    try {
+      const res = await fetch(
+        "/history?limit=10&sparkline=true&sparkline_points=24&sparkline_bucket_seconds=3600",
+        { cache: "no-store" },
+      );
+      if (!res.ok) return;
+      const data = await res.json();
+      renderHistoryList(data.entries || []);
+      renderSparkline(data.pass_rate_sparkline || []);
+      if (historyCount) historyCount.textContent = `${data.total ?? 0} total`;
+      const stats = data.stats || {};
+      if (avgScoreEl && stats.avg_score != null) {
+        avgScoreEl.textContent = String(Math.round(stats.avg_score));
+      }
+    } catch {
+      /* silent */
+    }
+  }
+
+  // initial pull + periodic refresh
+  refreshHistory();
+  setInterval(refreshHistory, 30_000);
+})();
+</script>
+
+<script>
+/* ──────────────────────────────────────────────────────────────────────
+   wave-3 — premium legal-intelligence interactions.
+   Zero new deps. Konjo palette (#06060f, #7c3aed). rAF + IO + canvas.
+   ────────────────────────────────────────────────────────────────────── */
+(() => {
+  if (typeof window === "undefined") return;
+  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const $ = (id) => document.getElementById(id);
+
+  /* ── 1. Scanning beam toggle ──────────────────────────────────────── */
+  const btn = $("btnQuickCheck");
+  const wrap = document.querySelector(".qc-textarea-wrap");
+  if (btn && wrap) {
+    const obs = new MutationObserver(() => {
+      if (btn.classList.contains("busy")) wrap.classList.add("sq-scan-running");
+      else wrap.classList.remove("sq-scan-running");
+    });
+    obs.observe(btn, { attributes: true, attributeFilter: ["class"] });
+  }
+
+  /* ── 2. Magnetic clause cards ─────────────────────────────────────── */
+  const MAG_RADIUS = 90;
+  const MAG_MAX = 14;       // px translate
+  const MAG_ROT = 4;        // deg rotate
+  const MAG_T   = 0.10;     // lerp translate
+  const MAG_R   = 0.08;     // lerp rotate
+
+  const clauseState = new WeakMap();
+  let magRaf = 0;
+  let lastMouse = null;
+
+  function tickMagnetic() {
+    magRaf = 0;
+    const mouse = lastMouse;
+    if (!mouse) return;
+    const cards = document.querySelectorAll(".sq-redline-card");
+    let anyActive = false;
+    for (const card of cards) {
+      const rect = card.getBoundingClientRect();
+      if (rect.width === 0) continue;
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      const dx = mouse.x - cx;
+      const dy = mouse.y - cy;
+      const dist = Math.hypot(dx, dy);
+      let st = clauseState.get(card);
+      if (!st) {
+        st = { tx: 0, ty: 0, rx: 0, ry: 0 };
+        clauseState.set(card, st);
+      }
+      let targetTx = 0, targetTy = 0, targetRx = 0, targetRy = 0;
+      if (dist < MAG_RADIUS) {
+        const nrm = Math.max(0.01, dist);
+        const f = 1 - (dist / MAG_RADIUS);
+        targetTx = (dx / nrm) * MAG_MAX * f;
+        targetTy = (dy / nrm) * MAG_MAX * f;
+        // tilt toward cursor — invert sign so face leans into pointer
+        targetRy = (dx / rect.width)  * MAG_ROT * 2 * f;
+        targetRx = (-dy / rect.height) * MAG_ROT * 2 * f;
+        // clamp
+        if (targetRx >  MAG_ROT) targetRx =  MAG_ROT;
+        if (targetRx < -MAG_ROT) targetRx = -MAG_ROT;
+        if (targetRy >  MAG_ROT) targetRy =  MAG_ROT;
+        if (targetRy < -MAG_ROT) targetRy = -MAG_ROT;
+        anyActive = true;
+        card.classList.add("sq-magnetic");
+      }
+      st.tx += (targetTx - st.tx) * MAG_T;
+      st.ty += (targetTy - st.ty) * MAG_T;
+      st.rx += (targetRx - st.rx) * MAG_R;
+      st.ry += (targetRy - st.ry) * MAG_R;
+      // settle: snap to zero when near
+      if (Math.abs(st.tx) + Math.abs(st.ty) + Math.abs(st.rx) + Math.abs(st.ry) < 0.05) {
+        st.tx = st.ty = st.rx = st.ry = 0;
+        card.classList.remove("sq-magnetic");
+      }
+      card.style.setProperty("--sq-cx", st.tx.toFixed(2) + "px");
+      card.style.setProperty("--sq-cy", st.ty.toFixed(2) + "px");
+      card.style.setProperty("--sq-rx", st.rx.toFixed(2) + "deg");
+      card.style.setProperty("--sq-ry", st.ry.toFixed(2) + "deg");
+    }
+    if (anyActive || lastMouse) {
+      magRaf = requestAnimationFrame(tickMagnetic);
+    }
+  }
+
+  if (!reduceMotion) {
+    window.addEventListener("mousemove", (e) => {
+      lastMouse = { x: e.clientX, y: e.clientY };
+      if (!magRaf) magRaf = requestAnimationFrame(tickMagnetic);
+    }, { passive: true });
+    document.addEventListener("mouseleave", () => {
+      lastMouse = null;
+      // spring-return — let the next tick settle each card
+      const cards = document.querySelectorAll(".sq-redline-card");
+      for (const card of cards) {
+        const st = clauseState.get(card);
+        if (st) { st.tx *= 0.9; st.ty *= 0.9; st.rx *= 0.9; st.ry *= 0.9; }
+      }
+      if (!magRaf) magRaf = requestAnimationFrame(tickMagnetic);
+    });
+  }
+
+  /* ── 3. Kinetic counter on the exposure amount ────────────────────── */
+  const amountEl = $("sqExposureAmount");
+  let lastAmount = "";
+
+  function buildTicker(text) {
+    if (!amountEl) return;
+    const wrapEl = document.createElement("span");
+    wrapEl.className = "sq-ticker";
+    const target = String(text || "");
+    for (const ch of target) {
+      if (/[0-9]/.test(ch)) {
+        const digit = document.createElement("span");
+        digit.className = "digit";
+        const stack = document.createElement("span");
+        stack.className = "stack";
+        // 0..9 vertical stack
+        for (let i = 0; i <= 9; i++) {
+          const cell = document.createElement("span");
+          cell.textContent = String(i);
+          stack.appendChild(cell);
+        }
+        const n = parseInt(ch, 10);
+        stack.style.transform = `translateY(${-n}em)`;
+        digit.appendChild(stack);
+        wrapEl.appendChild(digit);
+      } else {
+        const sym = document.createElement("span");
+        sym.className = "symbol";
+        sym.textContent = ch;
+        wrapEl.appendChild(sym);
+      }
+    }
+    amountEl.innerHTML = "";
+    amountEl.appendChild(wrapEl);
+    return wrapEl;
+  }
+
+  function rollTicker(prev, next) {
+    if (!amountEl) return;
+    if (prev === next) { buildTicker(next); lastAmount = next; return; }
+    const tickerEl = buildTicker(next);
+    if (!tickerEl) return;
+    // pre-roll: position digit stacks to match prev where possible, then animate to next
+    if (!reduceMotion) {
+      const digits = tickerEl.querySelectorAll(".digit .stack");
+      // map prev's digits aligned to the *right* to match next length
+      const prevDigits = (prev || "").split("").filter((c) => /[0-9]/.test(c));
+      const nextDigits = (next || "").split("").filter((c) => /[0-9]/.test(c));
+      const offset = nextDigits.length - prevDigits.length;
+      digits.forEach((stack, i) => {
+        // For this digit, find the prev value at corresponding right-aligned index.
+        const prevIdx = i - offset;
+        const prevVal = (prevIdx >= 0 && prevIdx < prevDigits.length)
+          ? parseInt(prevDigits[prevIdx], 10) : 0;
+        const nextVal = parseInt(nextDigits[i], 10);
+        // start at prev
+        stack.style.transition = "none";
+        stack.style.transform = `translateY(${-prevVal}em)`;
+        // schedule the roll
+        const delay = i * 35;
+        requestAnimationFrame(() => {
+          setTimeout(() => {
+            stack.style.transition =
+              "transform 400ms cubic-bezier(0.23, 1, 0.32, 1)";
+            stack.style.transform = `translateY(${-nextVal}em)`;
+          }, delay);
+        });
+      });
+    }
+    lastAmount = next;
+  }
+
+  if (amountEl) {
+    // Watch the amount text content via MutationObserver and convert
+    // to a kinetic ticker whenever something else writes to it.
+    let internalUpdate = false;
+    const obs = new MutationObserver(() => {
+      if (internalUpdate) return;
+      const text = (amountEl.textContent || "").trim();
+      if (!text || text === lastAmount) return;
+      internalUpdate = true;
+      try { rollTicker(lastAmount, text); }
+      finally {
+        // release on next macrotask so our DOM rewrite doesn't re-enter
+        setTimeout(() => { internalUpdate = false; }, 0);
+      }
+    });
+    obs.observe(amountEl, { childList: true, characterData: true, subtree: true });
+  }
+
+  /* ── 3b. Exposure orbit canvas (tiny particles around the chip) ───── */
+  const orbitCanvas = $("sqExposureOrbit");
+  const orbitCtx = orbitCanvas && orbitCanvas.getContext("2d");
+  const orbitParticles = [];
+
+  if (orbitCanvas && orbitCtx && !reduceMotion) {
+    const ORBIT_N = 14;
+    for (let i = 0; i < ORBIT_N; i++) {
+      orbitParticles.push({
+        theta: (Math.PI * 2 * i) / ORBIT_N + Math.random() * 0.3,
+        speed: 0.0007 + Math.random() * 0.0012,
+        rx: 90 + Math.random() * 30,
+        ry: 22 + Math.random() * 8,
+        size: 1 + Math.random() * 1.2,
+        a:    0.30 + Math.random() * 0.20,
+      });
+    }
+    const cw = orbitCanvas.width, ch = orbitCanvas.height;
+    const cx = cw / 2, cy = ch / 2;
+    let lastTs = performance.now();
+    function orbitStep(ts) {
+      const dt = ts - lastTs; lastTs = ts;
+      orbitCtx.clearRect(0, 0, cw, ch);
+      for (const p of orbitParticles) {
+        p.theta += p.speed * dt;
+        const x = cx + Math.cos(p.theta) * p.rx;
+        const y = cy + Math.sin(p.theta) * p.ry;
+        orbitCtx.beginPath();
+        orbitCtx.fillStyle = `rgba(124, 58, 237, ${p.a.toFixed(3)})`;
+        orbitCtx.shadowBlur = 6;
+        orbitCtx.shadowColor = "rgba(124, 58, 237, 0.55)";
+        orbitCtx.arc(x, y, p.size, 0, Math.PI * 2);
+        orbitCtx.fill();
+      }
+      orbitCtx.shadowBlur = 0;
+      requestAnimationFrame(orbitStep);
+    }
+    requestAnimationFrame(orbitStep);
+  }
+
+  /* ── 4. Clause verdict reveal (decorate cards as they're added) ───── */
+  const redline = $("sqRedline");
+  if (redline) {
+    const obs = new MutationObserver(() => {
+      const cards = redline.querySelectorAll(".sq-redline-card:not(.sq-revealing)");
+      cards.forEach((card, idx) => {
+        // tag for the CSS keyframes
+        card.classList.add("sq-revealing");
+        // stagger across the list
+        card.style.animationDelay = (idx * 60) + "ms";
+        // strip the .sq-revealing class once animations have played so
+        // user interactions (open/close) aren't fighting the entry anim
+        setTimeout(() => card.classList.remove("sq-revealing"), 1200 + idx * 60);
+      });
+      // also kick the heatmap repaint when redline content changes
+      scheduleHeatmap();
+    });
+    obs.observe(redline, { childList: true });
+  }
+
+  /* ── 5. 3D flip on accordion (handled in CSS via [open]) ──────────── */
+  // No JS hook required — the CSS rules transform .body/.issue/.citation
+  // based on the <details>[open] attribute.
+
+  /* ── 6. Sparkline breath + fresh-data flash ───────────────────────── */
+  const sparkLine = document.querySelector("#sqSparkline .sparkline-line");
+  const sparkArea = document.querySelector("#sqSparkline .sparkline-area");
+  if (sparkLine && sparkArea) {
+    let lastPoints = "";
+    const obs = new MutationObserver(() => {
+      const cur = sparkLine.getAttribute("points") || "";
+      if (cur && cur !== lastPoints) {
+        lastPoints = cur;
+        sparkLine.classList.remove("sq-fresh"); sparkArea.classList.remove("sq-fresh");
+        // force reflow so the same animation can replay
+        void sparkLine.getBBox();
+        sparkLine.classList.add("sq-fresh"); sparkArea.classList.add("sq-fresh");
+        setTimeout(() => {
+          sparkLine.classList.remove("sq-fresh");
+          sparkArea.classList.remove("sq-fresh");
+        }, 600);
+      }
+    });
+    obs.observe(sparkLine, { attributes: true, attributeFilter: ["points"] });
+  }
+
+  /* ── 7. Canvas clause-risk heatmap ────────────────────────────────── */
+  const heatCanvas = $("sqClauseHeatmap");
+  const heatCtx = heatCanvas && heatCanvas.getContext("2d");
+  let heatRaf = 0;
+  let heatTimer = 0;
+
+  function scheduleHeatmap() {
+    clearTimeout(heatTimer);
+    heatTimer = setTimeout(paintHeatmap, 80);
+  }
+
+  function paintHeatmap() {
+    if (!heatCanvas || !heatCtx || !redline) return;
+    const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+    const rect = redline.getBoundingClientRect();
+    const w = Math.max(1, Math.floor(rect.width  + 40));
+    const h = Math.max(1, Math.floor(rect.height + 40));
+    if (heatCanvas.width !== Math.floor(w * dpr) || heatCanvas.height !== Math.floor(h * dpr)) {
+      heatCanvas.width  = Math.floor(w * dpr);
+      heatCanvas.height = Math.floor(h * dpr);
+      heatCanvas.style.width  = w + "px";
+      heatCanvas.style.height = h + "px";
+      heatCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    heatCtx.clearRect(0, 0, w, h);
+    const cards = redline.querySelectorAll(".sq-redline-card");
+    cards.forEach((card) => {
+      const cr = card.getBoundingClientRect();
+      // local coords relative to the redline (heat canvas is offset -20)
+      const cx = (cr.left + cr.width / 2) - rect.left + 20;
+      const cy = (cr.top + cr.height / 2) - rect.top + 20;
+      let color = "rgba(124, 58, 237, 0.18)";
+      let radius = 140;
+      let alpha = 0.18;
+      if (card.classList.contains("risk-critical")) {
+        color = "rgba(244, 63, 94, 0.42)"; radius = 220; alpha = 0.42;
+      } else if (card.classList.contains("risk-high")) {
+        color = "rgba(249, 115, 22, 0.34)"; radius = 190; alpha = 0.34;
+      } else if (card.classList.contains("risk-medium")) {
+        color = "rgba(251, 191, 36, 0.26)"; radius = 170; alpha = 0.26;
+      } else if (card.classList.contains("risk-low")) {
+        color = "rgba(74, 222, 128, 0.22)"; radius = 150; alpha = 0.22;
+      }
+      // parse $ exposure if present — high-risk (>$100K) gets boosted alpha
+      const dollar = card.querySelector(".dollar");
+      const txt = dollar ? dollar.textContent : "";
+      if (/\$\s*1\d{2,}|\$\s*[2-9]\d{2,}|\$\s*\d+\.\d+M|\$\s*\d+M|\$\s*\d+\.\d+B/i.test(txt)) {
+        radius += 40;
+        alpha = Math.min(0.65, alpha + 0.15);
+        color = color.replace(/[\d.]+\)/, alpha.toFixed(2) + ")");
+      }
+      const grad = heatCtx.createRadialGradient(cx, cy, 0, cx, cy, radius);
+      grad.addColorStop(0, color);
+      grad.addColorStop(1, "rgba(124, 58, 237, 0)");
+      heatCtx.fillStyle = grad;
+      heatCtx.fillRect(cx - radius, cy - radius, radius * 2, radius * 2);
+    });
+  }
+
+  if (heatCanvas && heatCtx && !reduceMotion) {
+    function heatTick() {
+      heatRaf = 0;
+      paintHeatmap();
+    }
+    window.addEventListener("resize", () => {
+      if (!heatRaf) heatRaf = requestAnimationFrame(heatTick);
+    }, { passive: true });
+    // initial paint shortly after mount
+    setTimeout(scheduleHeatmap, 200);
+  }
+
+  /* ── 8. Scroll-entrance stagger (IntersectionObserver) ────────────── */
+  if ("IntersectionObserver" in window && !reduceMotion) {
+    const targets = document.querySelectorAll(
+      "main.stage > section, main.stage > aside, main.stage > footer, .sq-history, .qc-result"
+    );
+    targets.forEach((el, idx) => {
+      el.classList.add("sq-scroll-reveal");
+      el.style.transitionDelay = (idx * 90) + "ms";
+    });
+    const io = new IntersectionObserver((entries) => {
+      for (const e of entries) {
+        if (e.isIntersecting) {
+          e.target.classList.add("sq-scroll-in");
+          io.unobserve(e.target);
+        }
+      }
+    }, { threshold: 0.10 });
+    targets.forEach((el) => io.observe(el));
+  } else {
+    document.querySelectorAll(".sq-scroll-reveal").forEach((el) => {
+      el.classList.add("sq-scroll-in");
+    });
+  }
+})();
+</script>
+</body>
+</html>

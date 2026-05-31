@@ -742,6 +742,32 @@ app.include_router(alerts_router)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
+# CORS — demo UI hits the API cross-origin from :8002 (or file://, or any
+# locally-developed front-end). All public-by-design routes already live under
+# /api/* or the legacy unauth allow-list; authenticated routes still gate on
+# the Authorization header, which CORS does not bypass.
+# ──────────────────────────────────────────────────────────────────────────────
+from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
+
+_cors_origins = os.environ.get(
+    "SQUASH_CORS_ORIGINS",
+    "*",  # demo posture; tighten in prod via env
+).split(",")
+_cors_origins = [o.strip() for o in _cors_origins if o.strip()]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_cors_origins,
+    allow_origin_regex=None if _cors_origins != ["*"] else None,
+    allow_credentials=False,           # demo paths don't use cookies
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["*"],
+    expose_headers=["X-Request-ID", "X-Squash-Version"],
+    max_age=600,
+)
+
+
+# ──────────────────────────────────────────────────────────────────────────────
 # Middleware — auth + rate limiter
 # ──────────────────────────────────────────────────────────────────────────────
 

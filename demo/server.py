@@ -1,26 +1,41 @@
-"""demo/server.py — Real HTTP API in front of the real squash codebase.
+"""demo/server.py — Stdlib HTTP shim for the squash demo HTML.
 
-Stdlib only beyond what squash already requires. CORS enabled so
-``demo/index.html`` (loaded with ``file://`` or any origin) can hit the
-endpoints during the demo.
+Serves the tabbed demo (``demo/index.html``) and the archived v1
+single-page demo (``demo/legacy.html``).  Also exposes a small set of
+legacy ``/api/*`` POST endpoints used by the old demo's permalinks
+(``/api/canon``, ``/api/attest``, etc.) so v1 shareable URLs keep
+working.
 
-Endpoints
----------
+**The new demo points at the real squash FastAPI app on port 4444**
+(via CORS), so all wave-2 endpoints — ``/api/compliance/scan``,
+``/api/extract/obligations``, ``/api/contracts/diff``,
+``/api/analysis/cluster``, ``/api/trends/risk``, ``/api/alerts/*``,
+``/risk/assess``, ``/policy/evaluate``, ``/vex/*``, ``/v1/score/*``,
+``/attest``, ``/lineage/*``, ``/monitor/*`` — flow through that app,
+not through this shim.
 
-  GET  /                  → demo/index.html
+Endpoints served by this shim
+-----------------------------
+
+  GET  /                  → demo/index.html  (tabbed overhaul)
+  GET  /legacy.html       → demo/legacy.html (v1 single-page archive)
   GET  /api/health        → version + collected test count
   POST /api/canon         → RFC 8785 canonical bytes + determinism proof
-  POST /api/attest        → real squash attestation pipeline
-  POST /api/verify        → real squash verification
-  POST /api/self-verify   → real squash self-verify chain walker
-  POST /api/genealogy     → real GenealogyBuilder over a known model family
-  POST /api/copyright     → real CopyrightAnalyzer
+  POST /api/attest        → real squash attestation pipeline (legacy)
+  POST /api/verify        → real squash verification          (legacy)
+  POST /api/self-verify   → real squash self-verify           (legacy)
+  POST /api/genealogy     → real GenealogyBuilder             (legacy)
+  POST /api/copyright     → real CopyrightAnalyzer            (legacy)
 
 Run::
 
-    python demo/server.py            # binds 0.0.0.0:8002
+    python demo/server.py            # binds 0.0.0.0:8002 (HTML host)
     python demo/server.py --port 9001
     python demo/server.py --host 127.0.0.1
+
+Then start the real API on :4444::
+
+    uvicorn squash.api:app --host 0.0.0.0 --port 4444
 
 Make it Konjo.
 """
@@ -624,6 +639,16 @@ class DemoHandler(BaseHTTPRequestHandler):
             html = (_HERE / "index.html").read_bytes()
             self._write_file(HTTPStatus.OK, html, "text/html; charset=utf-8")
             return
+        # Legacy v1 single-page demo, archived during the tabbed overhaul.
+        # Live at /legacy.html for shareable v1 permalinks and screenshots.
+        if path in ("/legacy", "/legacy.html"):
+            legacy = _HERE / "legacy.html"
+            if legacy.exists():
+                self._write_file(
+                    HTTPStatus.OK, legacy.read_bytes(),
+                    "text/html; charset=utf-8",
+                )
+                return
         if path == "/api/health":
             self._write_json(HTTPStatus.OK, _api_health())
             return
