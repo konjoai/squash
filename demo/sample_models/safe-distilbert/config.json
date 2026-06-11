@@ -1,0 +1,6 @@
+{
+  "architectures": [
+    "DistilBertForSequenceClassification"
+  ],
+  "model_type": "distilbert"
+}
