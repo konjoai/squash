@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "corpus_dir": "/home/user/squash/demo/sample_corpus_poisoned",
+  "indexed_at": "2026-06-11T17:51:09Z",
+  "file_count": 3,
+  "files": [
+    {
+      "path": "faq.md",
+      "sha256": "e721784540f67a9da9a99d05e589ec32652ee70aea974d3fb682f1eee73c7ff7",
+      "size_bytes": 50
+    },
+    {
+      "path": "policy.md",
+      "sha256": "46c682b94e6558d9e983e90a8c13c11406f5e4aafb61e5b6aed98b77705c75e3",
+      "size_bytes": 66
+    },
+    {
+      "path": "sources.txt",
+      "sha256": "e84220d962e70467529a13713b44009ebd23b9132436fde022ad11c2eafb9be2",
+      "size_bytes": 49
+    }
+  ],
+  "manifest_hash": "c80d047372e9024d7b0e19b915ce35e25198ebbb0e3a3714c5c29fd6b805e02a"
+}

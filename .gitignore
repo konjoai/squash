@@ -33,3 +33,6 @@ sbom.spdx.json
 provenance.json
 .hypothesis/
 .claude/worktrees/
+
+# runtime-created RAG manifest for the clean demo corpus (poisoned one is committed)
+demo/sample_corpus/.rag_manifest.json
