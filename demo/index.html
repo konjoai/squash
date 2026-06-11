@@ -2816,7 +2816,7 @@ $("qcRunBtn").addEventListener("click", async () => {
   try {
     const { data } = await api("/quick-check", {
       method: "POST",
-      body: { text, framework: $("qcFw").value, share: false },
+      body: { text, framework: $("qcFw").value, share: true },
     });
     done(true);
     const r = data.result || data;
@@ -2824,6 +2824,8 @@ $("qcRunBtn").addEventListener("click", async () => {
     const verdict = (r.verdict || "").toLowerCase();
     const band = verdict === "pass" ? "pass" : verdict === "warn" ? "warn" : "fail";
     if (band === "pass") celebrate();
+    const hash = data.share_hash || "";
+    const shareUrl = data.share_url || (hash ? `${API_BASE}/r/${hash}` : "");
     root.innerHTML = `
       <div style="display:flex; gap:14px; align-items:center; flex-wrap:wrap">
         <span class="badge ${band}">${escapeHtml(r.verdict || "?")}</span>
@@ -2836,12 +2838,62 @@ $("qcRunBtn").addEventListener("click", async () => {
           ${(r.matched || []).map((c) => `<tr><td><span class="badge pass">✓</span></td><td>${escapeHtml(c.label || c.id || c)}</td></tr>`).join("")}
           ${(r.missing || []).map((c) => `<tr><td><span class="badge fail">✗</span></td><td>${escapeHtml(c.label || c.id || c)}</td></tr>`).join("")}
         </tbody></table>
-      </details>`;
+      </details>
+      ${hash ? `
+      <div class="mt"><div class="muted" style="font-size:11px; letter-spacing:.06em; text-transform:uppercase; margin-bottom:6px">shareable proof</div>
+        <div style="background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:14px; display:flex; justify-content:center">
+          <img src="${escapeHtml(API_BASE)}/r/${escapeHtml(hash)}/card.svg" alt="squash compliance proof card"
+               style="max-width:100%; border-radius:6px; animation:resultIn 360ms var(--ease-exit)">
+        </div>
+        <div class="row mt">
+          <input type="text" id="qcShareUrl" value="${escapeHtml(shareUrl)}" readonly style="flex:1; font-family:ui-monospace; font-size:12px">
+          <button class="btn ghost small" id="qcCopyBtn">Copy link</button>
+        </div>
+      </div>
+      <div class="result show" id="qcRemediation" style="border-top:0; margin-top:12px; padding-top:0">
+        <div class="muted">loading remediation…</div>
+      </div>` : ""}`;
     root.classList.add("show");
+    if (hash) {
+      $("qcCopyBtn").addEventListener("click", async () => {
+        try { await navigator.clipboard.writeText(shareUrl); toast("Link copied", "", "success"); }
+        catch { $("qcShareUrl").select(); toast("Press ⌘C to copy", "", "info"); }
+      });
+      loadRemediation(hash);
+    }
   } catch (e) {
     done(false); toast("Quick check failed", e.message, "error");
   }
 });
+
+async function loadRemediation(hash) {
+  const root = $("qcRemediation");
+  if (!root) return;
+  try {
+    const { data } = await api(`/r/${encodeURIComponent(hash)}/remediation`);
+    const entries = data.entries || data.remediations || [];
+    if (!entries.length) {
+      root.innerHTML = `<div class="muted" style="color:var(--success)">✓ no remediation needed — every requirement satisfied</div>`;
+      return;
+    }
+    root.innerHTML = `<div class="muted" style="font-size:11px; letter-spacing:.06em; text-transform:uppercase; margin-bottom:6px">suggested fixes · ${entries.length}</div>` +
+      entries.map((e, i) => `
+        <div class="card" style="padding:12px; margin-bottom:8px; animation-delay:${i * 60}ms">
+          <div style="display:flex; gap:10px; align-items:baseline">
+            <span class="badge ${e.severity === "error" ? "fail" : "warn"}">${escapeHtml(e.clause_id || e.id || "")}</span>
+            <strong style="color:var(--ink); font-size:12.5px">${escapeHtml(e.label || "")}</strong>
+          </div>
+          <div class="muted mt" style="margin-top:6px">${escapeHtml(e.issue || "")}</div>
+          <ul class="diff-list mt" style="margin-top:8px">
+            ${e.original ? `<li class="removed"><code>−</code> ${escapeHtml(e.original)}</li>` : ""}
+            ${e.suggested_fix ? `<li class="added"><code>+</code> ${escapeHtml(e.suggested_fix)}</li>` : ""}
+          </ul>
+        </div>`).join("");
+  } catch (e) {
+    root.innerHTML = `<div class="muted">remediation unavailable: ${escapeHtml(e.message)}</div>`;
+  }
+}
+
 
 /* ═════════════════════════════════════════════════════════════
    TAB 7 — Fleet (multi-tenant cloud console)
