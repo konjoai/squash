@@ -518,6 +518,174 @@ table.tbl tbody tr:hover { background: rgba(124,58,237,0.05); }
   .diff-grid { grid-template-columns: 1fr; }
   main { padding: 16px; }
 }
+
+/* ─────────────────────────────────────────────────────────────
+   mission control — overview tab
+   ───────────────────────────────────────────────────────────── */
+.hero {
+  position: relative; overflow: hidden;
+  border: 1px solid var(--line); border-radius: 16px;
+  background:
+    radial-gradient(120% 140% at 0% 0%, rgba(124,58,237,0.18) 0%, transparent 55%),
+    radial-gradient(120% 140% at 100% 0%, rgba(6,182,212,0.10) 0%, transparent 55%),
+    var(--panel);
+  padding: 26px 28px; margin-bottom: 18px;
+}
+.hero::before {
+  content: ""; position: absolute; inset: -2px;
+  background:
+    radial-gradient(40% 60% at 20% 120%, rgba(124,58,237,0.22), transparent 70%),
+    radial-gradient(40% 60% at 80% -20%, rgba(16,185,129,0.14), transparent 70%);
+  animation: auroraDrift 18s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+@keyframes auroraDrift {
+  0%   { transform: translate3d(-4%, 2%, 0) scale(1.05); opacity: 0.8; }
+  100% { transform: translate3d(5%, -3%, 0) scale(1.12); opacity: 1; }
+}
+.hero-head {
+  position: relative; display: flex; align-items: baseline;
+  justify-content: space-between; gap: 16px; flex-wrap: wrap;
+}
+.hero-head h2 {
+  margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -0.02em;
+}
+.hero-head h2 .accent { color: var(--accent); }
+.hero-sub { color: var(--ink-2); font-size: 13px; margin: 6px 0 0; max-width: 60ch; }
+
+.countdowns {
+  position: relative; display: grid; gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  margin-top: 22px;
+}
+.cd {
+  border: 1px solid var(--line); border-radius: 12px;
+  background: rgba(6,6,18,0.45); padding: 16px 18px;
+  transition: border-color .2s var(--ease-exit), transform .2s var(--ease-exit);
+}
+.cd:hover { border-color: rgba(124,58,237,0.45); transform: translateY(-2px); }
+.cd .cd-label {
+  font-size: 10.5px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--ink-3); margin-bottom: 4px;
+}
+.cd .cd-title { font-size: 13px; font-weight: 600; color: var(--ink); margin-bottom: 12px; }
+.cd .cd-clock { display: flex; gap: 10px; }
+.cd .unit { text-align: center; min-width: 46px; }
+.cd .unit .v {
+  font-family: ui-monospace, monospace; font-size: 26px; font-weight: 800;
+  color: var(--ink); font-variant-numeric: tabular-nums; line-height: 1;
+  text-shadow: 0 0 18px var(--accent-glow);
+}
+.cd .unit .u {
+  display: block; font-size: 9px; letter-spacing: 0.10em; text-transform: uppercase;
+  color: var(--ink-3); margin-top: 6px;
+}
+.cd[data-soon="true"] .v { color: var(--warn); text-shadow: 0 0 18px rgba(245,158,11,0.5); }
+
+.stat-grid {
+  display: grid; gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+}
+.stat {
+  border: 1px solid var(--line); border-radius: 12px;
+  background: var(--panel-2); padding: 14px 16px;
+  position: relative; overflow: hidden;
+  animation: rowIn 360ms var(--ease-exit) backwards;
+  transition: border-color .2s var(--ease-exit), transform .15s var(--ease-exit);
+}
+.stat:hover { border-color: rgba(124,58,237,0.45); transform: translateY(-2px); }
+.stat .s-val {
+  font-family: ui-monospace, monospace; font-size: 28px; font-weight: 800;
+  color: var(--ink); font-variant-numeric: tabular-nums; line-height: 1.05;
+}
+.stat .s-lbl {
+  font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--ink-3); margin-top: 6px;
+}
+.stat .s-spark { margin-top: 8px; width: 100%; height: 26px; display: block; }
+.stat.flash { animation: statFlash 600ms var(--ease-exit); }
+@keyframes statFlash {
+  0%   { box-shadow: 0 0 0 0 var(--accent-glow); border-color: var(--accent); }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+
+.health-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 0; border-bottom: 1px solid var(--line-soft);
+}
+.health-row:last-child { border-bottom: 0; }
+.health-row .hdot {
+  width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+  background: var(--ink-3);
+}
+.health-row .hdot.ok   { background: var(--success); box-shadow: 0 0 10px var(--success); }
+.health-row .hdot.warn { background: var(--warn);    box-shadow: 0 0 10px var(--warn); }
+.health-row .hdot.down { background: var(--error);   box-shadow: 0 0 10px var(--error); }
+.health-row .hname { color: var(--ink); font-size: 13px; }
+.health-row .hmeta { margin-left: auto; color: var(--ink-3); font-family: ui-monospace; font-size: 11.5px; }
+
+.chip-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 11px; border-radius: 999px; font-size: 11.5px;
+  border: 1px solid var(--line); color: var(--ink-2);
+  background: var(--panel-2); transition: border-color .15s var(--ease-exit), color .15s var(--ease-exit);
+}
+.chip:hover { border-color: var(--accent); color: var(--ink); }
+.chip .c-n { font-family: ui-monospace; color: var(--accent); font-weight: 600; }
+
+.live-tag {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-size: 11px; color: var(--ink-3); font-family: ui-monospace;
+}
+.live-tag .ldot {
+  width: 6px; height: 6px; border-radius: 50%; background: var(--success);
+  box-shadow: 0 0 8px var(--success); animation: pulse 1.6s ease-in-out infinite;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   micro-interactions
+   ───────────────────────────────────────────────────────────── */
+.btn { position: relative; overflow: hidden; }
+.ripple {
+  position: absolute; border-radius: 50%; transform: scale(0);
+  background: rgba(255,255,255,0.35); pointer-events: none;
+  animation: rippleOut 560ms var(--ease-exit);
+}
+@keyframes rippleOut { to { transform: scale(2.6); opacity: 0; } }
+
+.card { animation: cardIn 420ms var(--ease-exit) backwards; }
+@keyframes cardIn {
+  from { opacity: 0; transform: translateY(12px) scale(0.99); }
+  to   { opacity: 1; transform: none; }
+}
+
+#confetti {
+  position: fixed; inset: 0; width: 100%; height: 100%;
+  pointer-events: none; z-index: 200;
+}
+
+.kbd-hint {
+  position: fixed; left: 18px; bottom: 18px; z-index: 90;
+  font-size: 11px; color: var(--ink-3); font-family: ui-monospace;
+  background: rgba(6,6,18,0.7); border: 1px solid var(--line);
+  border-radius: 8px; padding: 6px 10px; backdrop-filter: blur(8px);
+  opacity: 0; transform: translateY(8px);
+  transition: opacity .3s var(--ease-exit), transform .3s var(--ease-exit);
+}
+.kbd-hint.show { opacity: 1; transform: none; }
+.kbd-hint kbd {
+  background: var(--panel-2); border: 1px solid var(--line);
+  border-radius: 4px; padding: 1px 6px; color: var(--ink-2); font-size: 10.5px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
 </style>
 </head>
 <body>
@@ -533,7 +701,8 @@ table.tbl tbody tr:hover { background: rgba(124,58,237,0.05); }
 </div>
 
 <nav class="tabs" role="tablist">
-  <button class="tab active" data-tab="contracts" role="tab"><span class="glyph">§</span>Contracts</button>
+  <button class="tab active" data-tab="overview"  role="tab"><span class="glyph">◎</span>Mission Control</button>
+  <button class="tab"        data-tab="contracts" role="tab"><span class="glyph">§</span>Contracts</button>
   <button class="tab"        data-tab="risk"      role="tab"><span class="glyph">⚖</span>Risk &amp; Compliance</button>
   <button class="tab"        data-tab="supply"    role="tab"><span class="glyph">⛓</span>Supply Chain</button>
   <button class="tab"        data-tab="vex"       role="tab"><span class="glyph">⚠</span>VEX</button>
@@ -544,9 +713,81 @@ table.tbl tbody tr:hover { background: rgba(124,58,237,0.05); }
 <main>
 
 <!-- ════════════════════════════════════════════════════════════
+     TAB 0 — MISSION CONTROL
+     ════════════════════════════════════════════════════════════ -->
+<section class="tab-panel active" id="tab-overview">
+
+  <div class="hero">
+    <div class="hero-head">
+      <div>
+        <h2>Mission <span class="accent">Control</span></h2>
+        <p class="hero-sub">Every squash subsystem, live. Engine telemetry, system health, and the
+          regulatory clock — streaming from the real API, refreshed automatically.</p>
+      </div>
+      <span class="live-tag"><span class="ldot"></span><span id="ovRefreshTag">connecting…</span></span>
+    </div>
+
+    <div class="countdowns" id="ovCountdowns">
+      <div class="cd" data-deadline="2026-12-02T00:00:00Z">
+        <div class="cd-label">EU AI Act · Article 50</div>
+        <div class="cd-title">Transparency &amp; GPAI obligations</div>
+        <div class="cd-clock"></div>
+      </div>
+      <div class="cd" data-deadline="2027-12-02T00:00:00Z">
+        <div class="cd-label">EU AI Act · Annex III</div>
+        <div class="cd-title">High-risk systems (Omnibus)</div>
+        <div class="cd-clock"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid wide">
+
+    <!-- Engine telemetry -->
+    <div class="card" data-card="ov-metrics" style="grid-column:1/-1">
+      <div class="card-head">
+        <h3><span class="num">01.</span>Engine telemetry</h3>
+        <span class="sub">/metrics</span>
+      </div>
+      <div class="stat-grid" id="ovStats">
+        <div class="empty">reading counters…</div>
+      </div>
+    </div>
+
+    <!-- System health -->
+    <div class="card tall" data-card="ov-health">
+      <div class="card-head">
+        <h3><span class="num">02.</span>System health</h3>
+        <span class="sub">/health/detailed</span>
+      </div>
+      <div id="ovHealth"><div class="empty">probing…</div></div>
+    </div>
+
+    <!-- Compliance activity -->
+    <div class="card tall" data-card="ov-activity">
+      <div class="card-head">
+        <h3><span class="num">03.</span>Compliance activity</h3>
+        <span class="sub">/history</span>
+      </div>
+      <div id="ovActivity"><div class="empty">loading…</div></div>
+    </div>
+
+    <!-- Trending -->
+    <div class="card tall" data-card="ov-trending" style="grid-column:1/-1">
+      <div class="card-head">
+        <h3><span class="num">04.</span>Trending policy types</h3>
+        <span class="sub">/trending</span>
+      </div>
+      <div id="ovTrending"><div class="empty">loading…</div></div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════
      TAB 1 — CONTRACTS
      ════════════════════════════════════════════════════════════ -->
-<section class="tab-panel active" id="tab-contracts">
+<section class="tab-panel" id="tab-contracts">
   <div class="grid wide">
 
     <!-- Compliance scanner -->
@@ -1004,6 +1245,8 @@ Termination for convenience requires sixty days notice.</textarea>
 </main>
 
 <div id="toast-stack" aria-live="polite"></div>
+<canvas id="confetti" aria-hidden="true"></canvas>
+<div class="kbd-hint" id="kbdHint"><kbd>←</kbd> <kbd>→</kbd> switch tabs · <kbd>1</kbd>–<kbd>7</kbd> jump · <kbd>r</kbd> refresh</div>
 
 <script>
 /* ─────────────────────────────────────────────────────────────
@@ -1099,6 +1342,13 @@ $$(".tab").forEach((b) => {
       p.classList.toggle("active", p.id === `tab-${name}`)
     );
     history.replaceState(null, "", `#${name}`);
+    // re-trigger staggered card entrance for the newly active panel
+    if (!REDUCED_MOTION) {
+      $$(`#tab-${name} .card`).forEach((c, i) => {
+        c.style.animation = "none"; void c.offsetWidth;
+        c.style.animation = `cardIn 420ms var(--ease-exit) ${i * 60}ms backwards`;
+      });
+    }
   });
 });
 if (location.hash) {
@@ -1258,6 +1508,302 @@ function busy(btn, timerEl) {
     }
   };
 }
+
+/* ─────────────────────────────────────────────────────────────
+   motion-aware helpers
+   ───────────────────────────────────────────────────────────── */
+const REDUCED_MOTION =
+  window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+function countUp(el, target, opts = {}) {
+  const decimals = opts.decimals || 0;
+  const suffix = opts.suffix || "";
+  const dur = opts.dur || 900;
+  const from = Number(el.dataset._v || 0);
+  target = Number(target) || 0;
+  el.dataset._v = target;
+  if (REDUCED_MOTION || from === target) {
+    el.textContent = target.toFixed(decimals) + suffix;
+    return;
+  }
+  let t0;
+  function step(now) {
+    if (!t0) t0 = now;
+    const t = Math.min(1, (now - t0) / dur);
+    const eased = 1 - Math.pow(1 - t, 3);
+    el.textContent = (from + (target - from) * eased).toFixed(decimals) + suffix;
+    if (t < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+function sparkline(canvas, values, opts = {}) {
+  const w = canvas.clientWidth || 140, h = canvas.clientHeight || 26;
+  canvas.width = w * 2; canvas.height = h * 2;
+  const ctx = canvas.getContext("2d"); ctx.scale(2, 2);
+  ctx.clearRect(0, 0, w, h);
+  const color = opts.color || "#7c3aed";
+  if (!values || values.length < 2) return;
+  const min = Math.min(...values), max = Math.max(...values);
+  const span = max - min || 1;
+  const pad = 2;
+  const xy = (v, i) => [
+    pad + (i / (values.length - 1)) * (w - pad * 2),
+    pad + (1 - (v - min) / span) * (h - pad * 2),
+  ];
+  ctx.beginPath();
+  values.forEach((v, i) => { const [x, y] = xy(v, i); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
+  ctx.strokeStyle = color; ctx.lineWidth = 1.5; ctx.lineJoin = "round"; ctx.lineCap = "round";
+  ctx.stroke();
+  const [lx] = xy(values[values.length - 1], values.length - 1);
+  ctx.lineTo(lx, h); ctx.lineTo(pad, h); ctx.closePath();
+  const g = ctx.createLinearGradient(0, 0, 0, h);
+  g.addColorStop(0, color + "44"); g.addColorStop(1, color + "00");
+  ctx.fillStyle = g; ctx.fill();
+}
+
+/* lightweight confetti burst on a PASS / VERIFIED outcome */
+function celebrate() {
+  if (REDUCED_MOTION) return;
+  const cv = $("confetti");
+  cv.width = window.innerWidth; cv.height = window.innerHeight;
+  const ctx = cv.getContext("2d");
+  const colors = ["#7c3aed", "#10b981", "#06b6d4", "#a78bfa", "#f59e0b"];
+  const cx = window.innerWidth / 2, cy = window.innerHeight * 0.32;
+  const parts = Array.from({ length: 90 }, () => {
+    const a = Math.random() * Math.PI * 2, sp = 4 + Math.random() * 7;
+    return {
+      x: cx, y: cy, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 3,
+      s: 4 + Math.random() * 5, c: colors[(Math.random() * colors.length) | 0],
+      rot: Math.random() * Math.PI, vr: (Math.random() - 0.5) * 0.4, life: 1,
+    };
+  });
+  let t0;
+  function frame(now) {
+    if (!t0) t0 = now;
+    const dt = Math.min(2, (now - t0) / 16); t0 = now;
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    let alive = false;
+    parts.forEach((p) => {
+      p.vy += 0.18 * dt; p.x += p.vx * dt; p.y += p.vy * dt;
+      p.rot += p.vr * dt; p.life -= 0.012 * dt;
+      if (p.life <= 0) return; alive = true;
+      ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+      ctx.globalAlpha = Math.max(0, p.life); ctx.fillStyle = p.c;
+      ctx.fillRect(-p.s / 2, -p.s / 2, p.s, p.s * 0.6); ctx.restore();
+    });
+    if (alive) requestAnimationFrame(frame);
+    else ctx.clearRect(0, 0, cv.width, cv.height);
+  }
+  requestAnimationFrame(frame);
+}
+
+/* button ripple */
+document.addEventListener("click", (e) => {
+  const btn = e.target.closest && e.target.closest(".btn");
+  if (!btn || REDUCED_MOTION) return;
+  const r = btn.getBoundingClientRect();
+  const d = Math.max(r.width, r.height);
+  const span = document.createElement("span");
+  span.className = "ripple";
+  span.style.width = span.style.height = d + "px";
+  span.style.left = (e.clientX - r.left - d / 2) + "px";
+  span.style.top = (e.clientY - r.top - d / 2) + "px";
+  btn.appendChild(span);
+  setTimeout(() => span.remove(), 560);
+});
+
+/* ─────────────────────────────────────────────────────────────
+   keyboard navigation
+   ───────────────────────────────────────────────────────────── */
+function activateTab(name) {
+  const btn = $$(".tab").find((b) => b.dataset.tab === name);
+  if (btn) btn.click();
+}
+let hintShown = false;
+document.addEventListener("keydown", (e) => {
+  if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
+  const tabs = $$(".tab");
+  const idx = tabs.findIndex((b) => b.classList.contains("active"));
+  if (e.key === "ArrowRight") { tabs[(idx + 1) % tabs.length].click(); }
+  else if (e.key === "ArrowLeft") { tabs[(idx - 1 + tabs.length) % tabs.length].click(); }
+  else if (/^[1-9]$/.test(e.key) && tabs[+e.key - 1]) { tabs[+e.key - 1].click(); }
+  else if (e.key === "r" && $("tab-overview").classList.contains("active")) { loadOverview(); }
+  else return;
+  if (!hintShown) {
+    hintShown = true;
+    const hint = $("kbdHint"); hint.classList.add("show");
+    setTimeout(() => hint.classList.remove("show"), 3200);
+  }
+});
+
+/* ═════════════════════════════════════════════════════════════
+   TAB 0 — Mission Control
+   ═════════════════════════════════════════════════════════════ */
+
+const STAT_SPEC = [
+  { key: "squash_attestations_total",      lbl: "Attestations" },
+  { key: "squash_scan_total",              lbl: "Scans" },
+  { key: "squash_policy_evaluate_total",   lbl: "Policy evals" },
+  { key: "squash_vex_evaluate_total",      lbl: "VEX evals" },
+  { key: "squash_sbom_diff_total",         lbl: "SBOM diffs" },
+  { key: "squash_drift_events_total",      lbl: "Drift events" },
+  { key: "squash_api_requests_total",      lbl: "API requests" },
+  { key: "squash_models_compliant_ratio",  lbl: "Compliant", ratio: true },
+];
+const statHistory = {};
+
+function parseMetrics(text) {
+  const m = {};
+  text.split("\n").forEach((line) => {
+    if (!line || line[0] === "#") return;
+    const sp = line.lastIndexOf(" ");
+    if (sp < 0) return;
+    const name = line.slice(0, sp).trim();
+    const val = parseFloat(line.slice(sp + 1));
+    if (name && !name.includes("{") && !isNaN(val)) m[name] = val;
+  });
+  return m;
+}
+
+function renderStats(metrics) {
+  const root = $("ovStats");
+  const first = !root.querySelector(".stat");
+  if (first) {
+    root.innerHTML = STAT_SPEC.map((s, i) => `
+      <div class="stat" data-key="${s.key}" style="animation-delay:${i * 50}ms">
+        <div class="s-val" data-val>0</div>
+        <div class="s-lbl">${escapeHtml(s.lbl)}</div>
+        <canvas class="s-spark" data-spark></canvas>
+      </div>`).join("");
+  }
+  STAT_SPEC.forEach((s) => {
+    const raw = metrics[s.key] ?? 0;
+    const shown = s.ratio ? raw * 100 : raw;
+    const hist = (statHistory[s.key] = statHistory[s.key] || []);
+    const prev = hist.length ? hist[hist.length - 1] : null;
+    hist.push(shown); if (hist.length > 30) hist.shift();
+    const tile = root.querySelector(`.stat[data-key="${s.key}"]`);
+    if (!tile) return;
+    countUp(tile.querySelector("[data-val]"), shown,
+      s.ratio ? { decimals: 1, suffix: "%" } : {});
+    sparkline(tile.querySelector("[data-spark]"), hist,
+      { color: s.ratio ? "#10b981" : "#7c3aed" });
+    if (prev != null && shown > prev) {
+      tile.classList.remove("flash"); void tile.offsetWidth; tile.classList.add("flash");
+    }
+  });
+}
+
+function renderHealth(h) {
+  const comps = h.components || {};
+  const rows = [
+    ["version", h.version, "ok"],
+    ["uptime", (h.uptime_seconds != null ? Math.round(h.uptime_seconds) + "s" : "—"), "ok"],
+    ["status", h.status, h.status === "ok" ? "ok" : "warn"],
+  ].map(([n, v, st]) => `
+    <div class="health-row"><span class="hdot ${st}"></span>
+      <span class="hname">${escapeHtml(n)}</span>
+      <span class="hmeta">${escapeHtml(String(v ?? "—"))}</span></div>`).join("");
+  const compRows = Object.entries(comps).map(([name, c]) => {
+    const st = c.status === "ok" || c.status === "healthy" ? "ok"
+      : c.status === "unconfigured" ? "warn" : "down";
+    const meta = c.latency_ms != null ? c.latency_ms.toFixed(1) + "ms" : (c.status || "");
+    return `<div class="health-row"><span class="hdot ${st}"></span>
+      <span class="hname">${escapeHtml(name)}</span>
+      <span class="hmeta">${escapeHtml(c.status)} · ${escapeHtml(meta)}</span></div>`;
+  }).join("");
+  $("ovHealth").innerHTML = rows + compRows;
+}
+
+function renderActivity(h) {
+  const stats = h.stats || {};
+  const spark = h.pass_rate_sparkline || [];
+  const byVerdict = stats.by_verdict || {};
+  const verdictChips = Object.entries(byVerdict).map(([v, n]) =>
+    `<span class="chip">${escapeHtml(v)} <span class="c-n">${n}</span></span>`).join("")
+    || `<span class="muted">no scans recorded yet</span>`;
+  $("ovActivity").innerHTML = `
+    <div class="stat-grid" style="grid-template-columns:repeat(2,1fr); margin-bottom:14px">
+      <div class="stat"><div class="s-val" data-actval>0</div><div class="s-lbl">total scans</div></div>
+      <div class="stat"><div class="s-val" data-actavg>0</div><div class="s-lbl">avg score</div></div>
+    </div>
+    <div class="muted" style="font-size:11px; letter-spacing:.06em; text-transform:uppercase; margin-bottom:6px">pass-rate · last ${spark.length}</div>
+    <canvas class="linechart" id="ovSpark" style="height:90px"></canvas>
+    <div class="chip-row">${verdictChips}</div>`;
+  countUp($("ovActivity").querySelector("[data-actval]"), stats.total || 0);
+  countUp($("ovActivity").querySelector("[data-actavg]"), stats.avg_score || 0, { decimals: 1 });
+  const pts = spark.map((v, i) => ({
+    x: spark.length === 1 ? 0.5 : i / (spark.length - 1), y: Math.max(0, Math.min(1, v)),
+  }));
+  requestAnimationFrame(() => lineChart($("ovSpark"), pts, { color: "#10b981" }));
+}
+
+function renderTrendingPanel(t) {
+  const root = $("ovTrending");
+  const top = t.top || [];
+  const types = t.policy_types || [];
+  let html = `<div class="muted mb">total documents analysed:
+    <strong style="color:var(--ink); font-family:ui-monospace">${t.total ?? 0}</strong></div>`;
+  if (top.length) {
+    const max = Math.max(...top.map((x) => x.count || x.n || 0), 1);
+    html += top.map((x, i) => {
+      const name = x.policy_type || x.type || x.name || "—";
+      const n = x.count || x.n || 0;
+      return `<div class="req-row" style="grid-template-columns:160px 1fr 50px; animation-delay:${i * 40}ms">
+        <span class="rid">${escapeHtml(name)}</span>
+        <div class="bar"><div class="fill" data-fill="${(n / max) * 100}"></div></div>
+        <span class="conf">${n}</span></div>`;
+    }).join("");
+  } else {
+    html += `<div class="muted" style="font-size:11px; letter-spacing:.06em; text-transform:uppercase; margin-bottom:6px">known policy types</div>
+      <div class="chip-row">${types.map((p) =>
+        `<span class="chip">${escapeHtml(p)}</span>`).join("")}</div>`;
+  }
+  root.innerHTML = html;
+  setTimeout(() => $$(".bar .fill[data-fill]", root).forEach((b) =>
+    b.style.width = b.dataset.fill + "%"), 50);
+}
+
+async function loadOverview() {
+  const tag = $("ovRefreshTag");
+  const jobs = [
+    api("/metrics").then((r) => renderStats(parseMetrics(r.raw))).catch(() => {}),
+    api("/health/detailed").then((r) => renderHealth(r.data)).catch(() => {}),
+    api("/history?limit=1").then((r) => renderActivity(r.data)).catch(() => {}),
+    api("/trending").then((r) => renderTrendingPanel(r.data)).catch(() => {}),
+  ];
+  await Promise.all(jobs);
+  const now = new Date();
+  tag.textContent = "live · updated " + now.toLocaleTimeString();
+}
+
+/* regulatory countdown — ticks every second */
+function tickCountdowns() {
+  const now = Date.now();
+  $$("#ovCountdowns .cd").forEach((cd) => {
+    const target = new Date(cd.dataset.deadline).getTime();
+    let diff = Math.max(0, target - now);
+    const day = 86400000;
+    const days = Math.floor(diff / day); diff -= days * day;
+    const hrs = Math.floor(diff / 3600000); diff -= hrs * 3600000;
+    const min = Math.floor(diff / 60000); diff -= min * 60000;
+    const sec = Math.floor(diff / 1000);
+    cd.dataset.soon = days < 90 ? "true" : "false";
+    const units = [["days", days], ["hrs", hrs], ["min", min], ["sec", sec]];
+    cd.querySelector(".cd-clock").innerHTML = units.map(([u, v]) =>
+      `<div class="unit"><span class="v">${String(v).padStart(2, "0")}</span><span class="u">${u}</span></div>`
+    ).join("");
+  });
+}
+tickCountdowns();
+setInterval(tickCountdowns, 1000);
+loadOverview();
+// auto-refresh only while Mission Control is visible — keeps it live without
+// churning in the background or re-animating panels the user isn't watching.
+setInterval(() => {
+  if ($("tab-overview").classList.contains("active") && !document.hidden) loadOverview();
+}, 6000);
 
 /* ═════════════════════════════════════════════════════════════
    TAB 1 — Contracts
@@ -1647,6 +2193,7 @@ function renderPolicyEval(r) {
   </details>`;
   root.innerHTML = html;
   root.classList.add("show");
+  if (passed === true) celebrate();
 }
 
 // 03. alert rules
@@ -2050,6 +2597,7 @@ $("atVerifyBtn").addEventListener("click", async () => {
     });
     const ok = data.valid !== false && data.verified !== false;
     toast(ok ? "Verified ✓" : "Verification failed", "", ok ? "success" : "error");
+    if (ok) celebrate();
     const root = $("atResult");
     root.innerHTML +=
       `<div class="mt"><span class="badge ${ok ? "pass" : "fail"}">${ok ? "VERIFIED" : "INVALID"}</span></div>`;
@@ -2111,6 +2659,7 @@ $("qcRunBtn").addEventListener("click", async () => {
     const root = $("qcResult");
     const verdict = (r.verdict || "").toLowerCase();
     const band = verdict === "pass" ? "pass" : verdict === "warn" ? "warn" : "fail";
+    if (band === "pass") celebrate();
     root.innerHTML = `
       <div style="display:flex; gap:14px; align-items:center; flex-wrap:wrap">
         <span class="badge ${band}">${escapeHtml(r.verdict || "?")}</span>

@@ -43,7 +43,9 @@ class TestDemoIndexHtml(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.path = DEMO_DIR / "index.html"
+        # The v2 compliance-lab rebuild moved the single-page Quick Check
+        # demo to legacy.html; index.html now hosts the tabbed lab.
+        cls.path = DEMO_DIR / "legacy.html"
         cls.html = cls.path.read_text(encoding="utf-8")
 
     def test_file_exists(self):
@@ -171,7 +173,9 @@ class TestDemoRoutes(unittest.TestCase):
         resp = self.client.get("/demo")
         self.assertEqual(resp.status_code, 200, resp.text)
         self.assertIn("text/html", resp.headers.get("content-type", ""))
-        self.assertIn("Quick compliance check", resp.text)
+        # /demo now serves the v2 tabbed compliance lab (the single-page Quick
+        # Check demo moved to legacy.html during the rebuild).
+        self.assertIn("compliance lab", resp.text)
 
     def test_demo_index_no_auth_required(self):
         # No Authorization header — must not 401/403.

@@ -43,7 +43,9 @@ from squash.quick_check import (
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SAMPLE_DIR = REPO_ROOT / "demo" / "sample_policies"
-DEMO_INDEX = REPO_ROOT / "demo" / "index.html"
+# The v2 compliance-lab rebuild moved the single-page demo this suite
+# asserts on to legacy.html; index.html now hosts the tabbed lab.
+DEMO_INDEX = REPO_ROOT / "demo" / "legacy.html"
 
 
 # ── W249: SOC 2 framework ────────────────────────────────────────────────────

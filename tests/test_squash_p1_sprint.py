@@ -389,7 +389,9 @@ class TestVersionBump(unittest.TestCase):
 class TestDemoHtml(unittest.TestCase):
     def test_new_dom_anchors_present(self):
         from pathlib import Path
-        src = (Path(__file__).parent.parent / "demo" / "index.html").read_text()
+        # The v2 compliance-lab rebuild moved the single-page demo (with these
+        # anchors) to legacy.html; index.html now hosts the tabbed lab.
+        src = (Path(__file__).parent.parent / "demo" / "legacy.html").read_text()
         for anchor in (
             'id="sqRedline"',
             'id="sqExposureChip"',
