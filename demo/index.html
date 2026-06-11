@@ -679,6 +679,66 @@ table.tbl tbody tr:hover { background: rgba(124,58,237,0.05); }
   border-radius: 4px; padding: 1px 6px; color: var(--ink-2); font-size: 10.5px;
 }
 
+/* ─────────────────────────────────────────────────────────────
+   command palette (⌘K)
+   ───────────────────────────────────────────────────────────── */
+.cmdk-scrim {
+  position: fixed; inset: 0; z-index: 150;
+  background: rgba(6,6,18,0.66); backdrop-filter: blur(6px);
+  display: none; align-items: flex-start; justify-content: center;
+  padding-top: 14vh;
+}
+.cmdk-scrim.open { display: flex; animation: scrimIn 160ms var(--ease-exit); }
+@keyframes scrimIn { from { opacity: 0; } to { opacity: 1; } }
+.cmdk {
+  width: min(620px, 92vw); max-height: 64vh; display: flex; flex-direction: column;
+  background: var(--panel); border: 1px solid rgba(124,58,237,0.40);
+  border-radius: 14px; overflow: hidden;
+  box-shadow: 0 30px 80px -20px rgba(0,0,0,0.7), 0 0 0 1px var(--line-soft);
+  animation: cmdkIn 200ms var(--ease-enter);
+}
+@keyframes cmdkIn {
+  from { opacity: 0; transform: translateY(-10px) scale(0.98); }
+  to   { opacity: 1; transform: none; }
+}
+.cmdk-input {
+  display: flex; align-items: center; gap: 10px;
+  padding: 14px 18px; border-bottom: 1px solid var(--line);
+}
+.cmdk-input .pfx { color: var(--accent); font-weight: 800; font-size: 16px; }
+.cmdk-input input {
+  border: 0; background: transparent; padding: 0; font-size: 15px;
+  color: var(--ink); width: 100%;
+}
+.cmdk-input input:focus { box-shadow: none; }
+.cmdk-list { overflow-y: auto; padding: 8px; }
+.cmdk-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 12px; border-radius: 8px; cursor: pointer;
+  color: var(--ink-2);
+}
+.cmdk-item .gly {
+  width: 26px; height: 26px; flex-shrink: 0; border-radius: 7px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--accent-soft); color: var(--accent); font-size: 14px;
+}
+.cmdk-item .lbl { color: var(--ink); font-size: 13.5px; font-weight: 500; }
+.cmdk-item .hint { margin-left: auto; font-size: 11px; color: var(--ink-3); font-family: ui-monospace; }
+.cmdk-item .sub2 { display: block; font-size: 11px; color: var(--ink-3); font-weight: 400; }
+.cmdk-item.active, .cmdk-item:hover {
+  background: var(--accent-soft); color: var(--ink);
+}
+.cmdk-item.active { box-shadow: inset 2px 0 0 var(--accent); }
+.cmdk-empty { padding: 22px; text-align: center; color: var(--ink-3); font-style: italic; }
+.cmdk-foot {
+  display: flex; gap: 14px; padding: 9px 16px; border-top: 1px solid var(--line);
+  font-size: 10.5px; color: var(--ink-3); font-family: ui-monospace;
+}
+.cmdk-foot kbd {
+  background: var(--panel-2); border: 1px solid var(--line);
+  border-radius: 4px; padding: 1px 5px; color: var(--ink-2);
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.001ms !important;
@@ -1335,7 +1395,22 @@ Termination for convenience requires sixty days notice.</textarea>
 
 <div id="toast-stack" aria-live="polite"></div>
 <canvas id="confetti" aria-hidden="true"></canvas>
-<div class="kbd-hint" id="kbdHint"><kbd>←</kbd> <kbd>→</kbd> switch tabs · <kbd>1</kbd>–<kbd>8</kbd> jump · <kbd>r</kbd> refresh</div>
+<div class="kbd-hint" id="kbdHint"><kbd>←</kbd> <kbd>→</kbd> switch tabs · <kbd>1</kbd>–<kbd>8</kbd> jump · <kbd>⌘K</kbd> palette · <kbd>r</kbd> refresh</div>
+
+<div class="cmdk-scrim" id="cmdkScrim" role="dialog" aria-modal="true" aria-label="Command palette">
+  <div class="cmdk">
+    <div class="cmdk-input">
+      <span class="pfx">⌘</span>
+      <input type="text" id="cmdkInput" placeholder="Search features &amp; actions…" autocomplete="off" spellcheck="false" aria-label="Command palette search">
+    </div>
+    <div class="cmdk-list" id="cmdkList"></div>
+    <div class="cmdk-foot">
+      <span><kbd>↑</kbd> <kbd>↓</kbd> navigate</span>
+      <span><kbd>↵</kbd> run</span>
+      <span><kbd>esc</kbd> close</span>
+    </div>
+  </div>
+</div>
 
 <script>
 /* ─────────────────────────────────────────────────────────────
@@ -3042,6 +3117,85 @@ $("flSeedBtn").addEventListener("click", async () => {
 // initial fleet load
 refreshTenants();
 loadFleetOverview();
+
+/* ═════════════════════════════════════════════════════════════
+   Command palette (⌘K) — fuzzy navigation + one-shot actions
+   ═════════════════════════════════════════════════════════════ */
+const cmdkAct = (tab, id) => () => { activateTab(tab); const b = $(id); if (b) b.click(); };
+const CMDK = [
+  { gly: "◎", label: "Go to Mission Control", kw: "overview telemetry home dashboard", run: () => activateTab("overview") },
+  { gly: "§", label: "Go to Contracts", kw: "scan clause obligation diff cluster", run: () => activateTab("contracts") },
+  { gly: "⚖", label: "Go to Risk & Compliance", kw: "risk policy alert", run: () => activateTab("risk") },
+  { gly: "⛓", label: "Go to Supply Chain", kw: "sbom lineage drift monitor", run: () => activateTab("supply") },
+  { gly: "⚠", label: "Go to VEX", kw: "vulnerability cve feed", run: () => activateTab("vex") },
+  { gly: "★", label: "Go to Vendors", kw: "score badge history", run: () => activateTab("vendors") },
+  { gly: "✦", label: "Go to Attestation", kw: "attest verify sign platform mlflow", run: () => activateTab("attest") },
+  { gly: "⬡", label: "Go to Fleet", kw: "tenant cloud multi inventory", run: () => activateTab("fleet") },
+  { gly: "↻", label: "Refresh Mission Control telemetry", sub: "/metrics · /health · /history", kw: "reload live overview", run: () => { activateTab("overview"); loadOverview(); } },
+  { gly: "▷", label: "Run compliance scan", sub: "contracts · /api/compliance/scan", kw: "framework soc2 hipaa", run: cmdkAct("contracts", "csRunBtn") },
+  { gly: "▷", label: "Extract obligations", sub: "contracts · /api/extract/obligations", kw: "party modal deadline", run: cmdkAct("contracts", "obRunBtn") },
+  { gly: "▷", label: "Assess model risk", sub: "risk · /risk/assess", kw: "tier score", run: cmdkAct("risk", "raRunBtn") },
+  { gly: "▷", label: "Compare SBOMs", sub: "supply · /sbom/diff", kw: "components added removed", run: cmdkAct("supply", "sbRunBtn") },
+  { gly: "▷", label: "Evaluate VEX", sub: "vex · /vex/evaluate", kw: "cve vulnerability", run: cmdkAct("vex", "vxRunBtn") },
+  { gly: "▷", label: "Look up vendor score", sub: "vendors · /v1/score", kw: "grade badge", run: cmdkAct("vendors", "vsRunBtn") },
+  { gly: "⚡", label: "Attest demo model", sub: "attest · /attest", kw: "sign provenance", run: cmdkAct("attest", "atRunBtn") },
+  { gly: "▷", label: "Run quick policy check", sub: "attest · /quick-check", kw: "gdpr ccpa verdict", run: cmdkAct("attest", "qcRunBtn") },
+  { gly: "⬡", label: "Seed demo fleet", sub: "fleet · /cloud/*", kw: "tenant provision populate", run: cmdkAct("fleet", "flSeedBtn") },
+];
+
+let cmdkIdx = 0, cmdkMatches = CMDK;
+function cmdkScore(q, c) {
+  const hay = (c.label + " " + (c.kw || "")).toLowerCase();
+  let i = 0;
+  for (const ch of q) { i = hay.indexOf(ch, i); if (i < 0) return -1; i++; }
+  return hay.indexOf(q) >= 0 ? 1000 - hay.indexOf(q) : 100 - q.length;
+}
+function cmdkRender() {
+  const list = $("cmdkList");
+  if (!cmdkMatches.length) { list.innerHTML = `<div class="cmdk-empty">no matches</div>`; return; }
+  list.innerHTML = cmdkMatches.map((c, i) => `
+    <div class="cmdk-item ${i === cmdkIdx ? "active" : ""}" data-i="${i}">
+      <span class="gly">${c.gly}</span>
+      <span class="lbl">${escapeHtml(c.label)}${c.sub ? `<span class="sub2">${escapeHtml(c.sub)}</span>` : ""}</span>
+    </div>`).join("");
+  const active = list.querySelector(".cmdk-item.active");
+  if (active) active.scrollIntoView({ block: "nearest" });
+}
+function cmdkFilter(q) {
+  q = q.trim().toLowerCase();
+  cmdkMatches = !q ? CMDK
+    : CMDK.map((c) => [cmdkScore(q, c), c]).filter(([s]) => s >= 0)
+        .sort((a, b) => b[0] - a[0]).map(([, c]) => c);
+  cmdkIdx = 0; cmdkRender();
+}
+function cmdkOpen() {
+  $("cmdkScrim").classList.add("open");
+  const inp = $("cmdkInput"); inp.value = ""; cmdkFilter(""); inp.focus();
+}
+function cmdkClose() { $("cmdkScrim").classList.remove("open"); }
+function cmdkRun(i) {
+  const c = cmdkMatches[i]; if (!c) return;
+  cmdkClose();
+  try { c.run(); } catch (e) { toast("Command failed", e.message, "error"); }
+}
+
+$("cmdkInput").addEventListener("input", (e) => cmdkFilter(e.target.value));
+$("cmdkInput").addEventListener("keydown", (e) => {
+  if (e.key === "ArrowDown") { e.preventDefault(); cmdkIdx = Math.min(cmdkIdx + 1, cmdkMatches.length - 1); cmdkRender(); }
+  else if (e.key === "ArrowUp") { e.preventDefault(); cmdkIdx = Math.max(cmdkIdx - 1, 0); cmdkRender(); }
+  else if (e.key === "Enter") { e.preventDefault(); cmdkRun(cmdkIdx); }
+  else if (e.key === "Escape") { cmdkClose(); }
+});
+$("cmdkList").addEventListener("click", (e) => {
+  const item = e.target.closest(".cmdk-item"); if (item) cmdkRun(+item.dataset.i);
+});
+$("cmdkScrim").addEventListener("click", (e) => { if (e.target === $("cmdkScrim")) cmdkClose(); });
+document.addEventListener("keydown", (e) => {
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+    e.preventDefault();
+    $("cmdkScrim").classList.contains("open") ? cmdkClose() : cmdkOpen();
+  }
+});
 
 </script>
 </body>
