@@ -679,6 +679,66 @@ table.tbl tbody tr:hover { background: rgba(124,58,237,0.05); }
   border-radius: 4px; padding: 1px 6px; color: var(--ink-2); font-size: 10.5px;
 }
 
+/* ─────────────────────────────────────────────────────────────
+   command palette (⌘K)
+   ───────────────────────────────────────────────────────────── */
+.cmdk-scrim {
+  position: fixed; inset: 0; z-index: 150;
+  background: rgba(6,6,18,0.66); backdrop-filter: blur(6px);
+  display: none; align-items: flex-start; justify-content: center;
+  padding-top: 14vh;
+}
+.cmdk-scrim.open { display: flex; animation: scrimIn 160ms var(--ease-exit); }
+@keyframes scrimIn { from { opacity: 0; } to { opacity: 1; } }
+.cmdk {
+  width: min(620px, 92vw); max-height: 64vh; display: flex; flex-direction: column;
+  background: var(--panel); border: 1px solid rgba(124,58,237,0.40);
+  border-radius: 14px; overflow: hidden;
+  box-shadow: 0 30px 80px -20px rgba(0,0,0,0.7), 0 0 0 1px var(--line-soft);
+  animation: cmdkIn 200ms var(--ease-enter);
+}
+@keyframes cmdkIn {
+  from { opacity: 0; transform: translateY(-10px) scale(0.98); }
+  to   { opacity: 1; transform: none; }
+}
+.cmdk-input {
+  display: flex; align-items: center; gap: 10px;
+  padding: 14px 18px; border-bottom: 1px solid var(--line);
+}
+.cmdk-input .pfx { color: var(--accent); font-weight: 800; font-size: 16px; }
+.cmdk-input input {
+  border: 0; background: transparent; padding: 0; font-size: 15px;
+  color: var(--ink); width: 100%;
+}
+.cmdk-input input:focus { box-shadow: none; }
+.cmdk-list { overflow-y: auto; padding: 8px; }
+.cmdk-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 12px; border-radius: 8px; cursor: pointer;
+  color: var(--ink-2);
+}
+.cmdk-item .gly {
+  width: 26px; height: 26px; flex-shrink: 0; border-radius: 7px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--accent-soft); color: var(--accent); font-size: 14px;
+}
+.cmdk-item .lbl { color: var(--ink); font-size: 13.5px; font-weight: 500; }
+.cmdk-item .hint { margin-left: auto; font-size: 11px; color: var(--ink-3); font-family: ui-monospace; }
+.cmdk-item .sub2 { display: block; font-size: 11px; color: var(--ink-3); font-weight: 400; }
+.cmdk-item.active, .cmdk-item:hover {
+  background: var(--accent-soft); color: var(--ink);
+}
+.cmdk-item.active { box-shadow: inset 2px 0 0 var(--accent); }
+.cmdk-empty { padding: 22px; text-align: center; color: var(--ink-3); font-style: italic; }
+.cmdk-foot {
+  display: flex; gap: 14px; padding: 9px 16px; border-top: 1px solid var(--line);
+  font-size: 10.5px; color: var(--ink-3); font-family: ui-monospace;
+}
+.cmdk-foot kbd {
+  background: var(--panel-2); border: 1px solid var(--line);
+  border-radius: 4px; padding: 1px 5px; color: var(--ink-2);
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.001ms !important;
@@ -708,6 +768,7 @@ table.tbl tbody tr:hover { background: rgba(124,58,237,0.05); }
   <button class="tab"        data-tab="vex"       role="tab"><span class="glyph">⚠</span>VEX</button>
   <button class="tab"        data-tab="vendors"   role="tab"><span class="glyph">★</span>Vendors</button>
   <button class="tab"        data-tab="attest"    role="tab"><span class="glyph">✦</span>Attestation</button>
+  <button class="tab"        data-tab="fleet"     role="tab"><span class="glyph">⬡</span>Fleet</button>
 </nav>
 
 <main>
@@ -1242,11 +1303,114 @@ Termination for convenience requires sixty days notice.</textarea>
   </div>
 </section>
 
+<!-- ════════════════════════════════════════════════════════════
+     TAB 7 — FLEET (multi-tenant cloud console)
+     ════════════════════════════════════════════════════════════ -->
+<section class="tab-panel" id="tab-fleet">
+  <div class="grid wide">
+
+    <!-- Fleet overview -->
+    <div class="card" data-card="fleet-overview" style="grid-column:1/-1">
+      <div class="card-head">
+        <h3><span class="num">01.</span>Fleet compliance overview</h3>
+        <span class="sub">/cloud/compliance-overview</span>
+      </div>
+      <p class="muted mb">Multi-tenant rollup across every registered org. Seed a
+        synthetic fleet to populate the console end-to-end against the live API.</p>
+      <div class="row">
+        <button class="btn" id="flSeedBtn">⬡ Seed demo fleet</button>
+        <button class="btn ghost small" id="flOverviewBtn">Refresh</button>
+        <span class="muted" id="flSeedTimer"></span>
+      </div>
+      <div class="result" id="flOverview"></div>
+    </div>
+
+    <!-- Tenant console -->
+    <div class="card tall" data-card="fleet-tenant">
+      <div class="card-head">
+        <h3><span class="num">02.</span>Tenant console</h3>
+        <span class="sub">/cloud/tenant · /compliance-score</span>
+      </div>
+      <div class="row">
+        <span class="muted">id <input type="text" id="flNewId" value="globex-ai" style="width:130px"></span>
+        <span class="muted" style="flex:1">name <input type="text" id="flNewName" value="Globex AI" style="width:100%"></span>
+        <span class="muted">plan
+          <select id="flNewPlan" style="width:120px">
+            <option>community</option><option>pro</option><option selected>enterprise</option>
+          </select></span>
+        <button class="btn small" id="flCreateBtn">Create</button>
+      </div>
+      <div class="row mt">
+        <span class="muted" style="flex:1">tenant
+          <select id="flTenant" style="width:100%"><option value="">— none —</option></select></span>
+        <button class="btn" id="flLoadBtn">Load</button>
+      </div>
+      <div class="result" id="flTenantResult"></div>
+    </div>
+
+    <!-- Model inventory -->
+    <div class="card tall" data-card="fleet-inventory">
+      <div class="card-head">
+        <h3><span class="num">03.</span>Model inventory</h3>
+        <span class="sub">/cloud/inventory/register</span>
+      </div>
+      <div class="row">
+        <span class="muted">model <input type="text" id="flModelId" value="vision-net-v4" style="width:150px"></span>
+        <span class="muted" style="flex:1">path <input type="text" id="flModelPath" value="/models/vision-v4" style="width:100%"></span>
+      </div>
+      <div class="row mt">
+        <label class="check"><input type="checkbox" id="flPassAttest" checked>attestation passed</label>
+        <label class="check"><input type="checkbox" id="flPassEu" checked>eu-ai-act</label>
+        <label class="check"><input type="checkbox" id="flPassNist">nist-ai-rmf</label>
+        <button class="btn small" id="flRegisterBtn">Register</button>
+        <button class="btn ghost small" id="flInvRefreshBtn">Refresh</button>
+      </div>
+      <div class="result" id="flInventory"></div>
+    </div>
+
+    <!-- Risk signals -->
+    <div class="card tall" data-card="fleet-signals" style="grid-column:1/-1">
+      <div class="card-head">
+        <h3><span class="num">04.</span>Risk signals</h3>
+        <span class="sub">/cloud/vex/alert · /cloud/drift/event</span>
+      </div>
+      <div class="row">
+        <span class="muted">CVE <input type="text" id="flCve" value="CVE-2024-9999" style="width:160px"></span>
+        <span class="muted">severity
+          <select id="flSev" style="width:120px">
+            <option>critical</option><option selected>high</option><option>medium</option><option>low</option>
+          </select></span>
+        <span class="muted">model <input type="text" id="flSigModel" value="vision-net-v4" style="width:150px"></span>
+        <button class="btn small" id="flAlertBtn">Raise alert</button>
+        <button class="btn ghost small" id="flDriftBtn">Record drift</button>
+        <button class="btn ghost small" id="flSignalsBtn">Refresh</button>
+      </div>
+      <div class="result" id="flSignals"></div>
+    </div>
+
+  </div>
+</section>
+
 </main>
 
 <div id="toast-stack" aria-live="polite"></div>
 <canvas id="confetti" aria-hidden="true"></canvas>
-<div class="kbd-hint" id="kbdHint"><kbd>←</kbd> <kbd>→</kbd> switch tabs · <kbd>1</kbd>–<kbd>7</kbd> jump · <kbd>r</kbd> refresh</div>
+<div class="kbd-hint" id="kbdHint"><kbd>←</kbd> <kbd>→</kbd> switch tabs · <kbd>1</kbd>–<kbd>8</kbd> jump · <kbd>⌘K</kbd> palette · <kbd>r</kbd> refresh</div>
+
+<div class="cmdk-scrim" id="cmdkScrim" role="dialog" aria-modal="true" aria-label="Command palette">
+  <div class="cmdk">
+    <div class="cmdk-input">
+      <span class="pfx">⌘</span>
+      <input type="text" id="cmdkInput" placeholder="Search features &amp; actions…" autocomplete="off" spellcheck="false" aria-label="Command palette search">
+    </div>
+    <div class="cmdk-list" id="cmdkList"></div>
+    <div class="cmdk-foot">
+      <span><kbd>↑</kbd> <kbd>↓</kbd> navigate</span>
+      <span><kbd>↵</kbd> run</span>
+      <span><kbd>esc</kbd> close</span>
+    </div>
+  </div>
+</div>
 
 <script>
 /* ─────────────────────────────────────────────────────────────
@@ -2652,7 +2816,7 @@ $("qcRunBtn").addEventListener("click", async () => {
   try {
     const { data } = await api("/quick-check", {
       method: "POST",
-      body: { text, framework: $("qcFw").value, share: false },
+      body: { text, framework: $("qcFw").value, share: true },
     });
     done(true);
     const r = data.result || data;
@@ -2660,6 +2824,8 @@ $("qcRunBtn").addEventListener("click", async () => {
     const verdict = (r.verdict || "").toLowerCase();
     const band = verdict === "pass" ? "pass" : verdict === "warn" ? "warn" : "fail";
     if (band === "pass") celebrate();
+    const hash = data.share_hash || "";
+    const shareUrl = data.share_url || (hash ? `${API_BASE}/r/${hash}` : "");
     root.innerHTML = `
       <div style="display:flex; gap:14px; align-items:center; flex-wrap:wrap">
         <span class="badge ${band}">${escapeHtml(r.verdict || "?")}</span>
@@ -2672,10 +2838,414 @@ $("qcRunBtn").addEventListener("click", async () => {
           ${(r.matched || []).map((c) => `<tr><td><span class="badge pass">✓</span></td><td>${escapeHtml(c.label || c.id || c)}</td></tr>`).join("")}
           ${(r.missing || []).map((c) => `<tr><td><span class="badge fail">✗</span></td><td>${escapeHtml(c.label || c.id || c)}</td></tr>`).join("")}
         </tbody></table>
-      </details>`;
+      </details>
+      ${hash ? `
+      <div class="mt"><div class="muted" style="font-size:11px; letter-spacing:.06em; text-transform:uppercase; margin-bottom:6px">shareable proof</div>
+        <div style="background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:14px; display:flex; justify-content:center">
+          <img src="${escapeHtml(API_BASE)}/r/${escapeHtml(hash)}/card.svg" alt="squash compliance proof card"
+               style="max-width:100%; border-radius:6px; animation:resultIn 360ms var(--ease-exit)">
+        </div>
+        <div class="row mt">
+          <input type="text" id="qcShareUrl" value="${escapeHtml(shareUrl)}" readonly style="flex:1; font-family:ui-monospace; font-size:12px">
+          <button class="btn ghost small" id="qcCopyBtn">Copy link</button>
+        </div>
+      </div>
+      <div class="result show" id="qcRemediation" style="border-top:0; margin-top:12px; padding-top:0">
+        <div class="muted">loading remediation…</div>
+      </div>` : ""}`;
     root.classList.add("show");
+    if (hash) {
+      $("qcCopyBtn").addEventListener("click", async () => {
+        try { await navigator.clipboard.writeText(shareUrl); toast("Link copied", "", "success"); }
+        catch { $("qcShareUrl").select(); toast("Press ⌘C to copy", "", "info"); }
+      });
+      loadRemediation(hash);
+    }
   } catch (e) {
     done(false); toast("Quick check failed", e.message, "error");
+  }
+});
+
+async function loadRemediation(hash) {
+  const root = $("qcRemediation");
+  if (!root) return;
+  try {
+    const { data } = await api(`/r/${encodeURIComponent(hash)}/remediation`);
+    const entries = data.entries || data.remediations || [];
+    if (!entries.length) {
+      root.innerHTML = `<div class="muted" style="color:var(--success)">✓ no remediation needed — every requirement satisfied</div>`;
+      return;
+    }
+    root.innerHTML = `<div class="muted" style="font-size:11px; letter-spacing:.06em; text-transform:uppercase; margin-bottom:6px">suggested fixes · ${entries.length}</div>` +
+      entries.map((e, i) => `
+        <div class="card" style="padding:12px; margin-bottom:8px; animation-delay:${i * 60}ms">
+          <div style="display:flex; gap:10px; align-items:baseline">
+            <span class="badge ${e.severity === "error" ? "fail" : "warn"}">${escapeHtml(e.clause_id || e.id || "")}</span>
+            <strong style="color:var(--ink); font-size:12.5px">${escapeHtml(e.label || "")}</strong>
+          </div>
+          <div class="muted mt" style="margin-top:6px">${escapeHtml(e.issue || "")}</div>
+          <ul class="diff-list mt" style="margin-top:8px">
+            ${e.original ? `<li class="removed"><code>−</code> ${escapeHtml(e.original)}</li>` : ""}
+            ${e.suggested_fix ? `<li class="added"><code>+</code> ${escapeHtml(e.suggested_fix)}</li>` : ""}
+          </ul>
+        </div>`).join("");
+  } catch (e) {
+    root.innerHTML = `<div class="muted">remediation unavailable: ${escapeHtml(e.message)}</div>`;
+  }
+}
+
+
+/* ═════════════════════════════════════════════════════════════
+   TAB 7 — Fleet (multi-tenant cloud console)
+   ═════════════════════════════════════════════════════════════ */
+
+let fleetTenant = "";
+
+function gradeBand(grade) {
+  return { A: "low", B: "low", C: "medium", D: "high", F: "critical" }[grade] || "neutral";
+}
+
+// 01. fleet overview
+async function loadFleetOverview() {
+  const root = $("flOverview");
+  try {
+    const { data } = await api("/cloud/compliance-overview");
+    const avg = data.average_score || 0;
+    const band = avg >= 80 ? "low" : avg >= 50 ? "medium" : "high";
+    let html = `
+      <div class="gauge-wrap">
+        <div class="gauge-host" data-pct="${avg}" data-color="${riskColor(band)}"></div>
+        <div class="stat-grid" style="flex:1; grid-template-columns:repeat(3,1fr)">
+          <div class="stat"><div class="s-val" data-fl="tenants">0</div><div class="s-lbl">tenants</div></div>
+          <div class="stat"><div class="s-val" data-fl="ok">0</div><div class="s-lbl">compliant</div></div>
+          <div class="stat"><div class="s-val" data-fl="bad">0</div><div class="s-lbl">at risk</div></div>
+        </div>
+      </div>`;
+    const atRisk = data.top_at_risk || [];
+    if (atRisk.length) {
+      html += `<div class="muted mt" style="font-size:11px; letter-spacing:.06em; text-transform:uppercase; margin:14px 0 6px">top at-risk tenants</div>`;
+      html += atRisk.map((t, i) => {
+        const g = t.grade || "?";
+        return `<div class="req-row" style="grid-template-columns:1fr 120px 50px; animation-delay:${i * 40}ms">
+          <span class="rid">${escapeHtml(t.name || t.tenant_id || "—")}</span>
+          <div class="bar ${gradeBand(g)}"><div class="fill" data-fill="${t.score || 0}"></div></div>
+          <span class="conf"><span class="badge ${gradeBand(g)}">${escapeHtml(g)}</span></span>
+        </div>`;
+      }).join("");
+    }
+    root.innerHTML = html;
+    root.classList.add("show");
+    $$(".gauge-host", root).forEach((g) =>
+      gaugeMount(g, parseFloat(g.dataset.pct), { color: g.dataset.color, label: "avg score" }));
+    countUp(root.querySelector('[data-fl="tenants"]'), data.total_tenants || 0);
+    countUp(root.querySelector('[data-fl="ok"]'), data.compliant_tenants || 0);
+    countUp(root.querySelector('[data-fl="bad"]'), data.non_compliant_tenants || 0);
+    setTimeout(() => $$(".bar .fill[data-fill]", root).forEach((b) =>
+      b.style.width = b.dataset.fill + "%"), 50);
+  } catch (e) {
+    root.innerHTML = `<div class="empty">${escapeHtml(e.message)}</div>`;
+    root.classList.add("show");
+  }
+}
+$("flOverviewBtn").addEventListener("click", loadFleetOverview);
+
+// tenant selector
+async function refreshTenants(select) {
+  try {
+    const { data } = await api("/cloud/tenants");
+    const sel = $("flTenant");
+    const tenants = data.tenants || [];
+    sel.innerHTML = `<option value="">— none —</option>` + tenants.map((t) =>
+      `<option value="${escapeHtml(t.tenant_id)}">${escapeHtml(t.name || t.tenant_id)} · ${escapeHtml(t.plan || "")}</option>`
+    ).join("");
+    if (select) sel.value = select;
+  } catch (e) { /* leave selector as-is */ }
+}
+
+// 02. create + load tenant
+$("flCreateBtn").addEventListener("click", async () => {
+  const body = {
+    tenant_id: $("flNewId").value.trim(),
+    name: $("flNewName").value.trim(),
+    plan: $("flNewPlan").value,
+  };
+  if (!body.tenant_id || !body.name) return toast("Need id + name", "", "error");
+  try {
+    await api("/cloud/tenant", { method: "POST", body });
+    toast("Tenant created", body.name, "success");
+    await refreshTenants(body.tenant_id);
+    loadTenant(body.tenant_id);
+  } catch (e) { toast("Create failed", e.message, "error"); }
+});
+$("flLoadBtn").addEventListener("click", () => {
+  const id = $("flTenant").value;
+  if (!id) return toast("Pick a tenant", "", "error");
+  loadTenant(id);
+});
+
+async function loadTenant(id) {
+  fleetTenant = id;
+  const root = $("flTenantResult");
+  try {
+    const [{ data: score }, { data: summary }] =
+      await Promise.all([
+        api(`/cloud/tenants/${encodeURIComponent(id)}/compliance-score`),
+        api(`/cloud/tenants/${encodeURIComponent(id)}/summary`),
+      ]);
+    const grade = score.grade || "?";
+    const band = gradeBand(grade);
+    let html = `
+      <div class="gauge-wrap">
+        <div class="gauge-host" data-pct="${score.score || 0}" data-color="${riskColor(band)}"></div>
+        <div>
+          <div style="font-size:42px; font-weight:900; color:${riskColor(band)}; line-height:1; margin-bottom:6px">${escapeHtml(grade)}</div>
+          <div class="muted">${escapeHtml(id)}</div>
+          <div class="chip-row">
+            <span class="chip">models <span class="c-n">${summary.inventory_count || 0}</span></span>
+            <span class="chip">alerts <span class="c-n">${summary.vex_alert_count || 0}</span></span>
+            <span class="chip">drift <span class="c-n">${summary.drift_event_count || 0}</span></span>
+          </div>
+        </div>
+      </div>`;
+    const breakdown = score.policy_breakdown || {};
+    if (Object.keys(breakdown).length) {
+      html += `<div class="muted mt" style="font-size:11px; letter-spacing:.06em; text-transform:uppercase; margin:14px 0 6px">policy pass-rate</div>`;
+      html += Object.entries(breakdown).map(([name, b], i) => {
+        const rate = b.rate != null ? b.rate : 0;
+        const bb = rate >= 80 ? "low" : rate >= 50 ? "medium" : "high";
+        return `<div class="req-row" style="animation-delay:${i * 40}ms">
+          <span class="rid">${escapeHtml(name)}</span>
+          <div class="bar ${bb}"><div class="fill" data-fill="${rate}"></div></div>
+          <span class="conf">${rate.toFixed(0)}%</span></div>`;
+      }).join("");
+    }
+    root.innerHTML = html;
+    root.classList.add("show");
+    $$(".gauge-host", root).forEach((g) =>
+      gaugeMount(g, parseFloat(g.dataset.pct), { color: g.dataset.color, label: "score" }));
+    setTimeout(() => $$(".bar .fill[data-fill]", root).forEach((b) =>
+      b.style.width = b.dataset.fill + "%"), 50);
+    if (grade === "A") celebrate();
+    loadInventory(); loadSignals();
+  } catch (e) { toast("Load tenant failed", e.message, "error"); }
+}
+
+// 03. inventory
+$("flRegisterBtn").addEventListener("click", async () => {
+  if (!fleetTenant) return toast("Load a tenant first", "", "error");
+  const policy_results = {
+    "eu-ai-act": { passed: $("flPassEu").checked },
+    "nist-ai-rmf": { passed: $("flPassNist").checked },
+  };
+  const body = {
+    tenant_id: fleetTenant,
+    model_id: $("flModelId").value.trim(),
+    model_path: $("flModelPath").value.trim() || "/models/" + $("flModelId").value.trim(),
+    attestation_passed: $("flPassAttest").checked,
+    policy_results,
+  };
+  try {
+    await api("/cloud/inventory/register", { method: "POST", body });
+    toast("Model registered", body.model_id, "success");
+    loadInventory(); loadTenant(fleetTenant);
+  } catch (e) { toast("Register failed", e.message, "error"); }
+});
+$("flInvRefreshBtn").addEventListener("click", loadInventory);
+
+async function loadInventory() {
+  if (!fleetTenant) return;
+  const root = $("flInventory");
+  try {
+    const { data } = await api(`/cloud/tenants/${encodeURIComponent(fleetTenant)}/inventory`);
+    const models = data.models || [];
+    if (!models.length) { root.innerHTML = `<div class="empty">no models registered</div>`; root.classList.add("show"); return; }
+    let html = `<table class="tbl"><thead><tr><th>Model</th><th>Attestation</th><th>Policies</th></tr></thead><tbody>`;
+    models.forEach((m, i) => {
+      const pol = Object.entries(m.policy_results || {}).map(([k, v]) =>
+        `<span class="chip" style="border-color:${v.passed ? "var(--success)" : "var(--error)"}">${escapeHtml(k)} ${v.passed ? "✓" : "✗"}</span>`).join("");
+      html += `<tr style="animation-delay:${i * 40}ms">
+        <td><strong style="color:var(--ink)">${escapeHtml(m.model_id)}</strong><div class="muted mono" style="font-size:10.5px">${escapeHtml(m.model_path || "")}</div></td>
+        <td><span class="badge ${m.attestation_passed ? "pass" : "fail"}">${m.attestation_passed ? "PASS" : "FAIL"}</span></td>
+        <td><div class="chip-row" style="margin:0">${pol || "<span class='muted'>—</span>"}</div></td></tr>`;
+    });
+    html += "</tbody></table>";
+    root.innerHTML = html;
+    root.classList.add("show");
+  } catch (e) { root.innerHTML = `<div class="empty">${escapeHtml(e.message)}</div>`; root.classList.add("show"); }
+}
+
+// 04. risk signals
+$("flAlertBtn").addEventListener("click", async () => {
+  if (!fleetTenant) return toast("Load a tenant first", "", "error");
+  const body = {
+    tenant_id: fleetTenant, cve_id: $("flCve").value.trim(),
+    severity: $("flSev").value, model_id: $("flSigModel").value.trim(),
+  };
+  try {
+    await api("/cloud/vex/alert", { method: "POST", body });
+    toast("Alert raised", body.cve_id, "success");
+    loadSignals(); loadTenant(fleetTenant);
+  } catch (e) { toast("Alert failed", e.message, "error"); }
+});
+$("flDriftBtn").addEventListener("click", async () => {
+  if (!fleetTenant) return toast("Load a tenant first", "", "error");
+  const body = {
+    tenant_id: fleetTenant, model_id: $("flSigModel").value.trim(),
+    bom_a: "baseline", bom_b: "current", added: ["torch", "transformers"],
+  };
+  try {
+    await api("/cloud/drift/event", { method: "POST", body });
+    toast("Drift recorded", body.model_id, "success");
+    loadSignals(); loadTenant(fleetTenant);
+  } catch (e) { toast("Drift failed", e.message, "error"); }
+});
+$("flSignalsBtn").addEventListener("click", loadSignals);
+
+async function loadSignals() {
+  if (!fleetTenant) return;
+  const root = $("flSignals");
+  try {
+    const [{ data: vex }, { data: drift }] = await Promise.all([
+      api(`/cloud/tenants/${encodeURIComponent(fleetTenant)}/vex-alerts`),
+      api(`/cloud/tenants/${encodeURIComponent(fleetTenant)}/drift-events`),
+    ]);
+    const alerts = vex.alerts || [], events = drift.events || [];
+    let html = `<div class="grid" style="gap:18px">`;
+    html += `<div><div class="muted" style="font-size:11px; letter-spacing:.06em; text-transform:uppercase; margin-bottom:6px">VEX alerts · ${alerts.length}</div>`;
+    html += alerts.length ? `<table class="tbl"><tbody>${alerts.map((a, i) =>
+      `<tr style="animation-delay:${i * 40}ms"><td class="mono" style="color:var(--accent)">${escapeHtml(a.cve_id)}</td>
+       <td><span class="badge ${severityBand(a.severity)}">${escapeHtml(a.severity)}</span></td>
+       <td class="muted">${escapeHtml(a.model_id || "—")}</td>
+       <td><span class="badge ${a.status === "open" ? "warn" : "neutral"}">${escapeHtml(a.status)}</span></td></tr>`).join("")}</tbody></table>`
+      : `<div class="empty">no alerts</div>`;
+    html += `</div><div><div class="muted" style="font-size:11px; letter-spacing:.06em; text-transform:uppercase; margin-bottom:6px">drift stream · ${events.length}</div>`;
+    html += events.length ? `<ul class="diff-list">${events.map((e, i) =>
+      `<li class="modified" style="animation-delay:${i * 40}ms"><code>~</code> ${escapeHtml(e.model_id)}
+       <small>+${(e.added || []).length} −${(e.removed || []).length} · ${escapeHtml(e.severity || "info")}</small></li>`).join("")}</ul>`
+      : `<div class="empty">no drift events</div>`;
+    html += `</div></div>`;
+    root.innerHTML = html;
+    root.classList.add("show");
+  } catch (e) { root.innerHTML = `<div class="empty">${escapeHtml(e.message)}</div>`; root.classList.add("show"); }
+}
+
+// seed a synthetic fleet so the console is populated end-to-end via the live API
+$("flSeedBtn").addEventListener("click", async () => {
+  const done = busy($("flSeedBtn"), $("flSeedTimer"));
+  const fleet = [
+    { tenant_id: "acme-ml", name: "Acme ML", plan: "enterprise",
+      models: [["credit-scorer-v3", true, true, true], ["fraud-net-v2", true, true, false]],
+      alerts: [["CVE-2024-1234", "medium", "credit-scorer-v3"]] },
+    { tenant_id: "globex-ai", name: "Globex AI", plan: "pro",
+      models: [["chat-assistant-v1", false, false, false], ["doc-ranker-v2", true, false, true]],
+      alerts: [["CVE-2024-9999", "critical", "chat-assistant-v1"], ["CVE-2023-4567", "high", "doc-ranker-v2"]] },
+    { tenant_id: "initech-llm", name: "Initech LLM", plan: "community",
+      models: [["summarizer-v5", true, true, true]], alerts: [] },
+  ];
+  try {
+    for (const t of fleet) {
+      await api("/cloud/tenant", { method: "POST", body: { tenant_id: t.tenant_id, name: t.name, plan: t.plan } });
+      for (const [mid, att, eu, nist] of t.models) {
+        await api("/cloud/inventory/register", { method: "POST", body: {
+          tenant_id: t.tenant_id, model_id: mid, model_path: "/models/" + mid,
+          attestation_passed: att,
+          policy_results: { "eu-ai-act": { passed: eu }, "nist-ai-rmf": { passed: nist } },
+        } });
+      }
+      for (const [cve, sev, mid] of t.alerts) {
+        await api("/cloud/vex/alert", { method: "POST", body: { tenant_id: t.tenant_id, cve_id: cve, severity: sev, model_id: mid } });
+      }
+    }
+    await api("/cloud/drift/event", { method: "POST", body: {
+      tenant_id: "globex-ai", model_id: "chat-assistant-v1", bom_a: "v1", bom_b: "v2", added: ["torch"] } });
+    done(true);
+    toast("Fleet seeded", `${fleet.length} tenants`, "success");
+    await refreshTenants("globex-ai");
+    loadFleetOverview();
+    loadTenant("globex-ai");
+  } catch (e) { done(false); toast("Seed failed", e.message, "error"); }
+});
+
+// initial fleet load
+refreshTenants();
+loadFleetOverview();
+
+/* ═════════════════════════════════════════════════════════════
+   Command palette (⌘K) — fuzzy navigation + one-shot actions
+   ═════════════════════════════════════════════════════════════ */
+const cmdkAct = (tab, id) => () => { activateTab(tab); const b = $(id); if (b) b.click(); };
+const CMDK = [
+  { gly: "◎", label: "Go to Mission Control", kw: "overview telemetry home dashboard", run: () => activateTab("overview") },
+  { gly: "§", label: "Go to Contracts", kw: "scan clause obligation diff cluster", run: () => activateTab("contracts") },
+  { gly: "⚖", label: "Go to Risk & Compliance", kw: "risk policy alert", run: () => activateTab("risk") },
+  { gly: "⛓", label: "Go to Supply Chain", kw: "sbom lineage drift monitor", run: () => activateTab("supply") },
+  { gly: "⚠", label: "Go to VEX", kw: "vulnerability cve feed", run: () => activateTab("vex") },
+  { gly: "★", label: "Go to Vendors", kw: "score badge history", run: () => activateTab("vendors") },
+  { gly: "✦", label: "Go to Attestation", kw: "attest verify sign platform mlflow", run: () => activateTab("attest") },
+  { gly: "⬡", label: "Go to Fleet", kw: "tenant cloud multi inventory", run: () => activateTab("fleet") },
+  { gly: "↻", label: "Refresh Mission Control telemetry", sub: "/metrics · /health · /history", kw: "reload live overview", run: () => { activateTab("overview"); loadOverview(); } },
+  { gly: "▷", label: "Run compliance scan", sub: "contracts · /api/compliance/scan", kw: "framework soc2 hipaa", run: cmdkAct("contracts", "csRunBtn") },
+  { gly: "▷", label: "Extract obligations", sub: "contracts · /api/extract/obligations", kw: "party modal deadline", run: cmdkAct("contracts", "obRunBtn") },
+  { gly: "▷", label: "Assess model risk", sub: "risk · /risk/assess", kw: "tier score", run: cmdkAct("risk", "raRunBtn") },
+  { gly: "▷", label: "Compare SBOMs", sub: "supply · /sbom/diff", kw: "components added removed", run: cmdkAct("supply", "sbRunBtn") },
+  { gly: "▷", label: "Evaluate VEX", sub: "vex · /vex/evaluate", kw: "cve vulnerability", run: cmdkAct("vex", "vxRunBtn") },
+  { gly: "▷", label: "Look up vendor score", sub: "vendors · /v1/score", kw: "grade badge", run: cmdkAct("vendors", "vsRunBtn") },
+  { gly: "⚡", label: "Attest demo model", sub: "attest · /attest", kw: "sign provenance", run: cmdkAct("attest", "atRunBtn") },
+  { gly: "▷", label: "Run quick policy check", sub: "attest · /quick-check", kw: "gdpr ccpa verdict", run: cmdkAct("attest", "qcRunBtn") },
+  { gly: "⬡", label: "Seed demo fleet", sub: "fleet · /cloud/*", kw: "tenant provision populate", run: cmdkAct("fleet", "flSeedBtn") },
+];
+
+let cmdkIdx = 0, cmdkMatches = CMDK;
+function cmdkScore(q, c) {
+  const hay = (c.label + " " + (c.kw || "")).toLowerCase();
+  let i = 0;
+  for (const ch of q) { i = hay.indexOf(ch, i); if (i < 0) return -1; i++; }
+  return hay.indexOf(q) >= 0 ? 1000 - hay.indexOf(q) : 100 - q.length;
+}
+function cmdkRender() {
+  const list = $("cmdkList");
+  if (!cmdkMatches.length) { list.innerHTML = `<div class="cmdk-empty">no matches</div>`; return; }
+  list.innerHTML = cmdkMatches.map((c, i) => `
+    <div class="cmdk-item ${i === cmdkIdx ? "active" : ""}" data-i="${i}">
+      <span class="gly">${c.gly}</span>
+      <span class="lbl">${escapeHtml(c.label)}${c.sub ? `<span class="sub2">${escapeHtml(c.sub)}</span>` : ""}</span>
+    </div>`).join("");
+  const active = list.querySelector(".cmdk-item.active");
+  if (active) active.scrollIntoView({ block: "nearest" });
+}
+function cmdkFilter(q) {
+  q = q.trim().toLowerCase();
+  cmdkMatches = !q ? CMDK
+    : CMDK.map((c) => [cmdkScore(q, c), c]).filter(([s]) => s >= 0)
+        .sort((a, b) => b[0] - a[0]).map(([, c]) => c);
+  cmdkIdx = 0; cmdkRender();
+}
+function cmdkOpen() {
+  $("cmdkScrim").classList.add("open");
+  const inp = $("cmdkInput"); inp.value = ""; cmdkFilter(""); inp.focus();
+}
+function cmdkClose() { $("cmdkScrim").classList.remove("open"); }
+function cmdkRun(i) {
+  const c = cmdkMatches[i]; if (!c) return;
+  cmdkClose();
+  try { c.run(); } catch (e) { toast("Command failed", e.message, "error"); }
+}
+
+$("cmdkInput").addEventListener("input", (e) => cmdkFilter(e.target.value));
+$("cmdkInput").addEventListener("keydown", (e) => {
+  if (e.key === "ArrowDown") { e.preventDefault(); cmdkIdx = Math.min(cmdkIdx + 1, cmdkMatches.length - 1); cmdkRender(); }
+  else if (e.key === "ArrowUp") { e.preventDefault(); cmdkIdx = Math.max(cmdkIdx - 1, 0); cmdkRender(); }
+  else if (e.key === "Enter") { e.preventDefault(); cmdkRun(cmdkIdx); }
+  else if (e.key === "Escape") { cmdkClose(); }
+});
+$("cmdkList").addEventListener("click", (e) => {
+  const item = e.target.closest(".cmdk-item"); if (item) cmdkRun(+item.dataset.i);
+});
+$("cmdkScrim").addEventListener("click", (e) => { if (e.target === $("cmdkScrim")) cmdkClose(); });
+document.addEventListener("keydown", (e) => {
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+    e.preventDefault();
+    $("cmdkScrim").classList.contains("open") ? cmdkClose() : cmdkOpen();
   }
 });
 
