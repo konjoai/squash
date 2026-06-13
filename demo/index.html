@@ -624,6 +624,17 @@ table.tbl tbody tr:hover { background: rgba(124,58,237,0.05); }
 .health-row .hname { color: var(--ink); font-size: 13px; }
 .health-row .hmeta { margin-left: auto; color: var(--ink-3); font-family: ui-monospace; font-size: 11.5px; }
 
+.feed { display: flex; flex-direction: column; gap: 4px; }
+.feed-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 10px; border-radius: 8px;
+  background: var(--panel-2); border: 1px solid var(--line-soft);
+  animation: rowIn 260ms var(--ease-exit) backwards;
+}
+.feed-item .fi-fw { color: var(--ink-2); font-size: 12px; }
+.feed-item .fi-score { color: var(--ink); font-size: 12px; }
+.feed-item .fi-time { margin-left: auto; color: var(--ink-3); font-size: 11px; font-family: ui-monospace; }
+
 .chip-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
 .chip {
   display: inline-flex; align-items: center; gap: 6px;
@@ -1194,6 +1205,29 @@ Termination for convenience requires sixty days notice.</textarea>
         <span class="muted" id="rgTimer"></span>
       </div>
       <div class="result" id="rgResult"></div>
+    </div>
+
+    <!-- SLSA provenance -->
+    <div class="card tall" data-card="slsa">
+      <div class="card-head">
+        <h3><span class="num">06.</span>SLSA provenance</h3>
+        <span class="sub">/slsa/attest</span>
+      </div>
+      <p class="muted mb">Generate a SLSA 1.0 provenance statement binding the
+        build to a content-addressed model subject (sha256).</p>
+      <label class="field">
+        <span class="lbl">Model directory (server path)</span>
+        <input type="text" id="slPath" value="demo/sample_models/safe-distilbert">
+      </label>
+      <div class="row">
+        <span class="muted">level
+          <select id="slLevel" style="width:90px">
+            <option value="1">L1</option><option value="2">L2</option><option value="3">L3</option>
+          </select></span>
+        <button class="btn" id="slRunBtn">Generate provenance</button>
+        <span class="muted" id="slTimer"></span>
+      </div>
+      <div class="result" id="slResult"></div>
     </div>
 
   </div>
@@ -1936,21 +1970,46 @@ function renderHealth(h) {
   $("ovHealth").innerHTML = rows + compRows;
 }
 
+function relTime(ts) {
+  const t = Date.parse(ts);
+  if (isNaN(t)) return "";
+  const s = Math.max(0, (Date.now() - t) / 1000);
+  if (s < 60) return `${s | 0}s ago`;
+  if (s < 3600) return `${(s / 60) | 0}m ago`;
+  if (s < 86400) return `${(s / 3600) | 0}h ago`;
+  return `${(s / 86400) | 0}d ago`;
+}
+
 function renderActivity(h) {
   const stats = h.stats || {};
   const spark = h.pass_rate_sparkline || [];
+  const entries = h.entries || [];
   const byVerdict = stats.by_verdict || {};
   const verdictChips = Object.entries(byVerdict).map(([v, n]) =>
     `<span class="chip">${escapeHtml(v)} <span class="c-n">${n}</span></span>`).join("")
     || `<span class="muted">no scans recorded yet</span>`;
+  const feed = entries.length
+    ? entries.map((e, i) => {
+        const v = (e.verdict || "").toLowerCase();
+        const band = v === "pass" ? "pass" : v === "warn" ? "warn" : "fail";
+        return `<div class="feed-item" style="animation-delay:${i * 40}ms">
+          <span class="badge ${band}">${escapeHtml(e.verdict || "?")}</span>
+          <span class="fi-fw mono">${escapeHtml(e.framework || "—")}</span>
+          <span class="fi-score mono">${e.score}/100</span>
+          <span class="fi-time">${escapeHtml(relTime(e.timestamp))}</span>
+        </div>`;
+      }).join("")
+    : `<div class="muted">no recent checks — run one in Attestation › Quick policy check</div>`;
   $("ovActivity").innerHTML = `
     <div class="stat-grid" style="grid-template-columns:repeat(2,1fr); margin-bottom:14px">
       <div class="stat"><div class="s-val" data-actval>0</div><div class="s-lbl">total scans</div></div>
       <div class="stat"><div class="s-val" data-actavg>0</div><div class="s-lbl">avg score</div></div>
     </div>
     <div class="muted" style="font-size:11px; letter-spacing:.06em; text-transform:uppercase; margin-bottom:6px">pass-rate · last ${spark.length}</div>
-    <canvas class="linechart" id="ovSpark" style="height:90px"></canvas>
-    <div class="chip-row">${verdictChips}</div>`;
+    <canvas class="linechart" id="ovSpark" style="height:72px"></canvas>
+    <div class="chip-row">${verdictChips}</div>
+    <div class="muted" style="font-size:11px; letter-spacing:.06em; text-transform:uppercase; margin:14px 0 6px">live activity</div>
+    <div class="feed">${feed}</div>`;
   countUp($("ovActivity").querySelector("[data-actval]"), stats.total || 0);
   countUp($("ovActivity").querySelector("[data-actavg]"), stats.avg_score || 0, { decimals: 1 });
   const pts = spark.map((v, i) => ({
@@ -1990,7 +2049,7 @@ async function loadOverview() {
   const jobs = [
     api("/metrics").then((r) => renderStats(parseMetrics(r.raw))).catch(() => {}),
     api("/health/detailed").then((r) => renderHealth(r.data)).catch(() => {}),
-    api("/history?limit=1").then((r) => renderActivity(r.data)).catch(() => {}),
+    api("/history?limit=8").then((r) => renderActivity(r.data)).catch(() => {}),
     api("/trending").then((r) => renderTrendingPanel(r.data)).catch(() => {}),
   ];
   await Promise.all(jobs);
@@ -2767,6 +2826,33 @@ async function ragVerify(dir) {
   } catch (e) { done(false); toast("Verify failed", e.message, "error"); }
 }
 
+// 06. SLSA provenance
+$("slRunBtn").addEventListener("click", async () => {
+  const dir = $("slPath").value.trim();
+  if (!dir) return toast("Need a path", "", "error");
+  const done = busy($("slRunBtn"), $("slTimer"));
+  try {
+    const { data } = await api("/slsa/attest", {
+      method: "POST", body: { model_dir: dir, level: parseInt($("slLevel").value) },
+    });
+    done(true);
+    $("slResult").innerHTML = `
+      <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap">
+        <span class="badge accent">SLSA L${data.level}</span>
+        <span class="badge ${data.signed ? "pass" : "neutral"}">${data.signed ? "signed" : "unsigned"}</span>
+        <span class="muted">${escapeHtml(data.subject_name || "")}</span>
+      </div>
+      <dl class="kv-grid mt">
+        <dt>subject_sha256</dt><dd style="word-break:break-all">${escapeHtml(data.subject_sha256 || "")}</dd>
+        <dt>invocation_id</dt><dd>${escapeHtml(data.invocation_id || "")}</dd>
+        <dt>output_path</dt><dd style="word-break:break-all">${escapeHtml(data.output_path || "")}</dd>
+      </dl>
+      <div class="muted mt">Provenance binds this build to the model's content hash — verifiable in CI.</div>`;
+    $("slResult").classList.add("show");
+    toast("Provenance generated", `L${data.level}`, "success");
+  } catch (e) { done(false); toast("SLSA failed", e.message, "error"); }
+});
+
 /* ═════════════════════════════════════════════════════════════
    TAB 4 — VEX
    ═════════════════════════════════════════════════════════════ */
@@ -3375,6 +3461,7 @@ const CMDK = [
   { gly: "▷", label: "Compare SBOMs", sub: "supply · /sbom/diff", kw: "components added removed", run: cmdkAct("supply", "sbRunBtn") },
   { gly: "⚡", label: "Scan model for malware", sub: "supply · /scan → SARIF", kw: "pickle safetensors security", run: cmdkAct("supply", "scRunBtn") },
   { gly: "⬡", label: "Verify poisoned RAG corpus", sub: "supply · /rag/verify", kw: "knowledge base drift integrity", run: cmdkAct("supply", "rgPoisonBtn") },
+  { gly: "⚡", label: "Generate SLSA provenance", sub: "supply · /slsa/attest", kw: "supply chain sha256 sign", run: cmdkAct("supply", "slRunBtn") },
   { gly: "▷", label: "Evaluate VEX", sub: "vex · /vex/evaluate", kw: "cve vulnerability", run: cmdkAct("vex", "vxRunBtn") },
   { gly: "▷", label: "Look up vendor score", sub: "vendors · /v1/score", kw: "grade badge", run: cmdkAct("vendors", "vsRunBtn") },
   { gly: "⚡", label: "Attest demo model", sub: "attest · /attest", kw: "sign provenance", run: cmdkAct("attest", "atRunBtn") },
