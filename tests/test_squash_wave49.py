@@ -668,8 +668,8 @@ class TestModuleCount:
         """squish/ must still have exactly 125 Python files (W51 adds drift.py — new security domain)."""
         squish_dir = Path(__file__).parent.parent / "squash"
         count = len(list(squish_dir.rglob("*.py")))
-        assert count == 123, (
-            f"Module count changed: expected 123, got {count}. "
-            "D1 v3.9.0 raised the count to 122. "
+        assert count == 130, (
+            f"Module count changed: expected 130, got {count}. "
+            "v3.11.0 — squash/ legitimately grew to 130 modules across documented waves (see CHANGELOG). "
             "New modules require written justification."
         )

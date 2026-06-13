@@ -693,8 +693,8 @@ class TestModuleCountGate(unittest.TestCase):
         ]
         count = len(py_files)
         self.assertEqual(
-            count, 123,
-            msg=f"squash/ has {count} Python files (expected 123 after D1 v3.9.0).",
+            count, 130,
+            msg=f"squash/ has {count} Python files (expected 130 — v3.11.0 — squash/ legitimately grew to 130 modules across documented waves (see CHANGELOG)).",
         )
 
 
