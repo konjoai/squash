@@ -36,3 +36,6 @@ provenance.json
 
 # runtime-created RAG manifest for the clean demo corpus (poisoned one is committed)
 demo/sample_corpus/.rag_manifest.json
+
+# runtime-generated SLSA provenance for the demo sample models
+demo/sample_models/**/squash-slsa-provenance.json
