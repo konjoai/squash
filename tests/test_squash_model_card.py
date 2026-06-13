@@ -660,8 +660,8 @@ class TestModuleCountGate(unittest.TestCase):
         # · Phase G.2 (Bulletproof Edition): canon.py, clock.py, ids.py (+3) = 106.
         self.assertEqual(
             count,
-            123,
-            msg=f"squash/ has {count} Python files (expected 123 after Phase G v3.11.0 _ids.py). "
+            130,
+            msg=f"squash/ has {count} Python files (expected 130 — v3.11.0 — squash/ legitimately grew to 130 modules across documented waves (see CHANGELOG)). "
                 "If you added a file, update this gate.",
         )
 

@@ -21,6 +21,12 @@ concurrency:
 permissions:
   contents: read
 
+# MLflow ≥3 refuses the filesystem tracking backend unless explicitly opted in.
+# The artifact-extractor tests (test_squash_w129.py) use an ephemeral filestore,
+# which is correct for CI — opt in so they collect instead of erroring.
+env:
+  MLFLOW_ALLOW_FILE_STORE: "true"
+
 jobs:
   test:
     name: Test (Python ${{ matrix.python-version }})
