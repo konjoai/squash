@@ -781,7 +781,11 @@ class TestAttestMcpCli(unittest.TestCase):
 class TestAttestMcpApi(unittest.TestCase):
     def test_attest_mcp_route_registered(self):
         from squash.api import app
-        routes = {r.path for r in app.routes}
+
+        # Newer FastAPI represents app.include_router(...) mounts as route
+        # objects without a ``.path`` attribute; skip those when collecting
+        # concrete paths so the direct @app.post("/attest/mcp") route is found.
+        routes = {r.path for r in app.routes if hasattr(r, "path")}
         self.assertIn("/attest/mcp", routes)
 
     def test_mcp_attest_request_model_importable(self):
