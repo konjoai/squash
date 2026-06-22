@@ -19,11 +19,11 @@ import pytest
 
 from squash.policy import (
     AVAILABLE_POLICIES,
+    OWASP_LLM_TOP10_2025,
     PolicyEngine,
     PolicyFinding,
     PolicyResult,
 )
-
 
 # ── Minimal valid CycloneDX BOM dict ─────────────────────────────────────────
 
@@ -140,28 +140,21 @@ class TestFailingBOM:
         result = PolicyEngine.evaluate(bom, "eu-ai-act")
         # The hash-presence rule should fire
         hash_rule_failures = [
-            f for f in result.findings
-            if not f.passed and "hash" in (f.field + f.rationale).lower()
+            f for f in result.findings if not f.passed and "hash" in (f.field + f.rationale).lower()
         ]
         assert hash_rule_failures, "Expected a hash-presence failure"
 
     def test_unsafe_scan_fails_owasp(self):
         bom = _minimal_bom(scan_result="unsafe")
         result = PolicyEngine.evaluate(bom, "owasp-llm-top10")
-        scan_failures = [
-            f for f in result.findings
-            if not f.passed and "scan" in f.field
-        ]
+        scan_failures = [f for f in result.findings if not f.passed and "scan" in f.field]
         assert scan_failures, "Expected scan_result failure in owasp policy"
 
     def test_missing_name_fails_iso_42001(self):
         bom = _minimal_bom()
         bom["components"][0]["name"] = ""
         result = PolicyEngine.evaluate(bom, "iso-42001")
-        name_failures = [
-            f for f in result.findings
-            if not f.passed and "name" in f.field
-        ]
+        name_failures = [f for f in result.findings if not f.passed and "name" in f.field]
         assert name_failures, "Expected name non_empty failure"
 
 
@@ -202,5 +195,97 @@ class TestAvailablePolicies:
         assert len(policy_keys) >= 5
 
     def test_required_policies_present(self):
-        for name in ("eu-ai-act", "nist-ai-rmf", "owasp-llm-top10", "iso-42001", "enterprise-strict"):
+        for name in (
+            "eu-ai-act",
+            "nist-ai-rmf",
+            "owasp-llm-top10",
+            "iso-42001",
+            "enterprise-strict",
+        ):
             assert name in AVAILABLE_POLICIES, f"Missing policy: {name}"
+
+
+# ── OWASP Top 10 for LLM Applications (2025) alignment ────────────────────────
+
+
+class TestOwaspLlm2025Catalogue:
+    """The OWASP_LLM_TOP10_2025 constant must mirror the official list."""
+
+    EXPECTED = {
+        "LLM01:2025": "Prompt Injection",
+        "LLM02:2025": "Sensitive Information Disclosure",
+        "LLM03:2025": "Supply Chain",
+        "LLM04:2025": "Data and Model Poisoning",
+        "LLM05:2025": "Improper Output Handling",
+        "LLM06:2025": "Excessive Agency",
+        "LLM07:2025": "System Prompt Leakage",
+        "LLM08:2025": "Vector and Embedding Weaknesses",
+        "LLM09:2025": "Misinformation",
+        "LLM10:2025": "Unbounded Consumption",
+    }
+
+    def test_has_all_ten_categories(self):
+        assert set(OWASP_LLM_TOP10_2025) == set(self.EXPECTED)
+
+    def test_official_names_match(self):
+        for code, name in self.EXPECTED.items():
+            assert OWASP_LLM_TOP10_2025[code]["name"] == name
+
+    def test_no_legacy_overreliance_name(self):
+        """'Overreliance' is a 2023-era name OWASP retired — it must not reappear."""
+        names = {v["name"].lower() for v in OWASP_LLM_TOP10_2025.values()}
+        assert "overreliance" not in names
+
+    def test_llm09_is_misinformation_not_overreliance(self):
+        assert OWASP_LLM_TOP10_2025["LLM09:2025"]["name"] == "Misinformation"
+
+    def test_only_supply_chain_and_poisoning_are_attestable(self):
+        attestable = {c for c, v in OWASP_LLM_TOP10_2025.items() if v["attestable"]}
+        assert attestable == {"LLM03:2025", "LLM04:2025"}
+
+
+class TestOwaspLlmPolicyRules:
+    """The owasp-llm-top10 policy must cite only current 2025 categories."""
+
+    def _owasp_findings(self, bom: dict) -> list[PolicyFinding]:
+        return PolicyEngine.evaluate(bom, "owasp-llm-top10").findings
+
+    def test_clean_minimal_bom_passes(self):
+        result = PolicyEngine.evaluate(_minimal_bom(), "owasp-llm-top10")
+        assert result.passed, [f.rule_id for f in result.findings if not f.passed]
+
+    def test_no_rationale_references_overreliance(self):
+        for f in self._owasp_findings(_minimal_bom()):
+            assert "overreliance" not in f.rationale.lower()
+
+    def test_every_rationale_uses_2025_versioned_codes(self):
+        for f in self._owasp_findings(_minimal_bom()):
+            assert ":2025" in f.rationale, f"{f.rule_id} cites a non-2025 OWASP code"
+
+    def test_only_attestable_categories_are_cited(self):
+        cited = {
+            code
+            for f in self._owasp_findings(_minimal_bom())
+            for code in OWASP_LLM_TOP10_2025
+            if code in f.rationale
+        }
+        assert cited <= {"LLM03:2025", "LLM04:2025"}
+
+    def test_missing_version_warns_not_errors(self):
+        bom = _minimal_bom(include_version=False)
+        result = PolicyEngine.evaluate(bom, "owasp-llm-top10")
+        version_findings = [f for f in result.findings if f.field == "components[0].version"]
+        assert version_findings and all(
+            f.severity == "warning" and not f.passed for f in version_findings
+        )
+
+    def test_missing_model_card_warns(self):
+        bom = _minimal_bom()
+        del bom["components"][0]["modelCard"]
+        result = PolicyEngine.evaluate(bom, "owasp-llm-top10")
+        card_findings = [f for f in result.findings if f.field == "components[0].modelCard"]
+        assert card_findings and all(
+            f.severity == "warning" and not f.passed for f in card_findings
+        )
+        # A missing model card is non-fatal — errors still pass.
+        assert result.passed
