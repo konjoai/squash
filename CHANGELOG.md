@@ -5,6 +5,47 @@ Format: [Conventional Commits](https://www.conventionalcommits.org/) · [Keep a 
 
 ---
 
+## [3.12.0] — 2026-06-22 — OWASP LLM Top-10 (2025) alignment
+
+> A compliance tool must cite the *authoritative* control list. The
+> `owasp-llm-top10` policy was carrying a retired 2023-era category name.
+
+### Fixed
+
+- **`squash/policy.py` — `owasp-llm-top10` policy corrected to the official
+  OWASP Top 10 for LLM Applications (2025)** (source:
+  [genai.owasp.org/llm-top-10](https://genai.owasp.org/llm-top-10/)):
+  - `OWASP-LLM-003` previously cited **"LLM09 Overreliance"** — a name OWASP
+    retired after 2023. In the 2025 list, **LLM09:2025 is "Misinformation"**;
+    the model-identity rule now correctly cites **LLM03:2025 Supply Chain**
+    (component provenance/auditability).
+  - All rationales now use version-pinned codes (`LLMxx:2025`) and the section
+    is relabelled to the 2025 edition.
+  - Note: there is **no published "2026" OWASP LLM list** — the current
+    authoritative list is 2025. squash does not invent one.
+
+### Added
+
+- **`OWASP_LLM_TOP10_2025`** — exported constant in `squash/policy.py`
+  enumerating all ten official categories (`LLM01:2025`–`LLM10:2025`) with an
+  `attestable` flag marking the subset a *static model SBOM* can evidence. Only
+  **LLM03 (Supply Chain)** and **LLM04 (Data and Model Poisoning)** are
+  attestable; runtime-only categories (prompt injection, output handling,
+  excessive agency, system-prompt leakage, vector/embedding weaknesses,
+  misinformation, unbounded consumption) are explicitly out of scope rather than
+  emitting a false PASS.
+- **Two new SBOM-grounded rules** in `owasp-llm-top10`:
+  - `OWASP-LLM-005` (warning) — `components[0].version` pinned-build provenance
+    (LLM03:2025 Supply Chain).
+  - `OWASP-LLM-006` (warning) — `components[0].modelCard` present as training-
+    data provenance evidence (LLM04:2025 Data and Model Poisoning).
+- **14 new tests** (`tests/test_squash_policy.py`) — catalogue completeness,
+  official-name match, no-legacy-"Overreliance" guard, attestable-subset
+  invariant, and rule-level assertions that every cited code is a 2025 code
+  within the attestable subset; warning-not-error severity for the new rules.
+
+---
+
 ## [Unreleased] — 2026-05-19 — EU AI Act deadline update (Omnibus)
 
 ### Documentation

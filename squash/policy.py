@@ -28,15 +28,39 @@ as the default for Enterprise customers.
 
 from __future__ import annotations
 
-import logging
-import re
 import datetime
 import json
+import logging
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 log = logging.getLogger(__name__)
+
+
+# ── OWASP Top 10 for LLM Applications (2025) ─────────────────────────────────
+# Authoritative source: https://genai.owasp.org/llm-top-10/ — the current
+# official list is LLM01:2025–LLM10:2025. (There is no published "2026" list;
+# do not invent one.) ``attestable`` marks the categories a *static model SBOM*
+# can carry real evidence for. Runtime-only categories — prompt-injection
+# defenses, output handling, agency limits, system-prompt leakage, RAG/embedding
+# hygiene, misinformation guardrails, consumption limits — cannot be proven from
+# a build-time artifact, so the ``owasp-llm-top10`` SBOM policy below deliberately
+# scopes to LLM03 (Supply Chain) and LLM04 (Data and Model Poisoning) rather than
+# emitting a false PASS for controls it cannot evidence.
+OWASP_LLM_TOP10_2025: dict[str, dict[str, Any]] = {
+    "LLM01:2025": {"name": "Prompt Injection", "attestable": False},
+    "LLM02:2025": {"name": "Sensitive Information Disclosure", "attestable": False},
+    "LLM03:2025": {"name": "Supply Chain", "attestable": True},
+    "LLM04:2025": {"name": "Data and Model Poisoning", "attestable": True},
+    "LLM05:2025": {"name": "Improper Output Handling", "attestable": False},
+    "LLM06:2025": {"name": "Excessive Agency", "attestable": False},
+    "LLM07:2025": {"name": "System Prompt Leakage", "attestable": False},
+    "LLM08:2025": {"name": "Vector and Embedding Weaknesses", "attestable": False},
+    "LLM09:2025": {"name": "Misinformation", "attestable": False},
+    "LLM10:2025": {"name": "Unbounded Consumption", "attestable": False},
+}
 
 
 # ── Policy definitions ───────────────────────────────────────────────────────
@@ -137,14 +161,17 @@ _POLICIES: dict[str, list[dict[str, Any]]] = {
             "remediation": "Run squish eval after compress to bind lm_eval scores.",
         },
     ],
-    # ── OWASP LLM Top 10 (2025 edition) ──────────────────────────────────
+    # ── OWASP Top 10 for LLM Applications (2025) ──────────────────────────
+    # Scopes to the SBOM-attestable subset (LLM03 Supply Chain, LLM04 Data and
+    # Model Poisoning). See OWASP_LLM_TOP10_2025 for the full official list and
+    # why runtime-only categories are out of scope. Source: genai.owasp.org.
     "owasp-llm-top10": [
         {
             "id": "OWASP-LLM-001",
             "field": "components[0].hashes",
             "check": "non_empty",
             "severity": "error",
-            "rationale": "OWASP LLM01 Prompt Injection / LLM03 Supply Chain: Artifact hashes detect tampered weights.",
+            "rationale": "OWASP LLM03:2025 Supply Chain: cryptographic artifact hashes detect tampered or substituted model weights.",
             "remediation": "All model weight files must be hashed at compress time.",
         },
         {
@@ -153,7 +180,7 @@ _POLICIES: dict[str, list[dict[str, Any]]] = {
             "check": "equals",
             "value": "clean",
             "severity": "error",
-            "rationale": "OWASP LLM03 Supply Chain: Models must be scanned for pickle exploits and ACE payloads.",
+            "rationale": "OWASP LLM04:2025 Data and Model Poisoning: models must be scanned for pickle exploits, backdoors, and ACE payloads before they are trusted.",
             "remediation": "Run squash scan before attestation. Fix or reject flagged models.",
         },
         {
@@ -161,7 +188,7 @@ _POLICIES: dict[str, list[dict[str, Any]]] = {
             "field": "components[0].name",
             "check": "non_empty",
             "severity": "error",
-            "rationale": "OWASP LLM09 Overreliance: Model identity must be auditable.",
+            "rationale": "OWASP LLM03:2025 Supply Chain: every model component must be uniquely identifiable for provenance auditing.",
             "remediation": "Set model_id in CompressRunMeta.",
         },
         {
@@ -169,8 +196,24 @@ _POLICIES: dict[str, list[dict[str, Any]]] = {
             "field": "metadata.timestamp",
             "check": "non_empty",
             "severity": "warning",
-            "rationale": "OWASP LLM03 Supply Chain: Attestation timestamp provides temporal proof-of-compliance.",
+            "rationale": "OWASP LLM03:2025 Supply Chain: an attestation timestamp provides temporal proof-of-compliance for the supply-chain record.",
             "remediation": "SBOM timestamp is auto-generated — do not strip it.",
+        },
+        {
+            "id": "OWASP-LLM-005",
+            "field": "components[0].version",
+            "check": "non_empty",
+            "severity": "warning",
+            "rationale": "OWASP LLM03:2025 Supply Chain: a pinned component version prevents silent drift to an unvetted model build.",
+            "remediation": "Set the model version in CompressRunMeta so the SBOM records a pinned build.",
+        },
+        {
+            "id": "OWASP-LLM-006",
+            "field": "components[0].modelCard",
+            "check": "present",
+            "severity": "warning",
+            "rationale": "OWASP LLM04:2025 Data and Model Poisoning: a model card documenting training-data provenance is the static evidence that supports detecting poisoned or unvetted training sources.",
+            "remediation": "Attach a model card (modelCard) describing training-data provenance and intended use.",
         },
     ],
     # ── ISO/IEC 42001:2023 AI Management System ───────────────────────────
@@ -552,9 +595,7 @@ class PolicyResult:
 
     @property
     def warning_count(self) -> int:
-        return sum(
-            1 for f in self.findings if f.severity == "warning" and not f.passed
-        )
+        return sum(1 for f in self.findings if f.severity == "warning" and not f.passed)
 
     @property
     def pass_count(self) -> int:
@@ -604,16 +645,16 @@ class PolicyEngine:
         """
         if policy_name not in _POLICIES:
             available = ", ".join(sorted(_POLICIES))
-            raise KeyError(
-                f"Unknown policy '{policy_name}'. Available: {available}"
-            )
+            raise KeyError(f"Unknown policy '{policy_name}'. Available: {available}")
 
         rules = _POLICIES[policy_name]
         findings: list[PolicyFinding] = []
 
         for rule in rules:
             actual = _resolve_field(sbom, rule["field"])
-            passed = _check(actual, rule["check"], rule.get("value"), rule.get("pattern"), rule.get("allowed"))
+            passed = _check(
+                actual, rule["check"], rule.get("value"), rule.get("pattern"), rule.get("allowed")
+            )
             findings.append(
                 PolicyFinding(
                     rule_id=rule["id"],
@@ -627,9 +668,7 @@ class PolicyEngine:
                 )
             )
 
-        all_errors_passed = all(
-            f.passed for f in findings if f.severity == "error"
-        )
+        all_errors_passed = all(f.passed for f in findings if f.severity == "error")
         return PolicyResult(
             policy_name=policy_name,
             passed=all_errors_passed,
@@ -637,9 +676,7 @@ class PolicyEngine:
         )
 
     @staticmethod
-    def evaluate_all(
-        sbom: dict[str, Any], policy_names: list[str]
-    ) -> dict[str, PolicyResult]:
+    def evaluate_all(sbom: dict[str, Any], policy_names: list[str]) -> dict[str, PolicyResult]:
         """Evaluate multiple policies, returning a dict keyed by policy name."""
         return {name: PolicyEngine.evaluate(sbom, name) for name in policy_names}
 
@@ -666,14 +703,18 @@ class PolicyEngine:
         """
         validated = PolicyRegistry.validate_rules(rules)
         if validated:
-            log.warning("custom rules have schema errors (skipping %d): %s", len(validated), validated)
+            log.warning(
+                "custom rules have schema errors (skipping %d): %s", len(validated), validated
+            )
 
         findings: list[PolicyFinding] = []
         for rule in rules:
             if not rule.get("id") or not rule.get("field") or not rule.get("check"):
                 continue  # skip invalid rules
             actual = _resolve_field(sbom, rule["field"])
-            passed = _check(actual, rule["check"], rule.get("value"), rule.get("pattern"), rule.get("allowed"))
+            passed = _check(
+                actual, rule["check"], rule.get("value"), rule.get("pattern"), rule.get("allowed")
+            )
             findings.append(
                 PolicyFinding(
                     rule_id=rule["id"],
@@ -757,8 +798,7 @@ class PolicyRegistry:
             import yaml  # type: ignore[import-untyped]
         except ImportError as e:
             raise ImportError(
-                "PyYAML is required to load YAML rules. "
-                "Install with: pip install pyyaml"
+                "PyYAML is required to load YAML rules. Install with: pip install pyyaml"
             ) from e
 
         raw = yaml.safe_load(path.read_text(encoding="utf-8"))
@@ -805,8 +845,7 @@ class PolicyRegistry:
             check = rule.get("check", "")
             if check and check not in _VALID_CHECK_TYPES:
                 errors.append(
-                    f"{prefix}: unknown check type '{check}'. "
-                    f"Valid: {sorted(_VALID_CHECK_TYPES)}"
+                    f"{prefix}: unknown check type '{check}'. Valid: {sorted(_VALID_CHECK_TYPES)}"
                 )
             sev = rule.get("severity", "")
             if sev and sev not in _VALID_SEVERITIES:
@@ -956,9 +995,7 @@ class PolicyHistory:
                     pass
         return records
 
-    def regressions_since(
-        self, since: datetime.datetime
-    ) -> list[dict[str, Any]]:
+    def regressions_since(self, since: datetime.datetime) -> list[dict[str, Any]]:
         """Return all failed records written after *since*.
 
         *since* must be timezone-aware.  The comparison is done in UTC.
@@ -967,8 +1004,7 @@ class PolicyHistory:
         return [
             r
             for r in self._iter_records()
-            if not r.get("passed", True)
-            and datetime.datetime.fromisoformat(r["ts"]) >= since_utc
+            if not r.get("passed", True) and datetime.datetime.fromisoformat(r["ts"]) >= since_utc
         ]
 
     def latest(self, model_path: str) -> "dict[str, Any] | None":
@@ -980,6 +1016,7 @@ class PolicyHistory:
 # ─────────────────────────────────────────────────────────────────────────────
 # Wave 17 — PolicyWebhook: outbound HTTP alerting
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class PolicyWebhook:
     """Send policy evaluation results as JSON POST webhooks.
@@ -1090,13 +1127,13 @@ class PolicyWebhook:
 # Materials" guidance.  The CycloneDX field paths are mapped to the seven
 # required elements as closely as the ML-BOM schema allows.
 _NTIA_REQUIRED_FIELD_PATHS: dict[str, str] = {
-    "supplier_name":           "metadata.supplier.name",
-    "component_name":          "components[0].name",
-    "component_version":       "components[0].version",
-    "unique_identifier":       "components[0].purl",
+    "supplier_name": "metadata.supplier.name",
+    "component_name": "components[0].name",
+    "component_version": "components[0].version",
+    "unique_identifier": "components[0].purl",
     "dependency_relationship": "dependencies[0].ref",
-    "author_of_sbom":          "metadata.authors[0].name",
-    "timestamp":               "metadata.timestamp",
+    "author_of_sbom": "metadata.authors[0].name",
+    "timestamp": "metadata.timestamp",
 }
 
 
@@ -1187,8 +1224,7 @@ class NtiaValidator:
                 # strict: require at least one non-empty dependsOn list
                 deps = doc.get("dependencies", [])
                 has_real_dep = any(
-                    isinstance(d.get("dependsOn"), list) and len(d["dependsOn"]) > 0
-                    for d in deps
+                    isinstance(d.get("dependsOn"), list) and len(d["dependsOn"]) > 0 for d in deps
                 )
                 if has_real_dep:
                     present.append(element_name)
